@@ -24,5 +24,11 @@
 -dontwarn javax.annotation.**
 -dontwarn org.codehaus.mojo.animal_sniffer.**
 
+# Flutter's embedding references Google Play Core (deferred components / split installs) for an opt-in feature
+# we don't use. Without this rule, R8 fails the release build with "Missing class com.google.android.play.core.*".
+# These classes only exist if you add the Play Core dependency, which we don't need; tell R8 to skip them.
+-dontwarn com.google.android.play.core.**
+-dontwarn com.google.android.play.**
+
 # Keep generic signatures + annotations — required for json_serializable + Riverpod codegen reflection
 -keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod
