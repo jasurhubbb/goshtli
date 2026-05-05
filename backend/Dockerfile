@@ -35,14 +35,17 @@ RUN pip install --no-index --find-links=/wheels /wheels/*.whl && rm -rf /wheels
 
 COPY --chown=app:app . /app/
 
-# collectstatic intentionally NOT run at build time — production.py reads ALLOWED_HOSTS via decouple.config() at import,
-# but Railway / most container hosts don't inject runtime env vars during the Docker build. Static files are collected
-# at container start instead, via the platform's start command (e.g. on Railway: "manage.py migrate && manage.py collectstatic && gunicorn ...").
+# Make /app itself writable by the runtime user — gunicorn 23+ writes a control-server socket at $WORKDIR/.gunicorn.
+# WORKDIR creates /app owned by root; --chown on COPY only affects copied files, not the existing directory.
+RUN chmod +x /app/entrypoint.sh && chown -R app:app /app
+
+# collectstatic + migrate run at container start (in entrypoint.sh), NOT here — production.py reads ALLOWED_HOSTS via
+# decouple.config() at import, and Railway/Render don't inject runtime env vars during the Docker build phase.
 
 USER app
+# EXPOSE is informational; real port is whatever $PORT resolves to at runtime (Railway sets dynamically, default 8000)
 EXPOSE 8000
 
-# Gunicorn with sensible defaults for a B2B marketplace — 3 workers (2*CPU+1 for a 1-core dyno), 60s timeout
-# Tune --workers via env if running on a larger instance; keep --access-logfile=- so logs flow to docker stdout.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
-     "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-"]
+# Single entrypoint runs migrations + collectstatic + gunicorn (binding to $PORT). Same container works on Railway,
+# Render, Fly, plain `docker run` — no host-specific start-command override needed.
+CMD ["/app/entrypoint.sh"]
