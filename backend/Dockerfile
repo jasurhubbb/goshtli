@@ -35,8 +35,9 @@ RUN pip install --no-index --find-links=/wheels /wheels/*.whl && rm -rf /wheels
 
 COPY --chown=app:app . /app/
 
-# Collect static for Django Admin + drf-spectacular's Swagger UI assets — done at build time so the runtime is read-only
-RUN python manage.py collectstatic --noinput || true
+# collectstatic intentionally NOT run at build time — production.py reads ALLOWED_HOSTS via decouple.config() at import,
+# but Railway / most container hosts don't inject runtime env vars during the Docker build. Static files are collected
+# at container start instead, via the platform's start command (e.g. on Railway: "manage.py migrate && manage.py collectstatic && gunicorn ...").
 
 USER app
 EXPOSE 8000
