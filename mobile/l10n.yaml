@@ -1,0 +1,6 @@
+# gen-l10n config — reads ARB files from lib/l10n/ and emits AppLocalizations into the build cache.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb              # English is the base — keys must exist here first
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false                     # cleaner call sites — AppLocalizations.of(context).foo (no `!`)

@@ -1,0 +1,189 @@
+{
+  "@@locale": "ru",
+  "appTitle": "Мясной рынок",
+  "signIn": "Войти",
+  "welcomeSubtitle": "С возвращением в Мясной рынок",
+  "email": "Email",
+  "password": "Пароль",
+  "passwordMin8": "Пароль (минимум 8 символов)",
+  "confirmPassword": "Подтвердите пароль",
+  "fullName": "Полное имя",
+  "phone": "Телефон",
+  "createAccount": "Создать аккаунт",
+  "noAccountCta": "Нет аккаунта? Создайте",
+  "haveAccountCta": "Уже есть аккаунт? Войти",
+  "validateEmail": "Введите правильный email",
+  "validateMin8": "Минимум 8 символов",
+  "validatePasswordMatch": "Пароли не совпадают",
+  "validateName": "Введите имя",
+  "roleBuyer": "Покупатель",
+  "roleSupplier": "Поставщик",
+  "roleAdmin": "Администратор",
+  "home": "Главная",
+  "buyerHome": "Главная покупателя",
+  "supplierHome": "Главная поставщика",
+  "profile": "Профиль",
+  "logout": "Выйти",
+  "refresh": "Обновить",
+  "language": "Язык",
+  "greeting": "Здравствуйте, {name} 👋",
+  "@greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "verificationPendingBanner": "Аккаунт ожидает проверки — создание объявлений недоступно до подтверждения администратором.",
+  "sectionListings": "Объявления",
+  "sectionOrders": "Заказы",
+  "browseListings": "Просмотр объявлений",
+  "myOrders": "Мои заказы",
+  "myListings": "Мои объявления",
+  "incomingOrders": "Входящие заказы",
+  "newListing": "Новое объявление",
+  "statTotal": "Всего",
+  "statActive": "Активные",
+  "statSoldOut": "Распроданы",
+  "statInactive": "Неактивные",
+  "statPending": "В ожидании",
+  "statInProgress": "В процессе",
+  "statDelivered": "Доставлены",
+  "statCancelled": "Отменены",
+  "listingsTitle": "Объявления",
+  "noListingsMatchFilters": "Нет объявлений по этим фильтрам",
+  "searchListingsHint": "Поиск по названию или описанию",
+  "kgAvailableSuffix": "кг в наличии",
+  "perKgSuffix": "/ кг",
+  "listingFieldTitle": "Название",
+  "listingFieldMeatType": "Тип мяса",
+  "listingFieldStatus": "Статус",
+  "listingFieldPricePerKg": "Цена / кг",
+  "listingFieldQuantity": "Количество (кг)",
+  "listingFieldAvailable": "Доступно",
+  "listingFieldLocation": "Местоположение",
+  "listingFieldAvailableFrom": "Доступно с",
+  "listingFieldDescription": "Описание",
+  "listingFieldDescriptionOptional": "Описание (необязательно)",
+  "listingPickAvailableFrom": "Выберите дату доступности",
+  "listingMinTitleChars": "Минимум 3 символа",
+  "validateGtZero": "> 0 обязательно",
+  "validateRequired": "Обязательно",
+  "createListingButton": "Создать объявление",
+  "listingDetailTitle": "Объявление",
+  "listingActionPlaceOrder": "Сделать заказ",
+  "listingActionEdit": "Изменить",
+  "listingActionDeactivate": "Деактивировать",
+  "listingActionSave": "Сохранить",
+  "listingStatusActive": "Активно",
+  "listingStatusSoldOut": "Распродано",
+  "listingStatusInactive": "Неактивно",
+  "meatBeef": "Говядина",
+  "meatMutton": "Баранина",
+  "meatChicken": "Курятина",
+  "meatGoat": "Козлятина",
+  "meatHorse": "Конина",
+  "meatOther": "Другое",
+  "myOrdersTitle": "Мои заказы",
+  "incomingOrdersTitle": "Входящие заказы",
+  "noOrdersYet": "Заказов пока нет",
+  "filterAll": "Все",
+  "orderDetailTitle": "Заказ №{id}",
+  "@orderDetailTitle": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "orderFromLabel": "От: {email}",
+  "@orderFromLabel": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "orderToLabel": "Кому: {email}",
+  "@orderToLabel": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "orderFieldDeliveryAddress": "Адрес доставки",
+  "orderFieldNotes": "Заметки",
+  "orderFieldNotesOptional": "Заметки (необязательно)",
+  "orderPlaceTitle": "Сделать заказ — {title}",
+  "@orderPlaceTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "orderAvailabilityHint": "Доступно: {qty} кг по {price} / кг",
+  "@orderAvailabilityHint": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "orderQtyAddrRequired": "Количество и адрес доставки обязательны",
+  "orderOnlyKgAvailable": "Доступно только {qty} кг",
+  "@orderOnlyKgAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      }
+    }
+  },
+  "orderConfirmButton": "Подтвердить заказ",
+  "orderPlacedSnack": "Заказ оформлен",
+  "orderCancelButton": "Отменить заказ",
+  "orderCancelTitle": "Отменить заказ?",
+  "orderCancelBody": "Количество вернётся в объявление. Это действие нельзя отменить.",
+  "no": "Нет",
+  "orderActionConfirm": "Подтвердить",
+  "orderActionStartProcessing": "Начать обработку",
+  "orderActionMarkInTransit": "Отметить в пути",
+  "orderActionMarkDelivered": "Отметить доставленным",
+  "orderActionCancel": "Отменить",
+  "orderTerminalNoActions": "Дальнейших действий нет — заказ {status}",
+  "@orderTerminalNoActions": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "orderStatusPending": "В ожидании",
+  "orderStatusConfirmed": "Подтверждён",
+  "orderStatusProcessing": "В обработке",
+  "orderStatusInTransit": "В пути",
+  "orderStatusDelivered": "Доставлен",
+  "orderStatusCancelled": "Отменён",
+  "profileTitle": "Профиль",
+  "buyerProfileTitle": "Профиль покупателя",
+  "supplierProfileTitle": "Профиль поставщика",
+  "profileFieldBusinessName": "Название компании",
+  "profileFieldRegion": "Регион",
+  "profileFieldAddress": "Адрес",
+  "profileVerified": "Подтверждён",
+  "profileUnverified": "Не подтверждён",
+  "profileSavedSnack": "Сохранено",
+  "profileAdminViaDjango": "Профиль администратора редактируется через Django Admin",
+  "failedPrefix": "Ошибка: {error}",
+  "@failedPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
+}

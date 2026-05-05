@@ -1,0 +1,47 @@
+name: meat_marketplace
+description: "B2B meat marketplace mobile app — buyers, suppliers, admin oversight."
+publish_to: 'none'  # private package — never publish to pub.dev
+# version is X.Y.Z+BUILD — Play Console requires versionCode (BUILD here) to strictly increase per upload
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5  # Dart SDK shipped with Flutter 3.41
+
+# Runtime dependencies — keep this list lean; every package is a maintenance + binary-size cost
+dependencies:
+  flutter: { sdk: flutter }
+  flutter_localizations: { sdk: flutter } # ICU-formatted localized strings + Cupertino/Material localizations
+  intl: ^0.20.2                           # ARB-driven translations (en/uz/ru), date/number formatting
+  cupertino_icons: ^1.0.8                 # iOS-style icon set used in shared widgets
+  dio: ^5.7.0                             # HTTP client — interceptors for auth + logging
+  flutter_riverpod: ^2.6.1                # state management (chosen over Provider for type safety + testability)
+  flutter_secure_storage: ^9.2.2          # encrypted JWT storage (Keychain on iOS, EncryptedSharedPreferences on Android)
+  shared_preferences: ^2.3.3              # locale + app-prefs persistence (low-sensitivity, no need for keychain)
+  go_router: ^14.6.2                      # declarative routing — required for auth-redirect guards
+  json_annotation: ^4.9.0                 # runtime side of code-generated JSON serialization
+
+# Build/test/codegen-only deps — never shipped to users
+dev_dependencies:
+  flutter_test: { sdk: flutter }
+  flutter_lints: ^6.0.0                   # lints enforced by analysis_options.yaml
+  build_runner: ^2.4.13                   # runs json_serializable to generate fromJson/toJson
+  json_serializable: ^6.9.0               # generates JSON glue from @JsonSerializable annotations
+  flutter_launcher_icons: ^0.14.2         # one-shot generator for adaptive launcher icons across all densities
+
+flutter:
+  uses-material-design: true
+  generate: true                          # required for flutter gen-l10n to wire generated AppLocalizations into the build
+
+# flutter_launcher_icons config — drop a 1024×1024 PNG at assets/branding/app_icon.png and run:
+#   flutter pub run flutter_launcher_icons
+# Output: every Android mipmap-* density + iOS AppIcon.appiconset, generated from one source.
+flutter_launcher_icons:
+  android: "ic_launcher"                   # replaces the default Flutter icon name
+  ios: true
+  image_path: "assets/branding/app_icon.png"
+  # Adaptive icon (Android 8+) — splits foreground (logo silhouette) from background color/image.
+  # For the first release we use a flat color; can be upgraded to a layered foreground+background later.
+  adaptive_icon_background: "#B71C1C"      # matches the deep-red brand seed in lib/core/theme/app_theme.dart
+  adaptive_icon_foreground: "assets/branding/app_icon.png"
+  # Tighten min SDKs that support adaptive icons; older devices fall back to the regular ic_launcher
+  min_sdk_android: 21

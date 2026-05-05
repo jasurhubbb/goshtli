@@ -1,0 +1,189 @@
+{
+  "@@locale": "uz",
+  "appTitle": "Go'sht Bozori",
+  "signIn": "Kirish",
+  "welcomeSubtitle": "Go'sht Bozoriga xush kelibsiz",
+  "email": "Email",
+  "password": "Parol",
+  "passwordMin8": "Parol (kamida 8 ta belgi)",
+  "confirmPassword": "Parolni tasdiqlang",
+  "fullName": "To'liq ism",
+  "phone": "Telefon",
+  "createAccount": "Hisob yaratish",
+  "noAccountCta": "Hisobingiz yo'qmi? Yangi yarating",
+  "haveAccountCta": "Hisobingiz bormi? Tizimga kiring",
+  "validateEmail": "To'g'ri email kiriting",
+  "validateMin8": "Kamida 8 ta belgi",
+  "validatePasswordMatch": "Parollar mos kelmaydi",
+  "validateName": "Ismingizni kiriting",
+  "roleBuyer": "Xaridor",
+  "roleSupplier": "Yetkazib beruvchi",
+  "roleAdmin": "Administrator",
+  "home": "Bosh sahifa",
+  "buyerHome": "Xaridor bosh sahifasi",
+  "supplierHome": "Yetkazib beruvchi bosh sahifasi",
+  "profile": "Profil",
+  "logout": "Chiqish",
+  "refresh": "Yangilash",
+  "language": "Til",
+  "greeting": "Salom, {name} 👋",
+  "@greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "verificationPendingBanner": "Hisobingiz tasdiqlanishi kutilmoqda — administrator tomonidan tasdiqlanmaguncha e'lon yarata olmaysiz.",
+  "sectionListings": "E'lonlar",
+  "sectionOrders": "Buyurtmalar",
+  "browseListings": "E'lonlarni ko'rish",
+  "myOrders": "Mening buyurtmalarim",
+  "myListings": "Mening e'lonlarim",
+  "incomingOrders": "Kelgan buyurtmalar",
+  "newListing": "Yangi e'lon",
+  "statTotal": "Jami",
+  "statActive": "Faol",
+  "statSoldOut": "Tugagan",
+  "statInactive": "Faol emas",
+  "statPending": "Kutilmoqda",
+  "statInProgress": "Jarayonda",
+  "statDelivered": "Yetkazildi",
+  "statCancelled": "Bekor qilindi",
+  "listingsTitle": "E'lonlar",
+  "noListingsMatchFilters": "Tanlangan filtrlarga mos e'lon topilmadi",
+  "searchListingsHint": "Sarlavha yoki tavsifdan qidiring",
+  "kgAvailableSuffix": "kg mavjud",
+  "perKgSuffix": "/ kg",
+  "listingFieldTitle": "Sarlavha",
+  "listingFieldMeatType": "Go'sht turi",
+  "listingFieldStatus": "Holati",
+  "listingFieldPricePerKg": "Narx / kg",
+  "listingFieldQuantity": "Miqdor (kg)",
+  "listingFieldAvailable": "Mavjud",
+  "listingFieldLocation": "Manzil",
+  "listingFieldAvailableFrom": "Mavjud sanasi",
+  "listingFieldDescription": "Tavsif",
+  "listingFieldDescriptionOptional": "Tavsif (ixtiyoriy)",
+  "listingPickAvailableFrom": "Mavjudlik sanasini tanlang",
+  "listingMinTitleChars": "Kamida 3 ta belgi",
+  "validateGtZero": "> 0 bo'lishi kerak",
+  "validateRequired": "Majburiy",
+  "createListingButton": "E'lon yaratish",
+  "listingDetailTitle": "E'lon",
+  "listingActionPlaceOrder": "Buyurtma berish",
+  "listingActionEdit": "Tahrirlash",
+  "listingActionDeactivate": "Faolsizlantirish",
+  "listingActionSave": "Saqlash",
+  "listingStatusActive": "Faol",
+  "listingStatusSoldOut": "Tugagan",
+  "listingStatusInactive": "Faol emas",
+  "meatBeef": "Mol go'shti",
+  "meatMutton": "Qo'y go'shti",
+  "meatChicken": "Tovuq go'shti",
+  "meatGoat": "Echki go'shti",
+  "meatHorse": "Ot go'shti",
+  "meatOther": "Boshqa",
+  "myOrdersTitle": "Mening buyurtmalarim",
+  "incomingOrdersTitle": "Kelgan buyurtmalar",
+  "noOrdersYet": "Hozircha buyurtmalar yo'q",
+  "filterAll": "Hammasi",
+  "orderDetailTitle": "Buyurtma #{id}",
+  "@orderDetailTitle": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "orderFromLabel": "Kimdan: {email}",
+  "@orderFromLabel": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "orderToLabel": "Kimga: {email}",
+  "@orderToLabel": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "orderFieldDeliveryAddress": "Yetkazib berish manzili",
+  "orderFieldNotes": "Izohlar",
+  "orderFieldNotesOptional": "Izohlar (ixtiyoriy)",
+  "orderPlaceTitle": "Buyurtma berish — {title}",
+  "@orderPlaceTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "orderAvailabilityHint": "Mavjud: {qty} kg @ {price} / kg",
+  "@orderAvailabilityHint": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "orderQtyAddrRequired": "Miqdor va yetkazib berish manzili majburiy",
+  "orderOnlyKgAvailable": "Faqat {qty} kg mavjud",
+  "@orderOnlyKgAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      }
+    }
+  },
+  "orderConfirmButton": "Buyurtmani tasdiqlash",
+  "orderPlacedSnack": "Buyurtma berildi",
+  "orderCancelButton": "Buyurtmani bekor qilish",
+  "orderCancelTitle": "Buyurtmani bekor qilasizmi?",
+  "orderCancelBody": "E'londagi miqdor qaytariladi. Bu amalni qaytarib bo'lmaydi.",
+  "no": "Yo'q",
+  "orderActionConfirm": "Tasdiqlash",
+  "orderActionStartProcessing": "Tayyorlashni boshlash",
+  "orderActionMarkInTransit": "Yo'lga chiqdi deb belgilash",
+  "orderActionMarkDelivered": "Yetkazildi deb belgilash",
+  "orderActionCancel": "Bekor qilish",
+  "orderTerminalNoActions": "Boshqa amal yo'q — buyurtma {status}",
+  "@orderTerminalNoActions": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "orderStatusPending": "Kutilmoqda",
+  "orderStatusConfirmed": "Tasdiqlangan",
+  "orderStatusProcessing": "Tayyorlanmoqda",
+  "orderStatusInTransit": "Yo'lda",
+  "orderStatusDelivered": "Yetkazilgan",
+  "orderStatusCancelled": "Bekor qilingan",
+  "profileTitle": "Profil",
+  "buyerProfileTitle": "Xaridor profili",
+  "supplierProfileTitle": "Yetkazib beruvchi profili",
+  "profileFieldBusinessName": "Korxona nomi",
+  "profileFieldRegion": "Hudud",
+  "profileFieldAddress": "Manzil",
+  "profileVerified": "Tasdiqlangan",
+  "profileUnverified": "Tasdiqlanmagan",
+  "profileSavedSnack": "Saqlandi",
+  "profileAdminViaDjango": "Administrator profili Django Admin orqali tahrirlanadi",
+  "failedPrefix": "Xatolik: {error}",
+  "@failedPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+# Anything matched here is excluded from the Docker build context — keeps images small and avoids leaking secrets.
+
+# Python build artefacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+
+# Secrets — NEVER ship .env files into images; they go in via runtime env vars
+.env
+.env.*
+!.env.production.example
+
+# Local Python envs
+venv/
+.venv/
+
+# Build/dist artefacts
+build/
+dist/
+media/
+staticfiles/
+
+# Test + coverage artefacts (collected in CI, don't need them in the image)
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# VCS + tooling
+.git/
+.gitignore
+.github/

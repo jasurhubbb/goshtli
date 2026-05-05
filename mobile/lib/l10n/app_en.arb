@@ -1,0 +1,189 @@
+{
+  "@@locale": "en",
+  "appTitle": "Meat Marketplace",
+  "signIn": "Sign in",
+  "welcomeSubtitle": "Welcome back to Meat Marketplace",
+  "email": "Email",
+  "password": "Password",
+  "passwordMin8": "Password (min 8)",
+  "confirmPassword": "Confirm password",
+  "fullName": "Full name",
+  "phone": "Phone",
+  "createAccount": "Create account",
+  "noAccountCta": "Don't have an account? Create one",
+  "haveAccountCta": "Already have an account? Sign in",
+  "validateEmail": "Enter a valid email",
+  "validateMin8": "Min 8 characters",
+  "validatePasswordMatch": "Passwords do not match",
+  "validateName": "Enter your name",
+  "roleBuyer": "Buyer",
+  "roleSupplier": "Supplier",
+  "roleAdmin": "Admin",
+  "home": "Home",
+  "buyerHome": "Buyer home",
+  "supplierHome": "Supplier home",
+  "profile": "Profile",
+  "logout": "Logout",
+  "refresh": "Refresh",
+  "language": "Language",
+  "greeting": "Hello, {name} 👋",
+  "@greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "verificationPendingBanner": "Account pending verification — listing creation is locked until an admin verifies you.",
+  "sectionListings": "Listings",
+  "sectionOrders": "Orders",
+  "browseListings": "Browse listings",
+  "myOrders": "My orders",
+  "myListings": "My listings",
+  "incomingOrders": "Incoming orders",
+  "newListing": "New listing",
+  "statTotal": "Total",
+  "statActive": "Active",
+  "statSoldOut": "Sold out",
+  "statInactive": "Inactive",
+  "statPending": "Pending",
+  "statInProgress": "In progress",
+  "statDelivered": "Delivered",
+  "statCancelled": "Cancelled",
+  "listingsTitle": "Listings",
+  "noListingsMatchFilters": "No listings match these filters",
+  "searchListingsHint": "Search title or description",
+  "kgAvailableSuffix": "kg avail",
+  "perKgSuffix": "/ kg",
+  "listingFieldTitle": "Title",
+  "listingFieldMeatType": "Meat type",
+  "listingFieldStatus": "Status",
+  "listingFieldPricePerKg": "Price / kg",
+  "listingFieldQuantity": "Quantity (kg)",
+  "listingFieldAvailable": "Available",
+  "listingFieldLocation": "Location",
+  "listingFieldAvailableFrom": "Available from",
+  "listingFieldDescription": "Description",
+  "listingFieldDescriptionOptional": "Description (optional)",
+  "listingPickAvailableFrom": "Pick an available-from date",
+  "listingMinTitleChars": "Min 3 chars",
+  "validateGtZero": "> 0 required",
+  "validateRequired": "Required",
+  "createListingButton": "Create listing",
+  "listingDetailTitle": "Listing",
+  "listingActionPlaceOrder": "Place order",
+  "listingActionEdit": "Edit",
+  "listingActionDeactivate": "Deactivate",
+  "listingActionSave": "Save",
+  "listingStatusActive": "Active",
+  "listingStatusSoldOut": "Sold out",
+  "listingStatusInactive": "Inactive",
+  "meatBeef": "Beef",
+  "meatMutton": "Mutton",
+  "meatChicken": "Chicken",
+  "meatGoat": "Goat",
+  "meatHorse": "Horse",
+  "meatOther": "Other",
+  "myOrdersTitle": "My orders",
+  "incomingOrdersTitle": "Incoming orders",
+  "noOrdersYet": "No orders yet",
+  "filterAll": "All",
+  "orderDetailTitle": "Order #{id}",
+  "@orderDetailTitle": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "orderFromLabel": "From: {email}",
+  "@orderFromLabel": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "orderToLabel": "To: {email}",
+  "@orderToLabel": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "orderFieldDeliveryAddress": "Delivery address",
+  "orderFieldNotes": "Notes",
+  "orderFieldNotesOptional": "Notes (optional)",
+  "orderPlaceTitle": "Place order — {title}",
+  "@orderPlaceTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "orderAvailabilityHint": "Available: {qty} kg @ {price} / kg",
+  "@orderAvailabilityHint": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "orderQtyAddrRequired": "Quantity and delivery address are required",
+  "orderOnlyKgAvailable": "Only {qty}kg available",
+  "@orderOnlyKgAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      }
+    }
+  },
+  "orderConfirmButton": "Confirm order",
+  "orderPlacedSnack": "Order placed",
+  "orderCancelButton": "Cancel order",
+  "orderCancelTitle": "Cancel order?",
+  "orderCancelBody": "Stock will be restored on the listing. This cannot be undone.",
+  "no": "No",
+  "orderActionConfirm": "Confirm",
+  "orderActionStartProcessing": "Start processing",
+  "orderActionMarkInTransit": "Mark in transit",
+  "orderActionMarkDelivered": "Mark delivered",
+  "orderActionCancel": "Cancel",
+  "orderTerminalNoActions": "No further actions — order is {status}",
+  "@orderTerminalNoActions": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "orderStatusPending": "Pending",
+  "orderStatusConfirmed": "Confirmed",
+  "orderStatusProcessing": "Processing",
+  "orderStatusInTransit": "In transit",
+  "orderStatusDelivered": "Delivered",
+  "orderStatusCancelled": "Cancelled",
+  "profileTitle": "Profile",
+  "buyerProfileTitle": "Buyer profile",
+  "supplierProfileTitle": "Supplier profile",
+  "profileFieldBusinessName": "Business name",
+  "profileFieldRegion": "Region",
+  "profileFieldAddress": "Address",
+  "profileVerified": "Verified",
+  "profileUnverified": "Unverified",
+  "profileSavedSnack": "Saved",
+  "profileAdminViaDjango": "Admin profile editing is via Django Admin",
+  "failedPrefix": "Failed: {error}",
+  "@failedPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
+}

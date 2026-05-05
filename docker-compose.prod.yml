@@ -1,0 +1,61 @@
+# Production-ready compose stack. Self-host on a VPS with:
+#   docker compose -f docker-compose.prod.yml --env-file backend/.env up -d
+# (or wire each service to a managed Postgres / hosted Caddy if you prefer.)
+#
+# Differences from docker-compose.yml (dev):
+# • Postgres data persisted via named volume + healthcheck
+# • Backend depends on Postgres being HEALTHY (not just started)
+# • Backend runs gunicorn (the Dockerfile CMD), not runserver
+# • No code mount — image is self-contained for immutable deploys
+# • Caddy reverse proxy with auto-HTTPS for any domain you point at the box
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # No exposed port — only the backend service can reach Postgres via the internal network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Run migrations on every container start — safe + idempotent; remove if you prefer manual control
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile - --error-logfile -"
+
+  # Caddy auto-provisions Let's Encrypt certs for any host listed in Caddyfile.
+  # Replace api.yourdomain.com in Caddyfile, point DNS at the box, then `up -d`.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

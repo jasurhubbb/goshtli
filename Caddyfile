@@ -1,0 +1,20 @@
+# Caddy reverse proxy config for production.
+# Auto-provisions HTTPS via Let's Encrypt. Replace api.yourdomain.com with your real DNS name.
+#
+# Caddy handles HTTP→HTTPS redirect + cert renewal automatically. Backend stays on plain :8000 internally.
+
+api.yourdomain.com {
+    # Forward everything to the gunicorn-backed Django container
+    reverse_proxy backend:8000
+
+    # Enable response compression for smaller payloads on slow networks
+    encode gzip
+
+    # Standard security headers — Django sends most of these too in prod settings, but Caddy applies them at edge
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Permissions-Policy can be tightened once we know what features the mobile app uses
+    }
+}

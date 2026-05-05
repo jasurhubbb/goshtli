@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Uzbek launcher label — Android picks this when device locale is uz -->
+    <string name="app_name">Go\'sht Bozori</string>
+</resources>

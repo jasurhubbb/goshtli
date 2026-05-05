@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default (English) app name shown on the launcher icon. Per-locale overrides live in values-uz/, values-ru/. -->
+    <string name="app_name">Meat Marketplace</string>
+</resources>
