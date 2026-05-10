@@ -460,4 +460,13 @@ class AppLocalizationsUz extends AppLocalizations {
   String failedPrefix(String error) {
     return 'Xatolik: $error';
   }
+
+  @override
+  String get viewAll => 'Barchasi';
+
+  @override
+  String get sectionFarmers => 'Fermalar';
+
+  @override
+  String get sectionButchers => 'Qassoblar';
 }

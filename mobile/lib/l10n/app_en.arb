@@ -208,5 +208,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "viewAll": "View all",
+  "sectionFarmers": "Farmers",
+  "sectionButchers": "Butchers"
 }

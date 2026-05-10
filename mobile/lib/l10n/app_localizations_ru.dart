@@ -458,4 +458,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String failedPrefix(String error) {
     return 'Ошибка: $error';
   }
+
+  @override
+  String get viewAll => 'Все';
+
+  @override
+  String get sectionFarmers => 'Фермеры';
+
+  @override
+  String get sectionButchers => 'Мясники';
 }

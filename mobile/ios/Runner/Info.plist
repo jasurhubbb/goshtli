@@ -60,6 +60,10 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Allow Meat Marketplace to use the camera so you can photograph meat listings before publishing.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Allow Meat Marketplace to access your photo library so you can attach existing photos to meat listings.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

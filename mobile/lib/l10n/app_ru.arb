@@ -208,5 +208,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "viewAll": "Все",
+  "sectionFarmers": "Фермеры",
+  "sectionButchers": "Мясники"
 }

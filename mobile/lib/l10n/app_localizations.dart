@@ -957,6 +957,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed: {error}'**
   String failedPrefix(String error);
+
+  /// No description provided for @viewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all'**
+  String get viewAll;
+
+  /// No description provided for @sectionFarmers.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmers'**
+  String get sectionFarmers;
+
+  /// No description provided for @sectionButchers.
+  ///
+  /// In en, this message translates to:
+  /// **'Butchers'**
+  String get sectionButchers;
 }
 
 class _AppLocalizationsDelegate

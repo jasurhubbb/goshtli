@@ -208,5 +208,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "viewAll": "Barchasi",
+  "sectionFarmers": "Fermalar",
+  "sectionButchers": "Qassoblar"
 }

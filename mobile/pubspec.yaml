@@ -19,6 +19,7 @@ dependencies:
   shared_preferences: ^2.3.3              # locale + app-prefs persistence (low-sensitivity, no need for keychain)
   go_router: ^14.6.2                      # declarative routing — required for auth-redirect guards
   json_annotation: ^4.9.0                 # runtime side of code-generated JSON serialization
+  image_picker: ^1.1.2                    # camera + gallery picker for listing photo uploads (v2)
 
 # Build/test/codegen-only deps — never shipped to users
 dev_dependencies:

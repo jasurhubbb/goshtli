@@ -459,4 +459,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String failedPrefix(String error) {
     return 'Failed: $error';
   }
+
+  @override
+  String get viewAll => 'View all';
+
+  @override
+  String get sectionFarmers => 'Farmers';
+
+  @override
+  String get sectionButchers => 'Butchers';
 }

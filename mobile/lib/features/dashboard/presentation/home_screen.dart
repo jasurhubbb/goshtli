@@ -1,14 +1,18 @@
-// HomeScreen — role-based dashboard with iOS-style large title, refined stat tiles, grouped action lists.
+// HomeScreen — v2 Safia-style redesign: hero greeting card, category tiles for meat types, verification banner
+// for unverified suppliers, "Sotaman" floating action button.
 //
-// Layout: SliverAppBar.large for the iOS large-title-collapses-on-scroll feel, then sectioned content with generous spacing.
+// Categories deep-link into the Search tab pre-filtered by meat type — go() switches tabs, push() of /search would just
+// stack a duplicate. Category tap → context.go('/search?meat=BEEF') (search screen reads the query param on build).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/models/listing.dart';
 import '../../../shared/widgets/language_picker.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/auth_state.dart';
+import '../../listings/providers/listings_providers.dart';
 import '../providers/dashboard_providers.dart';
 
 
@@ -22,195 +26,162 @@ class HomeScreen extends ConsumerWidget {
     if (auth is! AuthAuthenticated) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final user = auth.user;
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(user.isSupplier ? supplierDashboardProvider : buyerDashboardProvider),
-        // CustomScrollView lets the SliverAppBar.large collapse smoothly into a normal AppBar as user scrolls
-        child: CustomScrollView(slivers: [
-          SliverAppBar.large(
-            title: Text(user.isSupplier ? t.supplierHome : t.buyerHome),
-            // Profile + notifications now live in the bottom tab bar — AppBar only carries the language picker.
-            // Logout moves into Profile tab where it logically belongs.
-            actions: const [LanguagePicker()],
-          ),
-          SliverPadding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            sliver: SliverList.list(children: [
-              Text(t.greeting(user.fullName), style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 24),
-              if (user.isSupplier) const _SupplierBody() else const _BuyerBody(),
-            ])),
-        ]),
-      ),
+      // FAB only for verified suppliers — unverified see the verification banner instead. Avoids the
+      // "tap, get rejected" dead-end.
+      floatingActionButton: _SellFab(user: user),
+      body: CustomScrollView(slivers: [
+        SliverAppBar.large(title: Text(t.appTitle), actions: const [LanguagePicker()]),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+          sliver: SliverList.list(children: [
+            _GreetingCard(name: user.fullName),
+            const SizedBox(height: 20),
+            const _VerificationBannerIfNeeded(),
+            Text(t.sectionListings.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant, letterSpacing: 0.6)),
+            const SizedBox(height: 12),
+            const _CategoryGrid(),
+          ])),
+      ]),
     );
   }
 }
 
 
-/// Buyer view — order-status cards + grouped action list to Listings/Orders.
-class _BuyerBody extends ConsumerWidget {
-  const _BuyerBody();
+/// Hero card at the top — soft gradient + greeting + supplier/buyer flavor text.
+/// This is where future "personalization" plugs in (recent orders preview, suggested listings, etc.)
+class _GreetingCard extends StatelessWidget {
+  final String name;
+  const _GreetingCard({required this.name});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final t = AppLocalizations.of(context);
-    final async = ref.watch(buyerDashboardProvider);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _SectionHeader(text: t.sectionOrders),
-      async.when(
-        data: (d) => _StatGrid(stats: [
-          (t.statPending, d.ordersPending, _StatTone.neutral),
-          (t.statInProgress, d.ordersInProgress, _StatTone.accent),
-          (t.statDelivered, d.ordersDelivered, _StatTone.success),
-          (t.statCancelled, d.ordersCancelled, _StatTone.muted),
-        ]),
-        loading: () => const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
-        error: (e, _) => Text(t.failedPrefix(e.toString())),
-      ),
-      const SizedBox(height: 24),
-      _GroupedActions(items: [
-        _ActionItem(icon: Icons.storefront_outlined, label: t.browseListings, onTap: () => context.go('/search')),
-        _ActionItem(icon: Icons.receipt_long_outlined, label: t.myOrders, onTap: () => context.go('/profile/orders')),
-      ]),
-    ]);
+    return Container(padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [cs.primaryContainer.withValues(alpha: 0.7), cs.tertiaryContainer.withValues(alpha: 0.5)])),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(t.greeting(name), style: tt.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
+        const SizedBox(height: 6),
+        Text(t.welcomeSubtitle, style: tt.bodyMedium?.copyWith(color: cs.onPrimaryContainer.withValues(alpha: 0.85))),
+      ]));
   }
 }
 
 
-/// Supplier view — verification banner if unverified, listings + orders stat grids, grouped action list.
-class _SupplierBody extends ConsumerWidget {
-  const _SupplierBody();
+/// Shown to unverified suppliers — visible inline so they can't miss it. Verified users see nothing here.
+class _VerificationBannerIfNeeded extends ConsumerWidget {
+  const _VerificationBannerIfNeeded();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final auth = ref.watch(authNotifierProvider);
+    if (auth is! AuthAuthenticated || !auth.user.isSupplier) return const SizedBox.shrink();
+    final async = ref.watch(supplierDashboardProvider);
+    return async.maybeWhen(
+      data: (d) {
+        if (d.isVerified) return const SizedBox.shrink();
+        final cs = Theme.of(context).colorScheme;
+        return Padding(padding: const EdgeInsets.only(bottom: 20),
+          child: Container(padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: cs.errorContainer.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14)),
+            child: Row(children: [
+              Icon(Icons.info_outline, color: cs.onErrorContainer), const SizedBox(width: 12),
+              Expanded(child: Text(t.verificationPendingBanner,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer))),
+            ])));
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+
+/// 6-tile category grid — each tile drills into /search filtered by that meat type. Safia-style: soft tinted card,
+/// icon up top, label below, generous touch target (~110pt tall).
+class _CategoryGrid extends StatelessWidget {
+  const _CategoryGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    // Each entry: (meat type, icon, optional accent color via Material palette)
+    final categories = <(MeatType, IconData, String)>[
+      (MeatType.beef, Icons.set_meal_outlined, t.meatBeef),
+      (MeatType.mutton, Icons.set_meal_outlined, t.meatMutton),
+      (MeatType.chicken, Icons.egg_outlined, t.meatChicken),
+      (MeatType.goat, Icons.pets_outlined, t.meatGoat),
+      (MeatType.horse, Icons.sports_score_outlined, t.meatHorse),
+      (MeatType.other, Icons.more_horiz, t.meatOther),
+    ];
+    return GridView.count(
+      crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.5, mainAxisSpacing: 12, crossAxisSpacing: 12,
+      children: [for (final (m, icon, label) in categories) _CategoryTile(meatType: m, icon: icon, label: label)]);
+  }
+}
+
+
+/// Single category tile — tap deep-links into Search tab with the meat-type pre-applied via Riverpod.
+/// (Filter is applied through the filter notifier so back-stack still works.)
+class _CategoryTile extends ConsumerWidget {
+  final MeatType meatType;
+  final IconData icon;
+  final String label;
+  const _CategoryTile({required this.meatType, required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Material(
+      color: cs.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          // Apply the meat-type filter, then switch to the Search tab so the user lands on a pre-filtered list
+          ref.read(listingFiltersProvider.notifier).state =
+              ref.read(listingFiltersProvider).copyWith(meatType: () => _wire(meatType));
+          context.go('/search');
+        },
+        child: Container(padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [cs.secondaryContainer.withValues(alpha: 0.4), cs.surfaceContainerLowest])),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Icon(icon, size: 28, color: cs.onSecondaryContainer),
+            Text(label, style: tt.titleMedium),
+          ]))));
+  }
+
+  static String _wire(MeatType t) => switch (t) {
+    MeatType.beef => 'BEEF', MeatType.mutton => 'MUTTON', MeatType.chicken => 'CHICKEN',
+    MeatType.goat => 'GOAT', MeatType.horse => 'HORSE', MeatType.other => 'OTHER',
+  };
+}
+
+
+/// "Sotaman" FAB — only shown to verified suppliers so we don't dead-end other roles.
+class _SellFab extends ConsumerWidget {
+  final dynamic user;  // simpler than threading the full User type here for one boolean check
+  const _SellFab({required this.user});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
     final async = ref.watch(supplierDashboardProvider);
-    return async.when(
-      data: (d) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (!d.isVerified) _VerificationBanner(text: t.verificationPendingBanner),
-        if (!d.isVerified) const SizedBox(height: 20),
-        _SectionHeader(text: t.sectionListings),
-        _StatGrid(stats: [
-          (t.statTotal, d.listingsTotal, _StatTone.neutral),
-          (t.statActive, d.listingsActive, _StatTone.success),
-          (t.statSoldOut, d.listingsSoldOut, _StatTone.accent),
-          (t.statInactive, d.listingsInactive, _StatTone.muted),
-        ]),
-        const SizedBox(height: 24),
-        _SectionHeader(text: t.sectionOrders),
-        _StatGrid(stats: [
-          (t.statPending, d.ordersPending, _StatTone.neutral),
-          (t.statInProgress, d.ordersInProgress, _StatTone.accent),
-          (t.statDelivered, d.ordersDelivered, _StatTone.success),
-          (t.statCancelled, d.ordersCancelled, _StatTone.muted),
-        ]),
-        const SizedBox(height: 24),
-        _GroupedActions(items: [
-          _ActionItem(icon: Icons.list_alt_outlined, label: t.myListings, onTap: () => context.go('/search')),
-          _ActionItem(icon: Icons.inbox_outlined, label: t.incomingOrders, onTap: () => context.go('/profile/orders')),
-          if (d.isVerified) _ActionItem(icon: Icons.add_circle_outline, label: t.newListing,
-                                         onTap: () => context.push('/listings/new')),
-        ]),
-      ]),
-      loading: () => const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Text(t.failedPrefix(e.toString())),
+    return async.maybeWhen(
+      data: (d) => d.isVerified
+          ? FloatingActionButton.extended(onPressed: () => context.push('/listings/new'),
+              icon: const Icon(Icons.add), label: Text(t.newListing))
+          : const SizedBox.shrink(),
+      orElse: () => const SizedBox.shrink(),
     );
-  }
-}
-
-
-/// iOS-style section header — ALL CAPS, smaller, muted color, 8pt left padding to align with grouped lists.
-class _SectionHeader extends StatelessWidget {
-  final String text;
-  const _SectionHeader({required this.text});
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(8, 0, 0, 8),
-        child: Text(text.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.6,
-              color: Theme.of(context).colorScheme.onSurfaceVariant)));
-}
-
-
-/// Reddish-tinted banner for the unverified-supplier case. Uses Card so it inherits the global rounded shape.
-class _VerificationBanner extends StatelessWidget {
-  final String text;
-  const _VerificationBanner({required this.text});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: cs.errorContainer.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(14)),
-      child: Row(children: [
-        Icon(Icons.info_outline, color: cs.onErrorContainer), const SizedBox(width: 12),
-        Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer))),
-      ]));
-  }
-}
-
-
-enum _StatTone { neutral, accent, success, muted }
-
-
-/// 2×N grid of stat tiles. Tones map to color choices so the eye can scan status faster than reading labels.
-class _StatGrid extends StatelessWidget {
-  final List<(String, int, _StatTone)> stats;
-  const _StatGrid({required this.stats});
-  @override
-  Widget build(BuildContext context) => GridView.count(
-        crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.9, mainAxisSpacing: 10, crossAxisSpacing: 10,
-        children: [for (final (label, value, tone) in stats) _StatTile(label: label, value: value, tone: tone)]);
-}
-
-
-class _StatTile extends StatelessWidget {
-  final String label; final int value; final _StatTone tone;
-  const _StatTile({required this.label, required this.value, required this.tone});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final (bg, fg) = switch (tone) {
-      _StatTone.accent => (cs.primaryContainer.withValues(alpha: 0.5), cs.onPrimaryContainer),
-      _StatTone.success => (cs.tertiaryContainer.withValues(alpha: 0.4), cs.onTertiaryContainer),
-      _StatTone.muted => (cs.surfaceContainerHighest.withValues(alpha: 0.5), cs.onSurfaceVariant),
-      _StatTone.neutral => (cs.secondaryContainer.withValues(alpha: 0.4), cs.onSecondaryContainer),
-    };
-    return Container(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg.withValues(alpha: 0.85))),
-        Text('$value', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: fg, fontWeight: FontWeight.w700)),
-      ]));
-  }
-}
-
-
-class _ActionItem {
-  final IconData icon; final String label; final VoidCallback onTap;
-  const _ActionItem({required this.icon, required this.label, required this.onTap});
-}
-
-
-/// iOS Settings-style grouped list — items inside one rounded surface, hairline dividers between rows.
-class _GroupedActions extends StatelessWidget {
-  final List<_ActionItem> items;
-  const _GroupedActions({required this.items});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(decoration: BoxDecoration(color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
-      child: Column(children: [
-        for (int i = 0; i < items.length; i++) ...[
-          ListTile(
-            leading: Icon(items[i].icon, color: cs.primary),
-            title: Text(items[i].label, style: Theme.of(context).textTheme.bodyLarge),
-            trailing: Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
-            onTap: items[i].onTap,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          ),
-          if (i < items.length - 1) Padding(padding: const EdgeInsets.only(left: 56),
-              child: Divider(height: 0.5, color: cs.outlineVariant.withValues(alpha: 0.5))),
-        ],
-      ]));
   }
 }
