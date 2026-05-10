@@ -6,6 +6,9 @@ gradle-wrapper.jar
 /local.properties
 GeneratedPluginRegistrant.java
 .cxx/
+# Kotlin daemon session state — never useful to track
+.kotlin/
+**/.kotlin/
 
 # Remember to never publicly share your keystore.
 # See https://flutter.dev/to/reference-keystore
