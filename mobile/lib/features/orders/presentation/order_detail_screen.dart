@@ -48,20 +48,33 @@ class _Body extends ConsumerWidget {
     final isBuyer = auth is AuthAuthenticated && auth.user.email == order.buyerEmail;
     final isSupplier = auth is AuthAuthenticated && auth.user.email == order.supplierEmail;
 
-    return SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    return SingleChildScrollView(padding: EdgeInsets.zero,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Hero — listing title + total price, prominently displayed
-        Text(order.listingTitle, style: tt.displaySmall),
-        const SizedBox(height: 6),
-        Text('${order.quantityKg.toStringAsFixed(2)} kg @ ${order.listingPricePerKg.toStringAsFixed(2)}',
-             style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)),
-        const SizedBox(height: 8),
-        Text(order.totalPrice.toStringAsFixed(2), style: tt.headlineLarge?.copyWith(color: cs.primary)),
-        const SizedBox(height: 24),
+        // Coupang-style dark hero — prominent status banner up top with a heroic headline
+        _StatusHero(order: order),
 
-        // Lifecycle timeline — refined with checkpoint dots
-        _StatusTimeline(currentStatus: order.status),
-        const SizedBox(height: 24),
+        Padding(padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Coupang-style horizontal step indicator — 5 icons in a row, completed states filled, upcoming hollow
+            _HorizontalTimeline(currentStatus: order.status),
+            const SizedBox(height: 24),
+
+            // Item summary card — listing title + qty + total — clean rounded panel
+            Container(padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: cs.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(order.listingTitle, style: tt.titleMedium,
+                       maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text('${order.quantityKg.toStringAsFixed(2)} kg × ${order.listingPricePerKg.toStringAsFixed(0)}',
+                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                ])),
+                Text(order.totalPrice.toStringAsFixed(0), style: tt.titleLarge?.copyWith(color: cs.primary)),
+              ])),
+            const SizedBox(height: 20),
 
         // Grouped facts — From / To / Address / Notes
         _GroupedList(items: [
@@ -72,12 +85,13 @@ class _Body extends ConsumerWidget {
         ]),
         const SizedBox(height: 28),
 
-        // Buyer-side action — Cancel only on PENDING
-        if (isBuyer && order.status == model.OrderStatus.pending)
-          OutlinedButton.icon(icon: const Icon(Icons.cancel_outlined), label: Text(t.orderCancelButton),
-            onPressed: () => _confirmAndCancel(context, ref, asBuyer: true)),
-        // Supplier-side actions — buttons for legal next states
-        if (isSupplier) ..._supplierActions(context, ref, order),
+            // Buyer-side action — Cancel only on PENDING
+            if (isBuyer && order.status == model.OrderStatus.pending)
+              OutlinedButton.icon(icon: const Icon(Icons.cancel_outlined), label: Text(t.orderCancelButton),
+                onPressed: () => _confirmAndCancel(context, ref, asBuyer: true)),
+            // Supplier-side actions — buttons for legal next states
+            if (isSupplier) ..._supplierActions(context, ref, order),
+          ])),
       ]));
   }
 
@@ -163,45 +177,119 @@ class _Body extends ConsumerWidget {
 }
 
 
-/// Vertical iOS-style lifecycle timeline — checkmarked dots for completed states, hollow for upcoming, red box for cancelled.
-class _StatusTimeline extends StatelessWidget {
-  final model.OrderStatus currentStatus;
-  const _StatusTimeline({required this.currentStatus});
-
-  static const _forward = [model.OrderStatus.pending, model.OrderStatus.confirmed,
-                           model.OrderStatus.processing, model.OrderStatus.inTransit, model.OrderStatus.delivered];
+/// Coupang-style dark hero — full-bleed, prominent status headline + "Expected arrival" line.
+/// Color is dark-on-light for active orders, error-tinted for cancelled, success-tinted for delivered.
+class _StatusHero extends StatelessWidget {
+  final model.Order order;
+  const _StatusHero({required this.order});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    // Color palette switches based on terminal vs in-flight status
+    final (bg, fg, headline, sub) = switch (order.status) {
+      model.OrderStatus.cancelled => (cs.errorContainer, cs.onErrorContainer,
+                                       'Order cancelled', 'Stock returned to seller'),
+      model.OrderStatus.delivered => (cs.tertiaryContainer, cs.onTertiaryContainer,
+                                       'Delivered ✓', 'Thanks for ordering'),
+      model.OrderStatus.inTransit => (const Color(0xFF1F2937), Colors.white,
+                                       'Out for delivery', 'On its way to you'),
+      model.OrderStatus.processing => (const Color(0xFF1F2937), Colors.white,
+                                       'Being prepared', 'Supplier is packaging your order'),
+      model.OrderStatus.confirmed => (const Color(0xFF1F2937), Colors.white,
+                                       'Confirmed', 'Supplier will start processing shortly'),
+      model.OrderStatus.pending => (const Color(0xFF1F2937), Colors.white,
+                                     'Waiting for supplier', 'Awaiting confirmation'),
+    };
+    return Container(width: double.infinity, padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+      decoration: BoxDecoration(color: bg),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('#${order.id}', style: tt.bodySmall?.copyWith(color: fg.withValues(alpha: 0.7))),
+        const SizedBox(height: 6),
+        Text(headline, style: tt.displaySmall?.copyWith(color: fg, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text(sub, style: tt.bodyLarge?.copyWith(color: fg.withValues(alpha: 0.85))),
+      ]));
+  }
+}
+
+
+/// Horizontal stepper — 5 round nodes connected by dashes. Completed nodes solid+checkmark, current node solid+icon,
+/// upcoming nodes hollow. Cancelled state shows a red full-width banner instead (returned from the switch above).
+class _HorizontalTimeline extends StatelessWidget {
+  final model.OrderStatus currentStatus;
+  const _HorizontalTimeline({required this.currentStatus});
+
+  static const _forward = [model.OrderStatus.pending, model.OrderStatus.confirmed,
+                           model.OrderStatus.processing, model.OrderStatus.inTransit, model.OrderStatus.delivered];
+  // Icons per step — paired by index with _forward
+  static const _icons = [Icons.payments_outlined, Icons.thumb_up_alt_outlined,
+                          Icons.kitchen_outlined, Icons.local_shipping_outlined, Icons.check_circle_outline];
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // Cancelled is a terminal state outside the forward path — show a clean cancellation banner instead of a stepper
     if (currentStatus == model.OrderStatus.cancelled) {
-      return Container(padding: const EdgeInsets.all(16),
+      return Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: cs.errorContainer.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [Icon(Icons.cancel_outlined, color: cs.onErrorContainer),
-                              const SizedBox(width: 12),
-                              Text(currentStatus.label(context), style: tt.titleMedium?.copyWith(color: cs.onErrorContainer))]));
+        child: Row(children: [
+          Icon(Icons.cancel_outlined, color: cs.onErrorContainer),
+          const SizedBox(width: 12),
+          Text(currentStatus.label(context), style: tt.titleMedium?.copyWith(color: cs.onErrorContainer)),
+        ]));
     }
     final currentIdx = _forward.indexOf(currentStatus);
     return Column(children: [
-      for (int i = 0; i < _forward.length; i++) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Dot + connector line
-        SizedBox(width: 28, child: Column(children: [
-          Container(width: 14, height: 14,
-            decoration: BoxDecoration(shape: BoxShape.circle,
-              color: i <= currentIdx ? cs.primary : Colors.transparent,
-              border: Border.all(color: i <= currentIdx ? cs.primary : cs.outlineVariant, width: 2)),
-            child: i < currentIdx ? Icon(Icons.check, size: 10, color: cs.onPrimary) : null),
-          if (i < _forward.length - 1)
-            Container(width: 2, height: 24, color: i < currentIdx ? cs.primary : cs.outlineVariant.withValues(alpha: 0.5)),
-        ])),
-        const SizedBox(width: 12),
-        Expanded(child: Padding(padding: const EdgeInsets.only(top: 0, bottom: 14),
+      // Top row: circles + dashed connectors
+      Row(children: [
+        for (int i = 0; i < _forward.length; i++) ...[
+          _StepNode(icon: _icons[i], state: i < currentIdx ? _StepState.done
+                                            : i == currentIdx ? _StepState.current : _StepState.upcoming),
+          if (i < _forward.length - 1) Expanded(child: Container(height: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              color: i < currentIdx ? cs.primary : cs.outlineVariant.withValues(alpha: 0.5))),
+        ],
+      ]),
+      const SizedBox(height: 8),
+      // Bottom row: short labels under each circle
+      Row(children: [
+        for (int i = 0; i < _forward.length; i++) Expanded(
           child: Text(_forward[i].label(context),
-            style: i <= currentIdx ? tt.titleSmall : tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)))),
+            textAlign: TextAlign.center,
+            style: tt.labelSmall?.copyWith(
+              color: i <= currentIdx ? cs.onSurface : cs.onSurfaceVariant,
+              fontWeight: i == currentIdx ? FontWeight.w600 : FontWeight.w500),
+            maxLines: 2, overflow: TextOverflow.ellipsis)),
       ]),
     ]);
+  }
+}
+
+
+enum _StepState { done, current, upcoming }
+
+
+class _StepNode extends StatelessWidget {
+  final IconData icon;
+  final _StepState state;
+  const _StepNode({required this.icon, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final (bg, fg, border) = switch (state) {
+      _StepState.done => (cs.primary, cs.onPrimary, cs.primary),
+      _StepState.current => (cs.primaryContainer, cs.onPrimaryContainer, cs.primary),
+      _StepState.upcoming => (Colors.transparent, cs.onSurfaceVariant, cs.outlineVariant),
+    };
+    return Container(width: 32, height: 32,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: bg,
+        border: Border.all(color: border, width: state == _StepState.upcoming ? 1.5 : 0)),
+      child: Icon(state == _StepState.done ? Icons.check : icon, size: 16, color: fg));
   }
 }
 
