@@ -2,17 +2,26 @@
 //
 // Localization is wired here too: AppLocalizations.localizationsDelegates supplies translated strings; locale comes from the
 // localeNotifierProvider so the picker in AppBar can swap languages live without a restart.
+//
+// v2 Milestone E.5 — Firebase Cloud Messaging is initialized before runApp. Failures are swallowed inside FcmService
+// so the app still boots if google-services.json is missing or invalid (push just silently disabled).
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/locale/locale_notifier.dart';
 import 'core/locale/locale_providers.dart';
+import 'core/push/fcm_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
 
-void main() => runApp(const ProviderScope(child: MeatMarketplaceApp()));
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FcmService.initialize();
+  runApp(const ProviderScope(child: MeatMarketplaceApp()));
+}
 
 
 /// Root — uses MaterialApp.router because we route via go_router. The router itself is a Riverpod provider so it auto-rebuilds on auth changes.
