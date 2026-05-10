@@ -23,7 +23,13 @@ class AppTheme {
   static final ThemeData light = _build(Brightness.light);
 
   static ThemeData _build(Brightness b) {
-    final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: b);
+    // ColorScheme.fromSeed with a heavily-saturated red derives onSurface/onSurfaceVariant with a faint pinkish tint.
+    // On the light pink surfaces (also seed-derived) that produces near-invisible headline + chip labels.
+    // Force near-black for primary text and clear gray for secondary so contrast is reliable on every screen.
+    final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: b).copyWith(
+      onSurface: b == Brightness.light ? const Color(0xFF111111) : const Color(0xFFE6E6E6),
+      onSurfaceVariant: b == Brightness.light ? const Color(0xFF555555) : const Color(0xFFB8B8B8),
+    );
     final textTheme = _buildTextTheme(scheme);
 
     return ThemeData(
@@ -37,12 +43,16 @@ class AppTheme {
       textTheme: textTheme,
       primaryTextTheme: textTheme,
 
-      // App bars — flat, large-title friendly; we'll opt into the SliverAppBar.large pattern per screen
+      // App bars — flat, large-title friendly. surfaceTintColor: transparent disables M3's auto-tinting that was
+      // washing out the SliverAppBar.large expanded title. iconTheme + actionsIconTheme force dark icons.
       appBarTheme: AppBarTheme(
         elevation: 0, scrolledUnderElevation: 0,
         backgroundColor: scheme.surface, foregroundColor: scheme.onSurface,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+        titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: scheme.onSurface),
+        iconTheme: IconThemeData(color: scheme.onSurface),
+        actionsIconTheme: IconThemeData(color: scheme.onSurface),
         toolbarHeight: 56,
       ),
 
@@ -86,14 +96,17 @@ class AppTheme {
         labelStyle: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
       ),
 
-      // Chips — flat, pill-shaped, used in filter rows
+      // Chips — flat, pill-shaped, used in filter rows. Explicit label color so unselected labels stay readable
+      // (the default inherited color was a tinted-from-seed near-white that disappeared on light pink surfaces).
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
-        labelStyle: textTheme.labelLarge,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+        labelStyle: textTheme.labelLarge?.copyWith(color: scheme.onSurface),
+        secondaryLabelStyle: textTheme.labelLarge?.copyWith(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w600),
+        backgroundColor: scheme.surfaceContainerHighest,
+        selectedColor: scheme.primaryContainer,
         side: BorderSide.none,
         showCheckmark: false,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       ),
 
       // Bottom sheets — rounded top with drag handle, like iOS Action Sheets

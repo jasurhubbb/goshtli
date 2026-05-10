@@ -19,9 +19,10 @@ class Order(TimeStampedModel):
         DELIVERED = "DELIVERED", _("Delivered")
         CANCELLED = "CANCELLED", _("Cancelled")
 
-    # PROTECT on listing — once a listing has orders, deleting the listing should fail loudly rather than orphan orders
+    # Unified user model — any authenticated user can place an order. PROTECT on listing so deleting a listing with
+    # attached orders fails loudly instead of orphaning history.
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-                              related_name="orders", limit_choices_to={"role": "BUYER"}, db_index=True)
+                              related_name="orders", db_index=True)
     listing = models.ForeignKey(Listing, on_delete=models.PROTECT, related_name="orders", db_index=True)
     quantity_kg = models.DecimalField(_("quantity (kg)"), max_digits=10, decimal_places=2,
                                       validators=[MinValueValidator(Decimal("0.01"))])

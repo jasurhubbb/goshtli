@@ -48,14 +48,23 @@ class Command(BaseCommand):
         # Listings — only verified suppliers can have them per business rules
         s1, s2, _ = suppliers
         soon = date.today() + timedelta(days=2)
+        yesterday = date.today() - timedelta(days=1)
         listings = [
             self._listing(s1, "Premium Beef", Listing.MeatType.BEEF, "100.00", "50000.00", "Tashkent", soon,
-                          "Grass-fed Hereford, halal slaughter, delivery same day."),
+                          "Grass-fed Hereford, halal slaughter, delivery same day.",
+                          halal=True, freshness=yesterday, cold_chain=Listing.ColdChain.FRESH,
+                          service_area="Tashkent,Toshkent viloyati"),
             self._listing(s1, "Local Mutton", Listing.MeatType.MUTTON, "30.00", "70000.00", "Tashkent", soon,
-                          "Young lamb from Surxondaryo region."),
+                          "Young lamb from Surxondaryo region.",
+                          halal=True, freshness=yesterday, cold_chain=Listing.ColdChain.CHILLED,
+                          service_area="Tashkent"),
             self._listing(s2, "Fresh Chicken", Listing.MeatType.CHICKEN, "60.00", "25000.00", "Samarkand", soon,
-                          "Free-range, antibiotic-free chickens."),
-            self._listing(s2, "Goat Meat", Listing.MeatType.GOAT, "20.00", "80000.00", "Samarkand", soon, ""),
+                          "Free-range, antibiotic-free chickens.",
+                          halal=True, freshness=date.today(), cold_chain=Listing.ColdChain.FRESH,
+                          service_area="Samarkand,Buxoro"),
+            self._listing(s2, "Goat Meat", Listing.MeatType.GOAT, "20.00", "80000.00", "Samarkand", soon, "",
+                          halal=False, freshness=None, cold_chain=Listing.ColdChain.FROZEN,
+                          service_area="Samarkand"),
         ]
 
         # Sample PENDING order so the buyer + supplier dashboards aren't empty for screenshots
@@ -92,12 +101,14 @@ class Command(BaseCommand):
             if not p.business_name: p.business_name = business; p.region = region; p.address = address; p.save()
         return user
 
-    def _listing(self, supplier, title, meat_type, qty_kg, price, location, available_from, description):
-        """Create or fetch a listing scoped by (supplier, title) — idempotent re-runs."""
+    def _listing(self, supplier, title, meat_type, qty_kg, price, location, available_from, description,
+                 *, halal=False, freshness=None, cold_chain="FRESH", service_area=""):
+        """Create or fetch a listing scoped by (supplier, title). Idempotent — re-running updates nothing existing."""
         listing, created = Listing.objects.get_or_create(
             supplier=supplier, title=title,
             defaults={"meat_type": meat_type, "quantity_kg": Decimal(qty_kg), "price_per_kg": Decimal(price),
                       "location": location, "available_from": available_from, "description": description,
-                      "status": Listing.Status.ACTIVE})
+                      "halal_certified": halal, "freshness_date": freshness, "cold_chain": cold_chain,
+                      "service_area_csv": service_area, "status": Listing.Status.ACTIVE})
         self.stdout.write(f"  {'+' if created else '·'} listing  {title} ({supplier.email})")
         return listing

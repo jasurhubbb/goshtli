@@ -64,6 +64,14 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Media (user uploads — listing photos in v2). For production persistence on Railway, mount a Volume at /app/media.
+# Without a volume the container's ephemeral storage wipes on each redeploy — fine for dev, NOT fine for users.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+# 10MB upload cap — keeps gunicorn workers from being held hostage by an attacker uploading huge files
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
 # DRF config — JWT auth, page-based pagination, JSON-only responses for predictable mobile parsing
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),

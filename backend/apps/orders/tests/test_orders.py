@@ -51,11 +51,13 @@ class TestPlaceOrder:
                                                    "delivery_address": "addr"}, format="json")
         assert r.status_code == 400
 
-    def test_supplier_cannot_place_orders(self, verified_supplier_client, verified_supplier):
+    def test_supplier_can_also_place_orders_v2_unified_user(self, verified_supplier_client, verified_supplier):
+        # v2 unified user model: a supplier can also buy from OTHER suppliers' listings (or technically their own — we don't
+        # forbid that at the API level; UI can hide the order button when supplier == self). Used to be 403 in v1.
         l = _listing(verified_supplier)
         r = verified_supplier_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
                                                                "delivery_address": "addr"}, format="json")
-        assert r.status_code == 403
+        assert r.status_code == 201
 
 
 @pytest.mark.django_db
