@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "267492808958",
+    "project_id": "meat-marketplace-821f1",
+    "storage_bucket": "meat-marketplace-821f1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267492808958:android:14d97e0d7c3b9c0e726daf",
+        "android_client_info": {
+          "package_name": "com.meatmarketplace.meat_marketplace"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYv9h07iyImxq0SrEiNt93W1eLTvxyw4w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

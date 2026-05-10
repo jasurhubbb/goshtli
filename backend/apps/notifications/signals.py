@@ -1,10 +1,20 @@
-"""Auto-create notifications on key domain events. Handlers stay tiny and idempotent — heavy logic lives in services."""
+"""Auto-create notifications on key domain events. Each notification ALSO fires a Firebase push so the phone wakes
+up even when the app is closed. push is best-effort — if FCM is down or unconfigured, the in-app notification still
+lands, and the user sees it next time they open the app.
+"""
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from apps.orders.models import Order
 from apps.suppliers.models import SupplierProfile
+from .fcm import send_to_user
 from .models import Notification
+
+
+def _notify(user, kind, title, message, link):
+    """Create an in-app Notification row AND fire a push. Centralized so both rails stay in sync."""
+    Notification.objects.create(user=user, kind=kind, title=title, message=message, link=link)
+    send_to_user(user, title=title, body=message, link=link)
 
 
 # ---------- Supplier verification ----------
@@ -21,10 +31,10 @@ def _track_verification_change(sender, instance, **kwargs):
 def _notify_supplier_verified(sender, instance, created, **kwargs):
     # Only fire when verification actually flips from False → True; ignore initial creation + no-op saves
     if created or instance.is_verified is False or getattr(instance, "_was_verified", True): return
-    Notification.objects.create(user=instance.user, kind=Notification.Kind.SUPPLIER_VERIFIED,
-        title="Account verified",
-        message="Your supplier account is now verified — you can create listings.",
-        link="/listings/new")
+    _notify(instance.user, Notification.Kind.SUPPLIER_VERIFIED,
+        "Account verified",
+        "Your supplier account is now verified — you can create listings.",
+        "/listings/new")
 
 
 # ---------- Order events ----------
@@ -39,29 +49,27 @@ def _track_status_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Order)
 def _notify_order_event(sender, instance, created, **kwargs):
-    """Branch on creation vs status change — supplier learns about new orders, buyer learns about status changes/cancellations."""
+    """Branch on creation vs status change — supplier learns about new orders, buyer learns about status changes."""
     if created:
-        # New order → notify the supplier whose listing it's against
-        Notification.objects.create(user=instance.listing.supplier, kind=Notification.Kind.ORDER_PLACED,
-            title=f"New order #{instance.pk}",
-            message=f"{instance.buyer.email} ordered {instance.quantity_kg}kg of {instance.listing.title}.",
-            link=f"/orders/{instance.pk}")
+        _notify(instance.listing.supplier, Notification.Kind.ORDER_PLACED,
+            f"New order #{instance.pk}",
+            f"{instance.buyer.email} ordered {instance.quantity_kg}kg of {instance.listing.title}.",
+            f"/orders/{instance.pk}")
         return
 
     prev = getattr(instance, "_previous_status", None)
     if prev is None or prev == instance.status: return  # no transition; nothing to notify
 
     if instance.status == Order.Status.CANCELLED:
-        # Cancellation cuts both ways — notify whichever party didn't initiate the cancel. We can't know who initiated
-        # at signal time, so we send to both. The UI deduplicates by per-user feed scoping.
+        # Cancellation cuts both ways — both parties get notified; we can't tell who initiated at signal time
         for u in (instance.buyer, instance.listing.supplier):
-            Notification.objects.create(user=u, kind=Notification.Kind.ORDER_CANCELLED,
-                title=f"Order #{instance.pk} cancelled",
-                message=f"Stock for {instance.listing.title} has been restored.",
-                link=f"/orders/{instance.pk}")
+            _notify(u, Notification.Kind.ORDER_CANCELLED,
+                f"Order #{instance.pk} cancelled",
+                f"Stock for {instance.listing.title} has been restored.",
+                f"/orders/{instance.pk}")
     else:
-        # Forward transition (CONFIRMED/PROCESSING/IN_TRANSIT/DELIVERED) — notify the buyer who's tracking the order
-        Notification.objects.create(user=instance.buyer, kind=Notification.Kind.ORDER_STATUS_CHANGED,
-            title=f"Order #{instance.pk}: {instance.get_status_display()}",
-            message=f"Your order for {instance.listing.title} is now {instance.get_status_display().lower()}.",
-            link=f"/orders/{instance.pk}")
+        # Forward transition (CONFIRMED/PROCESSING/IN_TRANSIT/DELIVERED) — buyer is the one tracking the order
+        _notify(instance.buyer, Notification.Kind.ORDER_STATUS_CHANGED,
+            f"Order #{instance.pk}: {instance.get_status_display()}",
+            f"Your order for {instance.listing.title} is now {instance.get_status_display().lower()}.",
+            f"/orders/{instance.pk}")

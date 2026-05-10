@@ -1,4 +1,4 @@
-"""Notification — in-app message owned by one user. Triggered by signals (suppliers verified / orders created/changed)."""
+"""Notification + DeviceToken — in-app rows + Firebase device tokens used to wake the phone via FCM."""
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -31,3 +31,27 @@ class Notification(TimeStampedModel):
         indexes = [models.Index(fields=("user", "is_read"))]  # supports the unread-count query path
 
     def __str__(self): return f"[{'·' if self.is_read else '●'}] {self.title} → {self.user.email}"
+
+
+class DeviceToken(TimeStampedModel):
+    """One row per (user, FCM token) — used to fan out push messages on order/notification events.
+
+    Token is unique globally — Firebase guarantees each install gets its own token. Reinstalling the app produces a
+    fresh token, so old DeviceToken rows quietly become invalid (FCM returns NOT_REGISTERED on send → we delete).
+    """
+    class Platform(models.TextChoices):
+        ANDROID = "ANDROID", _("Android")
+        IOS = "IOS", _("iOS")
+        WEB = "WEB", _("Web")
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name="device_tokens", db_index=True)
+    token = models.CharField(_("FCM token"), max_length=512, unique=True)
+    platform = models.CharField(_("platform"), max_length=10, choices=Platform.choices, default=Platform.ANDROID)
+
+    class Meta:
+        verbose_name = _("device token")
+        verbose_name_plural = _("device tokens")
+        ordering = ("-updated_at",)
+
+    def __str__(self): return f"{self.platform} token for {self.user.email}"

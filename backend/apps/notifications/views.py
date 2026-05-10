@@ -1,11 +1,11 @@
-"""Notification views — list own, mark-read (single + bulk), unread count for the bell badge."""
+"""Notification views — list own, mark-read (single + bulk), unread count, register device for push."""
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework import generics, permissions, status
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Notification
+from .models import DeviceToken, Notification
 from .serializers import NotificationSerializer
 
 
@@ -36,7 +36,7 @@ class NotificationMarkReadView(APIView):
 
 @extend_schema(request=None, responses={204: None})
 class NotificationMarkAllReadView(APIView):
-    """POST /api/v1/notifications/read-all/ — bulk-flip every unread notification for this user. Cheap UPDATE, no row reads."""
+    """POST /api/v1/notifications/read-all/ — bulk-flip every unread notification for this user. Cheap UPDATE."""
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):
@@ -51,3 +51,26 @@ class NotificationUnreadCountView(APIView):
 
     def get(self, request):
         return Response({"unread": Notification.objects.filter(user=request.user, is_read=False).count()})
+
+
+@extend_schema(request={"application/json": {"type": "object", "properties": {
+                    "token": {"type": "string"}, "platform": {"type": "string", "enum": ["ANDROID", "IOS", "WEB"]}}}},
+               responses={200: None, 201: None})
+class RegisterDeviceView(APIView):
+    """POST /api/v1/notifications/register-device/ — Flutter calls this after obtaining the FCM token.
+
+    Re-binds an existing token to the calling user if it's already in the DB (handles account-switching on the same
+    device — the new user inherits the token, the old user loses it). Idempotent on repeat calls.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        token = (request.data.get("token") or "").strip()
+        if not token: raise ValidationError({"token": "Required."})
+        platform = (request.data.get("platform") or "ANDROID").upper()
+        if platform not in {p for p, _ in DeviceToken.Platform.choices}:
+            raise ValidationError({"platform": "Invalid platform."})
+        # update_or_create on the unique token column — re-claiming a token from a previous user is the standard pattern
+        _, created = DeviceToken.objects.update_or_create(
+            token=token, defaults={"user": request.user, "platform": platform})
+        return Response(status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

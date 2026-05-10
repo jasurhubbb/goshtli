@@ -36,6 +36,14 @@ ENV/
 !.env.example
 !.env.production.example
 
+# Firebase secrets — service-account JSON gives full project access. NEVER commit. Live outside the repo at
+# ~/firebase-admin-key.json; the value also goes into Railway env vars for production.
+*firebase-adminsdk*.json
+firebase-admin-key.json
+# google-services.json is committed (it's a public-ish identifier, not a secret), but only at its proper path.
+# The wildcard pattern below catches stray copies at the repo root from drag-and-drop accidents:
+/google-services.json
+
 # Caddy + Docker volume artefacts (production stack)
 caddy_data/
 caddy_config/
