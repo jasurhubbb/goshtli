@@ -1,6 +1,13 @@
-"""Buyer serializers — profile shape for /buyers/me/ and the dashboard aggregate."""
+"""Buyer serializers — profile shape for /buyers/me/, dashboard aggregate, saved-address CRUD."""
 from rest_framework import serializers
-from .models import BuyerProfile
+from .models import BuyerProfile, SavedAddress
+
+
+class SavedAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedAddress
+        fields = ("id", "label", "address", "is_default", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
 
 
 class BuyerProfileSerializer(serializers.ModelSerializer):

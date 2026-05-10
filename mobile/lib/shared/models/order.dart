@@ -25,6 +25,7 @@ class Order {
   final int id;
   @JsonKey(name: 'buyer_email') final String buyerEmail;
   @JsonKey(name: 'supplier_email') final String supplierEmail;
+  @JsonKey(name: 'supplier_user_id', defaultValue: 0) final int supplierUserId;
   @JsonKey(name: 'listing') final int listingId;
   @JsonKey(name: 'listing_title') final String listingTitle;
   @JsonKey(name: 'listing_meat_type') final String listingMeatType;
@@ -36,7 +37,7 @@ class Order {
   final OrderStatus status;
   @JsonKey(name: 'created_at') final String createdAt;
 
-  const Order({required this.id, required this.buyerEmail, required this.supplierEmail,
+  const Order({required this.id, required this.buyerEmail, required this.supplierEmail, required this.supplierUserId,
                required this.listingId, required this.listingTitle, required this.listingMeatType,
                required this.listingPricePerKg, required this.quantityKg, required this.totalPrice,
                required this.deliveryAddress, required this.notes, required this.status, required this.createdAt});

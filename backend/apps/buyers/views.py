@@ -7,8 +7,10 @@ from rest_framework.views import APIView
 
 from apps.common.permissions import IsBuyer
 from apps.orders.models import Order
-from .models import BuyerProfile
-from .serializers import BuyerDashboardSerializer, BuyerProfileSerializer
+from rest_framework import permissions
+from rest_framework.exceptions import NotFound
+from .models import BuyerProfile, SavedAddress
+from .serializers import BuyerDashboardSerializer, BuyerProfileSerializer, SavedAddressSerializer
 
 
 class BuyerMeView(generics.RetrieveUpdateAPIView):
@@ -38,3 +40,25 @@ class BuyerDashboardView(APIView):
         return Response(BuyerDashboardSerializer({
             "orders_pending": agg["pending"], "orders_in_progress": agg["in_progress"],
             "orders_delivered": agg["delivered"], "orders_cancelled": agg["cancelled"]}).data)
+
+
+class SavedAddressListCreateView(generics.ListCreateAPIView):
+    """GET /api/v1/buyers/addresses/ — list current user's saved addresses (default first). POST creates a new one."""
+    serializer_class = SavedAddressSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False): return SavedAddress.objects.none()
+        return SavedAddress.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer): serializer.save(user=self.request.user)
+
+
+class SavedAddressDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/v1/buyers/addresses/{id}/ — owner-only mutations."""
+    serializer_class = SavedAddressSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False): return SavedAddress.objects.none()
+        return SavedAddress.objects.filter(user=self.request.user)

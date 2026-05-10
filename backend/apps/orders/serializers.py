@@ -6,6 +6,7 @@ from .models import Order
 
 class OrderReadSerializer(serializers.ModelSerializer):
     """Used by all GET endpoints and as the response after create/cancel/status updates."""
+    supplier_user_id = serializers.IntegerField(source="listing.supplier.id", read_only=True)
     listing_title = serializers.CharField(source="listing.title", read_only=True)
     listing_meat_type = serializers.CharField(source="listing.meat_type", read_only=True)
     listing_price_per_kg = serializers.DecimalField(source="listing.price_per_kg", read_only=True,
@@ -15,7 +16,7 @@ class OrderReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ("id", "buyer_email", "supplier_email",
+        fields = ("id", "buyer_email", "supplier_email", "supplier_user_id",
                   "listing", "listing_title", "listing_meat_type", "listing_price_per_kg",
                   "quantity_kg", "total_price", "delivery_address", "notes", "status",
                   "created_at", "updated_at")

@@ -12,6 +12,7 @@ import '../../../shared/models/order.dart' as model;
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/auth_state.dart';
 import '../../listings/providers/listings_providers.dart';
+import '../../reviews/presentation/review_submit_sheet.dart';
 import '../providers/orders_providers.dart';
 
 
@@ -89,6 +90,12 @@ class _Body extends ConsumerWidget {
             if (isBuyer && order.status == model.OrderStatus.pending)
               OutlinedButton.icon(icon: const Icon(Icons.cancel_outlined), label: Text(t.orderCancelButton),
                 onPressed: () => _confirmAndCancel(context, ref, asBuyer: true)),
+            // Buyer-side review — only on DELIVERED orders. Backend rejects double-review at the DB-level.
+            if (isBuyer && order.status == model.OrderStatus.delivered)
+              FilledButton.icon(icon: const Icon(Icons.star_outline),
+                label: const Text('Leave a review'),
+                onPressed: () => showReviewSubmitSheet(context, ref,
+                    orderId: order.id, supplierId: order.supplierUserId)),
             // Supplier-side actions — buttons for legal next states
             if (isSupplier) ..._supplierActions(context, ref, order),
           ])),
