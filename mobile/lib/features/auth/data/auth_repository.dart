@@ -59,6 +59,13 @@ class AuthRepository {
   /// Local-only logout — backend has no logout endpoint (JWTs are stateless until expiry).
   Future<void> logout() => _tokens.clear();
 
+  /// DELETE /auth/me/ — permanently removes the user's account on the server. Caller logs out afterward.
+  /// Surfaces the server's 409 message ("cancel active orders first") via AuthException.
+  Future<void> deleteAccount() async {
+    final r = await _api.dio.delete('/auth/me/');
+    if (r.statusCode != 204) throw _toAuthException(r);
+  }
+
   /// Translate Dio responses + DRF error shapes into a uniform AuthException with per-field validation messages.
   AuthException _toAuthException(Response r) {
     if (r.data is Map<String, dynamic>) {

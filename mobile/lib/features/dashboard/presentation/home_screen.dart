@@ -9,7 +9,6 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/language_picker.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/auth_state.dart';
-import '../../notifications/presentation/notifications_button.dart';
 import '../providers/dashboard_providers.dart';
 
 
@@ -29,14 +28,9 @@ class HomeScreen extends ConsumerWidget {
         child: CustomScrollView(slivers: [
           SliverAppBar.large(
             title: Text(user.isSupplier ? t.supplierHome : t.buyerHome),
-            actions: [
-              const NotificationsButton(),
-              const LanguagePicker(),
-              IconButton(icon: const Icon(Icons.person_outline), tooltip: t.profile,
-                         onPressed: () => context.push('/profile')),
-              IconButton(icon: const Icon(Icons.logout), tooltip: t.logout,
-                         onPressed: () => ref.read(authNotifierProvider.notifier).logout()),
-            ],
+            // Profile + notifications now live in the bottom tab bar — AppBar only carries the language picker.
+            // Logout moves into Profile tab where it logically belongs.
+            actions: const [LanguagePicker()],
           ),
           SliverPadding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             sliver: SliverList.list(children: [
@@ -72,8 +66,8 @@ class _BuyerBody extends ConsumerWidget {
       ),
       const SizedBox(height: 24),
       _GroupedActions(items: [
-        _ActionItem(icon: Icons.storefront_outlined, label: t.browseListings, onTap: () => context.push('/listings')),
-        _ActionItem(icon: Icons.receipt_long_outlined, label: t.myOrders, onTap: () => context.push('/orders')),
+        _ActionItem(icon: Icons.storefront_outlined, label: t.browseListings, onTap: () => context.go('/search')),
+        _ActionItem(icon: Icons.receipt_long_outlined, label: t.myOrders, onTap: () => context.go('/profile/orders')),
       ]),
     ]);
   }
@@ -108,8 +102,8 @@ class _SupplierBody extends ConsumerWidget {
         ]),
         const SizedBox(height: 24),
         _GroupedActions(items: [
-          _ActionItem(icon: Icons.list_alt_outlined, label: t.myListings, onTap: () => context.push('/listings')),
-          _ActionItem(icon: Icons.inbox_outlined, label: t.incomingOrders, onTap: () => context.push('/orders')),
+          _ActionItem(icon: Icons.list_alt_outlined, label: t.myListings, onTap: () => context.go('/search')),
+          _ActionItem(icon: Icons.inbox_outlined, label: t.incomingOrders, onTap: () => context.go('/profile/orders')),
           if (d.isVerified) _ActionItem(icon: Icons.add_circle_outline, label: t.newListing,
                                          onTap: () => context.push('/listings/new')),
         ]),

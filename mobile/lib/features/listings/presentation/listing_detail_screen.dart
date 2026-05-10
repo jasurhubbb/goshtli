@@ -45,20 +45,26 @@ class _ListingDetailBody extends ConsumerWidget {
     final isBuyer = auth is AuthAuthenticated && auth.user.isBuyer;
     final canOrder = isBuyer && listing.status == ListingStatus.active;
 
-    return SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    return SingleChildScrollView(padding: EdgeInsets.zero,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Hero section — large title, business name, type/status pills
-        Text(listing.title, style: tt.displaySmall),
-        const SizedBox(height: 6),
-        Text(listing.supplierBusinessName.isEmpty ? listing.supplierEmail : listing.supplierBusinessName,
-             style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)),
-        const SizedBox(height: 14),
-        Wrap(spacing: 8, children: [
-          _Pill(text: listing.meatType.label(context), tone: _PillTone.neutral),
-          _Pill(text: listing.status.label(context),
-                tone: listing.status == ListingStatus.active ? _PillTone.success : _PillTone.warn),
-        ]),
-        const SizedBox(height: 28),
+        // Photo gallery — full-bleed PageView at the top. Falls back to a soft placeholder when no photos exist.
+        _PhotoGallery(photos: listing.photos),
+        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Hero section — large title, business name, type/status + halal pills
+            Text(listing.title, style: tt.displaySmall),
+            const SizedBox(height: 6),
+            Text(listing.supplierBusinessName.isEmpty ? listing.supplierEmail : listing.supplierBusinessName,
+                 style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, children: [
+              _Pill(text: listing.meatType.label(context), tone: _PillTone.neutral),
+              _Pill(text: listing.status.label(context),
+                    tone: listing.status == ListingStatus.active ? _PillTone.success : _PillTone.warn),
+              if (listing.halalCertified) _Pill(text: t.halal, tone: _PillTone.success),
+              _Pill(text: _coldChainLabel(t, listing.coldChain), tone: _PillTone.neutral),
+            ]),
+            const SizedBox(height: 28),
 
         // Pricing block — visually anchors the page; uses the same tone language as the home stat tiles
         Container(padding: const EdgeInsets.all(16),
@@ -82,36 +88,45 @@ class _ListingDetailBody extends ConsumerWidget {
           ])),
         const SizedBox(height: 24),
 
-        // Grouped fact list — iOS Settings-style rows
-        _GroupedList(items: [
-          (t.listingFieldLocation, listing.location),
-          (t.listingFieldAvailableFrom, listing.availableFrom),
-          (t.listingFieldMeatType, listing.meatType.label(context)),
-        ]),
+            // Grouped fact list — iOS Settings-style rows. Conditional rows for freshness / service area only when set.
+            _GroupedList(items: [
+              (t.listingFieldLocation, listing.location),
+              (t.listingFieldAvailableFrom, listing.availableFrom),
+              (t.listingFieldMeatType, listing.meatType.label(context)),
+              if (listing.freshnessDate != null) (t.freshnessDate, listing.freshnessDate!),
+              if (listing.serviceAreaCsv.isNotEmpty) (t.serviceArea, listing.serviceAreaCsv),
+            ]),
 
-        if (listing.description.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(t.listingFieldDescription.toUpperCase(),
-            style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 0.6)),
-          const SizedBox(height: 8),
-          Text(listing.description, style: tt.bodyLarge),
-        ],
-        const SizedBox(height: 32),
+            if (listing.description.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(t.listingFieldDescription.toUpperCase(),
+                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 0.6)),
+              const SizedBox(height: 8),
+              Text(listing.description, style: tt.bodyLarge),
+            ],
+            const SizedBox(height: 32),
 
-        // CTAs
-        if (canOrder) FilledButton.icon(icon: const Icon(Icons.shopping_cart_outlined),
-            label: Text(t.listingActionPlaceOrder),
-            onPressed: () => _showOrderSheet(context, ref, listing)),
-        if (isOwner) ...[
-          OutlinedButton.icon(icon: const Icon(Icons.edit_outlined), label: Text(t.listingActionEdit),
-              onPressed: () => _showEditSheet(context, ref, listing)),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(icon: const Icon(Icons.visibility_off_outlined), label: Text(t.listingActionDeactivate),
-              onPressed: listing.status == ListingStatus.inactive ? null
-                       : () => _toggleStatus(context, ref, listing, ListingStatus.inactive)),
-        ],
-      ]));
+            // CTAs
+            if (canOrder) FilledButton.icon(icon: const Icon(Icons.shopping_cart_outlined),
+                label: Text(t.listingActionPlaceOrder),
+                onPressed: () => _showOrderSheet(context, ref, listing)),
+            if (isOwner) ...[
+              OutlinedButton.icon(icon: const Icon(Icons.edit_outlined), label: Text(t.listingActionEdit),
+                  onPressed: () => _showEditSheet(context, ref, listing)),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(icon: const Icon(Icons.visibility_off_outlined), label: Text(t.listingActionDeactivate),
+                  onPressed: listing.status == ListingStatus.inactive ? null
+                           : () => _toggleStatus(context, ref, listing, ListingStatus.inactive)),
+            ],
+          ]))]));
   }
+
+  /// Cold chain enum → translated label using the existing ARB keys.
+  static String _coldChainLabel(AppLocalizations t, ColdChain c) => switch (c) {
+    ColdChain.fresh => t.coldChainFresh,
+    ColdChain.chilled => t.coldChainChilled,
+    ColdChain.frozen => t.coldChainFrozen,
+  };
 
   /// Order placement bottom-sheet — clean form with live oversell guard and confirm CTA.
   void _showOrderSheet(BuildContext context, WidgetRef ref, Listing l) {
@@ -203,6 +218,49 @@ class _ListingDetailBody extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
+  }
+}
+
+
+/// Photo gallery — swipeable PageView at the top of the detail screen. Indicator dots overlay when multiple photos.
+class _PhotoGallery extends StatefulWidget {
+  final List<ListingPhoto> photos;
+  const _PhotoGallery({required this.photos});
+  @override
+  State<_PhotoGallery> createState() => _PhotoGalleryState();
+}
+
+
+class _PhotoGalleryState extends State<_PhotoGallery> {
+  final _controller = PageController();
+  int _current = 0;
+
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Empty state — fixed-height placeholder so the layout stays stable when a listing has no photos yet
+    if (widget.photos.isEmpty) {
+      return Container(height: 240, color: cs.surfaceContainerHighest,
+        child: Center(child: Icon(Icons.image_outlined, size: 56, color: cs.onSurfaceVariant)));
+    }
+    return SizedBox(height: 280, child: Stack(children: [
+      PageView.builder(controller: _controller, itemCount: widget.photos.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (_, i) => Image.network(widget.photos[i].url, fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Container(color: cs.surfaceContainerHighest,
+              child: Icon(Icons.broken_image_outlined, size: 56, color: cs.onSurfaceVariant)))),
+      // Indicator dots — only when there's >1 photo to swipe between
+      if (widget.photos.length > 1) Positioned(bottom: 12, left: 0, right: 0,
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          for (int i = 0; i < widget.photos.length; i++) Container(
+            width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              color: i == _current ? cs.onSurface : cs.onSurface.withValues(alpha: 0.4))),
+        ])),
+    ]));
   }
 }
 

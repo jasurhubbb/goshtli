@@ -256,6 +256,144 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get language;
 
+  /// No description provided for @tabHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get tabHome;
+
+  /// No description provided for @tabSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get tabSearch;
+
+  /// No description provided for @tabNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get tabNotifications;
+
+  /// No description provided for @tabChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get tabChats;
+
+  /// No description provided for @tabProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get tabProfile;
+
+  /// No description provided for @chatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get chatsTitle;
+
+  /// No description provided for @chatsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat coming in Milestone C'**
+  String get chatsComingSoon;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get markAllRead;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccountConfirmTitle;
+
+  /// No description provided for @deleteAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently removes your profile, listings, and order history. This cannot be undone.'**
+  String get deleteAccountConfirmBody;
+
+  /// No description provided for @deleteAccountConfirmYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, delete'**
+  String get deleteAccountConfirmYes;
+
+  /// No description provided for @becomeSeller.
+  ///
+  /// In en, this message translates to:
+  /// **'Become a seller'**
+  String get becomeSeller;
+
+  /// No description provided for @halal.
+  ///
+  /// In en, this message translates to:
+  /// **'Halal'**
+  String get halal;
+
+  /// No description provided for @freshnessDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Freshness date'**
+  String get freshnessDate;
+
+  /// No description provided for @coldChainFresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh'**
+  String get coldChainFresh;
+
+  /// No description provided for @coldChainChilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Chilled'**
+  String get coldChainChilled;
+
+  /// No description provided for @coldChainFrozen.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen'**
+  String get coldChainFrozen;
+
+  /// No description provided for @serviceArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Service area'**
+  String get serviceArea;
+
+  /// No description provided for @addPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photo'**
+  String get addPhoto;
+
+  /// No description provided for @removePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removePhoto;
+
+  /// No description provided for @photoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'At least one photo required'**
+  String get photoRequired;
+
   /// No description provided for @greeting.
   ///
   /// In en, this message translates to:

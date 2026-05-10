@@ -114,32 +114,58 @@ class _ListingCard extends StatelessWidget {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(16),
               border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Photo thumbnail on the left — placeholder icon if the listing has no photos yet (will be common in v2)
+            _Thumbnail(url: listing.primaryPhotoUrl),
+            const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(listing.title, style: tt.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Row(children: [
+                Expanded(child: Text(listing.title, style: tt.titleMedium,
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                if (listing.halalCertified) Padding(padding: const EdgeInsets.only(left: 6),
+                    child: _Pill(text: t.halal, tone: _PillTone.success)),
+              ]),
               const SizedBox(height: 4),
               Text('${listing.supplierBusinessName.isEmpty ? listing.supplierEmail : listing.supplierBusinessName}'
                    '  ·  ${listing.location}',
                    style: tt.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
+              Row(children: [
+                Text(listing.pricePerKg.toStringAsFixed(0), style: tt.titleLarge),
+                Text(' ${t.perKgSuffix}', style: tt.bodySmall),
+                const Spacer(),
+                Text('${listing.quantityKg.toStringAsFixed(1)} ${t.kgAvailableSuffix}', style: tt.bodySmall),
+              ]),
+              const SizedBox(height: 6),
               Wrap(spacing: 6, children: [
                 _Pill(text: listing.meatType.label(context), tone: _PillTone.neutral),
                 if (listing.status != ListingStatus.active)
                   _Pill(text: listing.status.label(context), tone: _PillTone.warn),
               ]),
             ])),
-            const SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(listing.pricePerKg.toStringAsFixed(0), style: tt.titleLarge),
-              Text(t.perKgSuffix, style: tt.bodySmall),
-              const SizedBox(height: 6),
-              Text('${listing.quantityKg.toStringAsFixed(1)} ${t.kgAvailableSuffix}', style: tt.bodySmall),
-            ]),
           ]))));
   }
 }
 
 
-enum _PillTone { neutral, warn }
+/// Square thumbnail on the listing card. Shows the primary photo when present, otherwise a soft placeholder.
+class _Thumbnail extends StatelessWidget {
+  final String? url;
+  const _Thumbnail({required this.url});
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fallback = Container(width: 72, height: 72,
+      decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+      child: Icon(Icons.image_outlined, color: cs.onSurfaceVariant));
+    if (url == null || url!.isEmpty) return fallback;
+    return ClipRRect(borderRadius: BorderRadius.circular(12),
+      child: Image.network(url!, width: 72, height: 72, fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback));
+  }
+}
+
+
+enum _PillTone { neutral, warn, success }
 
 
 /// Small pill — used for meat type and abnormal-status flags. Matches iOS subtle tag style.
@@ -150,9 +176,11 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final (bg, fg) = tone == _PillTone.warn
-        ? (cs.errorContainer.withValues(alpha: 0.7), cs.onErrorContainer)
-        : (cs.surfaceContainerHighest, cs.onSurfaceVariant);
+    final (bg, fg) = switch (tone) {
+      _PillTone.warn => (cs.errorContainer.withValues(alpha: 0.7), cs.onErrorContainer),
+      _PillTone.success => (cs.tertiaryContainer.withValues(alpha: 0.7), cs.onTertiaryContainer),
+      _PillTone.neutral => (cs.surfaceContainerHighest, cs.onSurfaceVariant),
+    };
     return Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Text(text, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w500)));

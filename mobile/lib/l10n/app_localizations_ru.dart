@@ -87,6 +87,76 @@ class AppLocalizationsRu extends AppLocalizations {
   String get language => 'Язык';
 
   @override
+  String get tabHome => 'Главная';
+
+  @override
+  String get tabSearch => 'Поиск';
+
+  @override
+  String get tabNotifications => 'Уведомления';
+
+  @override
+  String get tabChats => 'Чаты';
+
+  @override
+  String get tabProfile => 'Профиль';
+
+  @override
+  String get chatsTitle => 'Чаты';
+
+  @override
+  String get chatsComingSoon => 'Чат появится на этапе C';
+
+  @override
+  String get notificationsTitle => 'Уведомления';
+
+  @override
+  String get markAllRead => 'Отметить всё как прочитанное';
+
+  @override
+  String get deleteAccount => 'Удалить аккаунт';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Удалить аккаунт?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'Профиль, объявления и история заказов будут удалены навсегда. Это действие нельзя отменить.';
+
+  @override
+  String get deleteAccountConfirmYes => 'Да, удалить';
+
+  @override
+  String get becomeSeller => 'Стать продавцом';
+
+  @override
+  String get halal => 'Халяль';
+
+  @override
+  String get freshnessDate => 'Дата забоя';
+
+  @override
+  String get coldChainFresh => 'Свежее';
+
+  @override
+  String get coldChainChilled => 'Охлаждённое';
+
+  @override
+  String get coldChainFrozen => 'Замороженное';
+
+  @override
+  String get serviceArea => 'Зона доставки';
+
+  @override
+  String get addPhoto => 'Добавить фото';
+
+  @override
+  String get removePhoto => 'Удалить';
+
+  @override
+  String get photoRequired => 'Требуется минимум одно фото';
+
+  @override
   String greeting(String name) {
     return 'Здравствуйте, $name 👋';
   }

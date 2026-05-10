@@ -87,6 +87,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get language => 'Language';
 
   @override
+  String get tabHome => 'Home';
+
+  @override
+  String get tabSearch => 'Search';
+
+  @override
+  String get tabNotifications => 'Notifications';
+
+  @override
+  String get tabChats => 'Chats';
+
+  @override
+  String get tabProfile => 'Profile';
+
+  @override
+  String get chatsTitle => 'Chats';
+
+  @override
+  String get chatsComingSoon => 'Chat coming in Milestone C';
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get markAllRead => 'Mark all read';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Delete your account?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'This permanently removes your profile, listings, and order history. This cannot be undone.';
+
+  @override
+  String get deleteAccountConfirmYes => 'Yes, delete';
+
+  @override
+  String get becomeSeller => 'Become a seller';
+
+  @override
+  String get halal => 'Halal';
+
+  @override
+  String get freshnessDate => 'Freshness date';
+
+  @override
+  String get coldChainFresh => 'Fresh';
+
+  @override
+  String get coldChainChilled => 'Chilled';
+
+  @override
+  String get coldChainFrozen => 'Frozen';
+
+  @override
+  String get serviceArea => 'Service area';
+
+  @override
+  String get addPhoto => 'Add photo';
+
+  @override
+  String get removePhoto => 'Remove';
+
+  @override
+  String get photoRequired => 'At least one photo required';
+
+  @override
   String greeting(String name) {
     return 'Hello, $name 👋';
   }

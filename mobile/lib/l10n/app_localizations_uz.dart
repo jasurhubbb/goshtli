@@ -87,6 +87,76 @@ class AppLocalizationsUz extends AppLocalizations {
   String get language => 'Til';
 
   @override
+  String get tabHome => 'Asosiy';
+
+  @override
+  String get tabSearch => 'Qidirish';
+
+  @override
+  String get tabNotifications => 'Xabarnomalar';
+
+  @override
+  String get tabChats => 'Chatlar';
+
+  @override
+  String get tabProfile => 'Profil';
+
+  @override
+  String get chatsTitle => 'Chatlar';
+
+  @override
+  String get chatsComingSoon => 'Chat C bosqichida qo\'shiladi';
+
+  @override
+  String get notificationsTitle => 'Xabarnomalar';
+
+  @override
+  String get markAllRead => 'Hammasini o\'qilgan deb belgilash';
+
+  @override
+  String get deleteAccount => 'Hisobni o\'chirish';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Hisobni o\'chirasizmi?';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'Profil, e\'lonlar va buyurtmalar tarixi butunlay o\'chiriladi. Bu amalni qaytarib bo\'lmaydi.';
+
+  @override
+  String get deleteAccountConfirmYes => 'Ha, o\'chirish';
+
+  @override
+  String get becomeSeller => 'Sotuvchi bo\'lish';
+
+  @override
+  String get halal => 'Halol';
+
+  @override
+  String get freshnessDate => 'So\'yilgan sanasi';
+
+  @override
+  String get coldChainFresh => 'Yangi';
+
+  @override
+  String get coldChainChilled => 'Sovutilgan';
+
+  @override
+  String get coldChainFrozen => 'Muzlatilgan';
+
+  @override
+  String get serviceArea => 'Yetkazish hududi';
+
+  @override
+  String get addPhoto => 'Rasm qo\'shish';
+
+  @override
+  String get removePhoto => 'O\'chirish';
+
+  @override
+  String get photoRequired => 'Kamida bitta rasm kerak';
+
+  @override
   String greeting(String name) {
     return 'Salom, $name 👋';
   }
