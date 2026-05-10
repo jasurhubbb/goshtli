@@ -21,6 +21,11 @@ urlpatterns = [
     path("api/v1/orders/", include("apps.orders.urls")),            # order create / cancel / status / list
     path("api/v1/notifications/", include("apps.notifications.urls")),  # in-app notifications + unread count
 
+    # v2 Milestone C — social + trust
+    path("api/v1/favorites/", include("apps.favorites.urls")),          # GET own, POST/DELETE toggle
+    path("api/v1/reviews/", include("apps.reviews.urls")),              # GET list, POST create, GET supplier aggregate
+    path("api/v1/chats/", include("apps.chats.urls")),                  # conversations + messages
+
     # User-uploaded media (listing photos). Django's static-serve view — fine at v2 traffic; replace with a CDN later.
     re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
 ]

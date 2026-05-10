@@ -16,7 +16,9 @@ DJANGO_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.co
                "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles"]
 THIRD_PARTY_APPS = ["rest_framework", "rest_framework_simplejwt", "django_filters", "corsheaders", "drf_spectacular"]
 LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
-              "apps.listings", "apps.orders", "apps.notifications"]
+              "apps.listings", "apps.orders", "apps.notifications",
+              # v2 Milestone C — social + trust features
+              "apps.favorites", "apps.reviews", "apps.chats"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF
