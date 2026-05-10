@@ -21,6 +21,7 @@ class ListingPhotoSerializer(serializers.ModelSerializer):
 
 class ListingSerializer(serializers.ModelSerializer):
     """Read/write — supplier_id taken from request.user in the view, never accepted from input."""
+    supplier_id = serializers.IntegerField(source="supplier.id", read_only=True)        # exposed so mobile can start a chat with the seller
     supplier_email = serializers.EmailField(source="supplier.email", read_only=True)
     supplier_business_name = serializers.CharField(source="supplier.supplier_profile.business_name",
                                                    read_only=True, default="")
@@ -30,12 +31,11 @@ class ListingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Listing
-        fields = ("id", "supplier_email", "supplier_business_name", "supplier_verified",
+        fields = ("id", "supplier_id", "supplier_email", "supplier_business_name", "supplier_verified",
                   "title", "meat_type", "quantity_kg", "price_per_kg", "location",
                   "available_from", "description", "status",
                   "halal_certified", "freshness_date", "cold_chain", "service_area_csv",
                   "photos",
                   "created_at", "updated_at")
-        read_only_fields = ("id", "supplier_email", "supplier_business_name", "supplier_verified",
+        read_only_fields = ("id", "supplier_id", "supplier_email", "supplier_business_name", "supplier_verified",
                             "photos", "created_at", "updated_at")
-        # status is editable so supplier can flip ACTIVE↔INACTIVE; SOLD_OUT transitions are managed by the orders service

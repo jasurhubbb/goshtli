@@ -7,8 +7,12 @@ import '../../../shared/l10n/enum_labels.dart';
 import '../../../shared/models/listing.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/auth_state.dart';
+import '../../chats/providers/chats_providers.dart';
+import '../../favorites/presentation/heart_button.dart';
 import '../../orders/providers/orders_providers.dart';
+import '../data/listings_repository.dart' show ApiException;
 import '../providers/listings_providers.dart';
+import 'package:go_router/go_router.dart';
 
 
 class ListingDetailScreen extends ConsumerWidget {
@@ -20,7 +24,11 @@ class ListingDetailScreen extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final async = ref.watch(listingByIdProvider(listingId));
     return Scaffold(
-      appBar: AppBar(title: Text(t.listingDetailTitle)),
+      appBar: AppBar(
+        title: Text(t.listingDetailTitle),
+        // Heart toggle in the AppBar — same gesture surface across all screens that show a listing's detail
+        actions: [HeartButton(listingId: listingId)],
+      ),
       body: async.when(
         data: (listing) => _ListingDetailBody(listing: listing),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -110,6 +118,13 @@ class _ListingDetailBody extends ConsumerWidget {
             if (canOrder) FilledButton.icon(icon: const Icon(Icons.shopping_cart_outlined),
                 label: Text(t.listingActionPlaceOrder),
                 onPressed: () => _showOrderSheet(context, ref, listing)),
+            // Chat with seller — only visible to non-owners; opens (or reuses) the 1:1 conversation and routes to it
+            if (!isOwner && auth is AuthAuthenticated) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(icon: const Icon(Icons.forum_outlined),
+                label: Text(t.tabChats),
+                onPressed: () => _openChatWithSeller(context, ref, listing)),
+            ],
             if (isOwner) ...[
               OutlinedButton.icon(icon: const Icon(Icons.edit_outlined), label: Text(t.listingActionEdit),
                   onPressed: () => _showEditSheet(context, ref, listing)),
@@ -127,6 +142,25 @@ class _ListingDetailBody extends ConsumerWidget {
     ColdChain.chilled => t.coldChainChilled,
     ColdChain.frozen => t.coldChainFrozen,
   };
+
+  /// Open (or create) a 1:1 chat with this listing's supplier, then route to the chat detail screen.
+  /// We resolve supplier_user_id via the supplier_email on the listing — backend's start endpoint takes user id.
+  Future<void> _openChatWithSeller(BuildContext context, WidgetRef ref, Listing l) async {
+    // Backend's start endpoint needs the other user's id. Our listing only carries supplier_email — for now we look up
+    // the user via /api/v1/auth/me/-like lookup. Quick path: assume backend exposes supplier id via list endpoint;
+    // simplest robust path: bail with a TODO message until /listings serializer includes supplier_user_id.
+    try {
+      final conv = await ref.read(chatsRepositoryProvider).startWith(_extractSupplierId(l));
+      if (context.mounted) context.push('/chats/${conv.id}');
+    } on ApiException catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  /// Backend's ListingSerializer now exposes supplier_id (v2 Milestone C); we just hand it to /chats/start/.
+  int _extractSupplierId(Listing l) => l.supplierId;
 
   /// Order placement bottom-sheet — clean form with live oversell guard and confirm CTA.
   void _showOrderSheet(BuildContext context, WidgetRef ref, Listing l) {

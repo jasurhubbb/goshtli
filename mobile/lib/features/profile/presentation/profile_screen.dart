@@ -31,10 +31,11 @@ class ProfileScreen extends ConsumerWidget {
         SliverPadding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 32), sliver: SliverList.list(children: [
           _UserHero(name: user.fullName, email: user.email, phone: user.phone, role: roleLabel),
           const SizedBox(height: 24),
-          // Shortcuts that match v2 spec: orders + my listings live under Profile tab now (not top-level)
+          // Shortcuts that match v2 spec: orders + my listings + saved listings live under Profile tab now
           _GroupedShortcuts(items: [
             (Icons.receipt_long_outlined, t.myOrders, () => context.go('/profile/orders')),
             (Icons.list_alt_outlined, t.myListings, () => context.go('/profile/listings')),
+            (Icons.favorite_border, 'Saved listings', () => context.push('/profile/saved')),
           ]),
           const SizedBox(height: 24),
           if (user.isSupplier) const _SupplierProfileCard()

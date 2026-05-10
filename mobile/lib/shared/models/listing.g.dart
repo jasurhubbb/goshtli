@@ -21,6 +21,7 @@ Map<String, dynamic> _$ListingPhotoToJson(ListingPhoto instance) =>
 
 Listing _$ListingFromJson(Map<String, dynamic> json) => Listing(
   id: (json['id'] as num).toInt(),
+  supplierId: (json['supplier_id'] as num?)?.toInt() ?? 0,
   supplierEmail: json['supplier_email'] as String,
   supplierBusinessName: json['supplier_business_name'] as String,
   supplierVerified: json['supplier_verified'] as bool? ?? false,
@@ -47,6 +48,7 @@ Listing _$ListingFromJson(Map<String, dynamic> json) => Listing(
 
 Map<String, dynamic> _$ListingToJson(Listing instance) => <String, dynamic>{
   'id': instance.id,
+  'supplier_id': instance.supplierId,
   'supplier_email': instance.supplierEmail,
   'supplier_business_name': instance.supplierBusinessName,
   'supplier_verified': instance.supplierVerified,

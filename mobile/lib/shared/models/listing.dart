@@ -51,6 +51,7 @@ class ListingPhoto {
 @JsonSerializable()
 class Listing {
   final int id;
+  @JsonKey(name: 'supplier_id', defaultValue: 0) final int supplierId;
   @JsonKey(name: 'supplier_email') final String supplierEmail;
   @JsonKey(name: 'supplier_business_name') final String supplierBusinessName;
   @JsonKey(name: 'supplier_verified', defaultValue: false) final bool supplierVerified;
@@ -70,12 +71,13 @@ class Listing {
   @JsonKey(name: 'service_area_csv', defaultValue: '') final String serviceAreaCsv;
   @JsonKey(defaultValue: <ListingPhoto>[]) final List<ListingPhoto> photos;
 
-  const Listing({required this.id, required this.supplierEmail, required this.supplierBusinessName,
-                 required this.supplierVerified, required this.title, required this.meatType,
-                 required this.quantityKg, required this.pricePerKg, required this.location,
-                 required this.availableFrom, required this.description, required this.status,
-                 required this.halalCertified, required this.freshnessDate, required this.coldChain,
-                 required this.serviceAreaCsv, required this.photos});
+  const Listing({required this.id, required this.supplierId, required this.supplierEmail,
+                 required this.supplierBusinessName, required this.supplierVerified,
+                 required this.title, required this.meatType, required this.quantityKg,
+                 required this.pricePerKg, required this.location, required this.availableFrom,
+                 required this.description, required this.status, required this.halalCertified,
+                 required this.freshnessDate, required this.coldChain, required this.serviceAreaCsv,
+                 required this.photos});
 
   factory Listing.fromJson(Map<String, dynamic> json) => _$ListingFromJson(json);
   Map<String, dynamic> toJson() => _$ListingToJson(this);

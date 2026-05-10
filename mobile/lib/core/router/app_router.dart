@@ -16,7 +16,9 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/auth_state.dart';
+import '../../features/chats/presentation/chat_detail_screen.dart';
 import '../../features/chats/presentation/chats_screen.dart';
+import '../../features/favorites/presentation/favorites_screen.dart';
 import '../../features/dashboard/presentation/home_screen.dart';
 import '../../features/listings/presentation/listing_create_screen.dart';
 import '../../features/listings/presentation/listing_detail_screen.dart';
@@ -60,6 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, gs) => ListingDetailScreen(listingId: int.parse(gs.pathParameters['id']!))),
       GoRoute(path: '/orders/:id', name: 'order-detail',
         builder: (_, gs) => OrderDetailScreen(orderId: int.parse(gs.pathParameters['id']!))),
+      // v2 Milestone C — chat detail + saved listings push above the tabs (focused screens)
+      GoRoute(path: '/chats/:id', name: 'chat-detail',
+        builder: (_, gs) => ChatDetailScreen(conversationId: int.parse(gs.pathParameters['id']!))),
+      GoRoute(path: '/profile/saved', name: 'favorites', builder: (_, _) => const FavoritesScreen()),
 
       // ---------- 5-tab shell ----------
       StatefulShellRoute.indexedStack(
