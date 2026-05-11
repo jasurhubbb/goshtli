@@ -14,6 +14,7 @@ import 'core/locale/locale_providers.dart';
 import 'core/push/fcm_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/auth/providers/auth_providers.dart';
 import 'l10n/app_localizations.dart';
 
 
@@ -31,6 +32,10 @@ class MeatMarketplaceApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeNotifierProvider);
+    final router = ref.watch(routerProvider);
+    // Hand the router to FcmService so notification taps can navigate. The bind method is idempotent — calling on
+    // every rebuild only swaps the pointer; listeners attach once on the first call.
+    ref.read(fcmServiceProvider).bindRouter(router);
     return MaterialApp.router(
       onGenerateTitle: (ctx) => AppLocalizations.of(ctx).appTitle,  // localize the OS task-switcher title too
       debugShowCheckedModeBanner: false,
@@ -44,7 +49,7 @@ class MeatMarketplaceApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,      // base widgets (text direction)
         GlobalCupertinoLocalizations.delegate,    // any Cupertino widgets we add later
       ],
-      routerConfig: ref.watch(routerProvider),
+      routerConfig: router,
     );
   }
 }
