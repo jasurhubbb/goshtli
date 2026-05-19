@@ -7,6 +7,7 @@
 // • Motion uses fast, eased curves (200ms standard) so transitions feel snappy like iOS.
 //
 // We deliberately stay on Material 3 instead of Cupertino so we keep one consistent component family on both platforms.
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 
