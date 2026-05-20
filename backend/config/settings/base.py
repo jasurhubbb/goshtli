@@ -72,10 +72,62 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Media (user uploads — listing photos in v2). For production persistence on Railway, mount a Volume at /app/media.
-# Without a volume the container's ephemeral storage wipes on each redeploy — fine for dev, NOT fine for users.
+# Media (user uploads — listing photos, market logos/covers, category images).
+#
+# Storage selection is automatic based on env vars:
+#   • R2_BUCKET set → use Cloudflare R2 (S3-compatible) via django-storages. Production path.
+#   • R2_BUCKET unset → fall back to local filesystem at MEDIA_ROOT. Dev path.
+#
+# Public URLs:
+#   • R2: served from R2_PUBLIC_URL (your public r2.dev hostname or custom CDN domain).
+#   • Local dev: served from /media/ by Django's urls.py (only when DEBUG=True).
+#
+# To enable R2:
+#   1. Create an R2 bucket in the Cloudflare dashboard
+#   2. Generate an API token (Object Read & Write scope, scoped to the bucket)
+#   3. Set env vars in .env (or Railway/Render variables):
+#        R2_ACCOUNT_ID=abc123...
+#        R2_ACCESS_KEY_ID=...
+#        R2_SECRET_ACCESS_KEY=...
+#        R2_BUCKET=goshtli-prod
+#        R2_PUBLIC_URL=https://pub-xxx.r2.dev   (or your CDN domain)
+#   4. Redeploy — every ImageField save lands in R2 automatically.
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+R2_BUCKET = config("R2_BUCKET", default="")
+USE_R2 = bool(R2_BUCKET)
+
+if USE_R2:
+    # Django 5+ uses STORAGES instead of the deprecated DEFAULT_FILE_STORAGE single-string setting.
+    # `default` is for user uploads; staticfiles still uses Django's local backend (CDN-served via WhiteNoise or
+    # similar would be a follow-up). The s3 backend is S3-API-compatible and works against R2 with endpoint_url set.
+    _R2_ACCOUNT_ID = config("R2_ACCOUNT_ID")
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": R2_BUCKET,
+                "endpoint_url": f"https://{_R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+                "access_key": config("R2_ACCESS_KEY_ID"),
+                "secret_key": config("R2_SECRET_ACCESS_KEY"),
+                "region_name": "auto",            # R2 has no real regions; "auto" is the convention
+                "signature_version": "s3v4",       # required by R2; default is s3v4 already but pin it
+                "addressing_style": "virtual",     # bucket-as-subdomain — works with R2's endpoint scheme
+                "default_acl": None,               # R2 doesn't support per-object ACLs; bucket-level policy controls access
+                "querystring_auth": False,         # we serve via R2_PUBLIC_URL, not signed URLs
+                "file_overwrite": False,           # never silently overwrite; uploads with the same name get a suffix
+                # Long-lived cache header — image assets are immutable (uploaded once, never edited).
+                # Mobile + CDN can cache aggressively. Re-uploads get a new filename so cache busting is automatic.
+                "object_parameters": {"CacheControl": "public, max-age=31536000, immutable"},
+                # Public URL prefix the model layer's `instance.image.url` resolves to. Override per env in .env.
+                "custom_domain": config("R2_PUBLIC_URL", default="").replace("https://", "").replace("http://", "") or None,
+                "url_protocol": "https:",
+            },
+        },
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
 # 10MB upload cap — keeps gunicorn workers from being held hostage by an attacker uploading huge files
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
@@ -109,3 +161,24 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=config("ACCESS_TOKEN_LIFETIME_MINUTES", default=60, cast=int)),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=config("REFRESH_TOKEN_LIFETIME_DAYS", default=7, cast=int)),
     "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": False, "AUTH_HEADER_TYPES": ("Bearer",)}
+
+# ----- Celery (async tasks: image resize, future cache warming + daily reports) -----
+#
+# Broker: Redis. Workers pull from redis://redis:6379/0 in docker-compose; on bare-metal point at the host's Redis.
+# Tasks are picked up by celery worker processes (see docker-compose `worker` service) — Django request threads
+# never block on them, so an admin uploading a 10MB phone photo doesn't stall the upload page.
+#
+# In tests we set CELERY_TASK_ALWAYS_EAGER=True so tasks run inline (no Redis dependency) — see pytest.ini /
+# test settings. Production sets it False (default) and routes through Redis.
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+# Keep tasks idempotent + short. The resize task should finish within 30s; if it doesn't, the worker is unhealthy.
+CELERY_TASK_SOFT_TIME_LIMIT = 60
+CELERY_TASK_TIME_LIMIT = 90
+# Eager mode flag — flipped True in test settings so pytest doesn't need a running broker.
+CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=False, cast=bool)
+CELERY_TASK_EAGER_PROPAGATES = True  # in eager mode, surface exceptions to the caller instead of swallowing

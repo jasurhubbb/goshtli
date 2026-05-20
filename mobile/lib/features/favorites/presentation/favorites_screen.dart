@@ -49,7 +49,7 @@ class FavoritesScreen extends ConsumerWidget {
                                     fit: BoxFit.cover, errorBuilder: (_, _, _) =>
                                         Container(width: 64, height: 64, color: cs.surfaceContainerHighest,
                                           child: Icon(Icons.image_outlined, color: cs.onSurfaceVariant)))),
-                          title: Text(fav.listing.title),
+                          title: Text(fav.listing.displayName(Localizations.localeOf(context).languageCode)),
                           subtitle: Text('${fav.listing.pricePerKg.toStringAsFixed(0)} ${t.perKgSuffix}'
                                           '  ·  ${fav.listing.location}'),
                           trailing: const Icon(Icons.chevron_right),

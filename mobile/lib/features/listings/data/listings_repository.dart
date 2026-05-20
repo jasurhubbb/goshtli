@@ -1,4 +1,7 @@
 // ListingsRepository — all /api/v1/listings/* calls. Maps DRF errors to ApiException for uniform UI handling.
+//
+// v3.1 catalog overhaul: browse() filters now match the new backend (category, market, region, q, status, price).
+// The legacy meat_type / halal / cold_chain / service_area filters are gone.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
@@ -18,103 +21,56 @@ class ListingsRepository {
   final ApiClient _api;
   ListingsRepository(this._api);
 
-  /// GET /listings/ — public browse. v2 adds halal_certified / cold_chain / service_area / verified_only filters.
-  /// Backend hides INACTIVE/SOLD_OUT unless we send ?status= explicitly.
-  Future<Paginated<Listing>> browse({String? meatType, String? location, double? priceMin, double? priceMax,
-                                     String? search, String? ordering, int page = 1,
-                                     bool? halalOnly, String? coldChain, String? serviceArea,
-                                     bool? verifiedOnly}) async {
+  /// GET /listings/ — public browse. Backend defaults to ACTIVE-only when status param is omitted, so the
+  /// Menyu tab hits this without thinking. Filters map 1:1 onto django-filter params in apps/listings/filters.py.
+  Future<Paginated<Listing>> browse({
+    String? category,       // category slug — e.g. "mol-goshti"
+    String? market,         // market slug
+    String? region,         // exact-match (case-insensitive) on Market.region
+    String? status,         // omit → backend returns only ACTIVE
+    double? priceMin,
+    double? priceMax,
+    String? q,              // free-text search across name_uz + name_ru
+    String? ordering,       // e.g. "price_per_kg" or "-created_at"
+    int page = 1,
+  }) async {
     final r = await _api.dio.get('/listings/', queryParameters: {
       'page': page,
-      'meat_type': ?meatType,
-      if (location != null && location.isNotEmpty) 'location': location,
-      'price_min': ?priceMin,
-      'price_max': ?priceMax,
-      if (search != null && search.isNotEmpty) 'search': search,
-      'ordering': ?ordering,
-      // v2 filters — only send when the user has actually toggled them, so the backend can stay efficient
-      'halal_certified': ?halalOnly,
-      'cold_chain': ?coldChain,
-      if (serviceArea != null && serviceArea.isNotEmpty) 'service_area': serviceArea,
-      'verified_only': ?verifiedOnly,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (market != null && market.isNotEmpty) 'market': market,
+      if (region != null && region.isNotEmpty) 'region': region,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (priceMin != null) 'price_min': priceMin,
+      if (priceMax != null) 'price_max': priceMax,
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (ordering != null && ordering.isNotEmpty) 'ordering': ordering,
     });
-    if (r.statusCode == 200) return Paginated.fromJson(r.data as Map<String, dynamic>, Listing.fromJson);
+    if (r.statusCode == 200) {
+      return Paginated.fromJson(r.data as Map<String, dynamic>, Listing.fromJson);
+    }
     throw _toApiException(r);
   }
 
-  /// GET /listings/my/ — supplier's own listings (all statuses, including INACTIVE/SOLD_OUT).
-  Future<Paginated<Listing>> myListings({int page = 1}) async {
-    final r = await _api.dio.get('/listings/my/', queryParameters: {'page': page});
-    if (r.statusCode == 200) return Paginated.fromJson(r.data as Map<String, dynamic>, Listing.fromJson);
-    throw _toApiException(r);
-  }
-
-  /// GET /listings/{id}/ — public read; auth required only for unsafe methods.
+  /// GET /listings/{id}/ — single product detail. Used when buyers tap a card to drill in.
   Future<Listing> getById(int id) async {
     final r = await _api.dio.get('/listings/$id/');
     if (r.statusCode == 200) return Listing.fromJson(r.data as Map<String, dynamic>);
     throw _toApiException(r);
   }
 
-  /// POST /listings/ — verified supplier only. v2 adds halal/freshness/cold-chain/service-area fields.
-  /// Server enforces verification; we pre-check on the client to fail fast.
-  Future<Listing> create({required String title, required MeatType meatType, required double quantityKg,
-                          required double pricePerKg, required String location, required String availableFrom,
-                          String description = '', bool halalCertified = false, String? freshnessDate,
-                          ColdChain coldChain = ColdChain.fresh, String serviceAreaCsv = ''}) async {
-    final r = await _api.dio.post('/listings/', data: {
-      'title': title, 'meat_type': _meatTypeToWire(meatType), 'quantity_kg': quantityKg.toStringAsFixed(2),
-      'price_per_kg': pricePerKg.toStringAsFixed(2), 'location': location, 'available_from': availableFrom,
-      'description': description,
-      'halal_certified': halalCertified,
-      'freshness_date': ?freshnessDate,         // null-aware: only send if caller provided one
-      'cold_chain': _coldChainToWire(coldChain),
-      'service_area_csv': serviceAreaCsv,
-    });
-    if (r.statusCode == 201) return Listing.fromJson(r.data as Map<String, dynamic>);
-    throw _toApiException(r);
-  }
-
-  /// ColdChain → backend wire string. Mirrors backend Listing.ColdChain enum values.
-  static String _coldChainToWire(ColdChain c) => switch (c) {
-    ColdChain.fresh => 'FRESH', ColdChain.chilled => 'CHILLED', ColdChain.frozen => 'FROZEN',
-  };
-
-  /// POST /listings/{id}/photos/ — multipart upload. Returns the photo URL+id; reload the listing for the new gallery.
-  /// File is uploaded under the form key 'image' so it matches the DRF MultiPartParser on the backend.
-  Future<void> uploadPhoto(int listingId, String filePath) async {
-    final form = FormData.fromMap({'image': await MultipartFile.fromFile(filePath)});
-    final r = await _api.dio.post('/listings/$listingId/photos/', data: form);
-    if (r.statusCode != 201) throw _toApiException(r);
-  }
-
-  /// PATCH /listings/{id}/ — owner only. Used for price/desc/status edits.
-  Future<Listing> update(int id, Map<String, dynamic> changes) async {
-    final r = await _api.dio.patch('/listings/$id/', data: changes);
-    if (r.statusCode == 200) return Listing.fromJson(r.data as Map<String, dynamic>);
-    throw _toApiException(r);
-  }
-
-  /// DELETE /listings/{id}/ — owner only. Backend rejects with 403 if any orders are attached (set INACTIVE instead).
-  Future<void> delete(int id) async {
-    final r = await _api.dio.delete('/listings/$id/');
-    if (r.statusCode != 204) throw _toApiException(r);
-  }
-
-  /// MeatType → backend enum string. Keeps the wire format in one place.
-  static String _meatTypeToWire(MeatType t) => switch (t) {
-    MeatType.beef => 'BEEF', MeatType.mutton => 'MUTTON', MeatType.chicken => 'CHICKEN',
-    MeatType.goat => 'GOAT', MeatType.horse => 'HORSE', MeatType.other => 'OTHER',
-  };
-
+  /// Normalize DRF error shapes (`{detail: "..."}` vs `{field: ["..."]}`) into a single ApiException.
   ApiException _toApiException(Response r) {
-    if (r.data is Map<String, dynamic>) {
-      final m = r.data as Map<String, dynamic>;
-      if (m['detail'] is String) return ApiException(m['detail'] as String);
-      final field = <String, List<String>>{};
-      m.forEach((k, v) { if (v is List) field[k] = v.map((e) => e.toString()).toList(); });
-      return ApiException(field.entries.map((e) => '${e.key}: ${e.value.join(", ")}').join('\n'), field);
+    final data = r.data;
+    if (data is Map<String, dynamic>) {
+      if (data['detail'] is String) return ApiException(data['detail'] as String);
+      final fieldErrors = <String, List<String>>{};
+      for (final entry in data.entries) {
+        if (entry.value is List) {
+          fieldErrors[entry.key] = (entry.value as List).map((e) => e.toString()).toList();
+        }
+      }
+      return ApiException(fieldErrors.values.expand((v) => v).join('; '), fieldErrors);
     }
-    return ApiException('Request failed (HTTP ${r.statusCode})');
+    return ApiException('Request failed (HTTP ${r.statusCode}).');
   }
 }

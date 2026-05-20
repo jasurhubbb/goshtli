@@ -9,6 +9,9 @@ drf-spectacular>=0.27
 Pillow>=10.4                # ImageField backend — required for listing photos (v2)
 firebase-admin>=6.5         # FCM push notifications — Milestone E.5 (apps/notifications/fcm.py)
 django-simple-history>=3.7  # row-level audit trail on Listing + Market (v3.1 catalog overhaul)
+django-storages[s3]>=1.14   # S3-compatible storage backend — used with Cloudflare R2 in production
+celery>=5.4                 # async task queue — image resize, cache warming, daily reports
+redis>=5.0                  # broker + result backend for Celery + (later) cache-aside layer
 gunicorn>=22.0
 
 # Test-only — kept here for simplicity; can be moved to a separate requirements-dev.txt later if image size matters

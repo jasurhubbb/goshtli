@@ -166,8 +166,11 @@ class _Body extends ConsumerWidget {
   }
 
   void _refreshAll(WidgetRef ref) {
+    // v3.1: legacy listingsBrowseProvider / myListingsProvider were removed when the catalog refactor landed.
+    // The home grid feeds off activeListingsProvider, which is what we invalidate here so a status flip on this
+    // order (which can also flip the listing's stock + status) shows up immediately on the Menyu tab.
     ref..invalidate(orderByIdProvider(order.id))..invalidate(myOrdersProvider)..invalidate(supplierOrdersProvider)
-       ..invalidate(listingByIdProvider(order.listingId))..invalidate(listingsBrowseProvider)..invalidate(myListingsProvider);
+       ..invalidate(listingByIdProvider(order.listingId))..invalidate(activeListingsProvider);
   }
 
   String _actionLabel(BuildContext context, model.OrderStatus s) {

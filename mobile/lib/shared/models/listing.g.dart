@@ -19,26 +19,63 @@ Map<String, dynamic> _$ListingPhotoToJson(ListingPhoto instance) =>
       'position': instance.position,
     };
 
+MarketSummary _$MarketSummaryFromJson(Map<String, dynamic> json) =>
+    MarketSummary(
+      id: (json['id'] as num).toInt(),
+      slug: json['slug'] as String,
+      nameUz: json['name_uz'] as String,
+      nameRu: json['name_ru'] as String,
+      region: json['region'] as String,
+      logoUrl: json['logo_url'] as String? ?? '',
+      isActive: json['is_active'] as bool? ?? true,
+    );
+
+Map<String, dynamic> _$MarketSummaryToJson(MarketSummary instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'slug': instance.slug,
+      'name_uz': instance.nameUz,
+      'name_ru': instance.nameRu,
+      'region': instance.region,
+      'logo_url': instance.logoUrl,
+      'is_active': instance.isActive,
+    };
+
+MeatCategorySummary _$MeatCategorySummaryFromJson(Map<String, dynamic> json) =>
+    MeatCategorySummary(
+      slug: json['slug'] as String,
+      nameUz: json['name_uz'] as String,
+      nameRu: json['name_ru'] as String,
+      imageUrl: json['image_url'] as String? ?? '',
+    );
+
+Map<String, dynamic> _$MeatCategorySummaryToJson(
+  MeatCategorySummary instance,
+) => <String, dynamic>{
+  'slug': instance.slug,
+  'name_uz': instance.nameUz,
+  'name_ru': instance.nameRu,
+  'image_url': instance.imageUrl,
+};
+
 Listing _$ListingFromJson(Map<String, dynamic> json) => Listing(
   id: (json['id'] as num).toInt(),
-  supplierId: (json['supplier_id'] as num?)?.toInt() ?? 0,
-  supplierEmail: json['supplier_email'] as String,
-  supplierBusinessName: json['supplier_business_name'] as String,
-  supplierVerified: json['supplier_verified'] as bool? ?? false,
-  title: json['title'] as String,
-  meatType: $enumDecode(_$MeatTypeEnumMap, json['meat_type']),
+  slug: json['slug'] as String,
+  market: MarketSummary.fromJson(json['market'] as Map<String, dynamic>),
+  category: MeatCategorySummary.fromJson(
+    json['category'] as Map<String, dynamic>,
+  ),
+  nameUz: json['name_uz'] as String,
+  nameRu: json['name_ru'] as String,
+  descriptionUz: json['description_uz'] as String? ?? '',
+  descriptionRu: json['description_ru'] as String? ?? '',
   quantityKg: _decimalFromString(json['quantity_kg']),
   pricePerKg: _decimalFromString(json['price_per_kg']),
   location: json['location'] as String,
   availableFrom: json['available_from'] as String,
-  description: json['description'] as String,
   status: $enumDecode(_$ListingStatusEnumMap, json['status']),
-  halalCertified: json['halal_certified'] as bool? ?? false,
-  freshnessDate: json['freshness_date'] as String?,
-  coldChain:
-      $enumDecodeNullable(_$ColdChainEnumMap, json['cold_chain']) ??
-      ColdChain.fresh,
-  serviceAreaCsv: json['service_area_csv'] as String? ?? '',
+  supplierId: (json['supplier_id'] as num?)?.toInt() ?? 0,
+  supplierEmail: json['supplier_email'] as String? ?? '',
   photos:
       (json['photos'] as List<dynamic>?)
           ?.map((e) => ListingPhoto.fromJson(e as Map<String, dynamic>))
@@ -48,42 +85,25 @@ Listing _$ListingFromJson(Map<String, dynamic> json) => Listing(
 
 Map<String, dynamic> _$ListingToJson(Listing instance) => <String, dynamic>{
   'id': instance.id,
-  'supplier_id': instance.supplierId,
-  'supplier_email': instance.supplierEmail,
-  'supplier_business_name': instance.supplierBusinessName,
-  'supplier_verified': instance.supplierVerified,
-  'title': instance.title,
-  'meat_type': _$MeatTypeEnumMap[instance.meatType]!,
+  'slug': instance.slug,
+  'market': instance.market,
+  'category': instance.category,
+  'name_uz': instance.nameUz,
+  'name_ru': instance.nameRu,
+  'description_uz': instance.descriptionUz,
+  'description_ru': instance.descriptionRu,
   'quantity_kg': _decimalToString(instance.quantityKg),
   'price_per_kg': _decimalToString(instance.pricePerKg),
   'location': instance.location,
   'available_from': instance.availableFrom,
-  'description': instance.description,
   'status': _$ListingStatusEnumMap[instance.status]!,
-  'halal_certified': instance.halalCertified,
-  'freshness_date': instance.freshnessDate,
-  'cold_chain': _$ColdChainEnumMap[instance.coldChain]!,
-  'service_area_csv': instance.serviceAreaCsv,
+  'supplier_id': instance.supplierId,
+  'supplier_email': instance.supplierEmail,
   'photos': instance.photos,
-};
-
-const _$MeatTypeEnumMap = {
-  MeatType.beef: 'BEEF',
-  MeatType.mutton: 'MUTTON',
-  MeatType.chicken: 'CHICKEN',
-  MeatType.goat: 'GOAT',
-  MeatType.horse: 'HORSE',
-  MeatType.other: 'OTHER',
 };
 
 const _$ListingStatusEnumMap = {
   ListingStatus.active: 'ACTIVE',
-  ListingStatus.soldOut: 'SOLD_OUT',
-  ListingStatus.inactive: 'INACTIVE',
-};
-
-const _$ColdChainEnumMap = {
-  ColdChain.fresh: 'FRESH',
-  ColdChain.chilled: 'CHILLED',
-  ColdChain.frozen: 'FROZEN',
+  ListingStatus.outOfStock: 'OUT_OF_STOCK',
+  ListingStatus.archived: 'ARCHIVED',
 };

@@ -190,26 +190,31 @@ class _CartRow extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final p = item.product;
+    final l = item.listing;
+    final lang = Localizations.localeOf(context).languageCode;
 
     return Container(padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: cs.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4), width: 0.5)),
       child: Row(children: [
-        // Thumbnail — coloured square with the product's icon. Will become Image.network when real listings land.
-        Container(width: 72, height: 72,
-          decoration: BoxDecoration(color: Color(p.accentArgb), borderRadius: BorderRadius.circular(14)),
-          child: Icon(p.icon, size: 36, color: Colors.brown.shade700)),
+        // Thumbnail — Image.network of the primary photo, with a category icon fallback when the listing
+        // has no photos yet (workers may publish before all assets are uploaded).
+        ClipRRect(borderRadius: BorderRadius.circular(14),
+          child: Container(width: 72, height: 72, color: cs.surfaceContainerHighest,
+            child: l.primaryPhotoUrl != null
+                ? Image.network(l.primaryPhotoUrl!, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Icon(Icons.image_outlined, color: cs.onSurfaceVariant))
+                : Icon(Icons.restaurant_outlined, color: cs.onSurfaceVariant, size: 32))),
         const SizedBox(width: 12),
 
         // Name (up to 2 lines, smaller weight than headline) + price in brand colour
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(p.displayName(Localizations.localeOf(context).languageCode),
+          Text(l.displayName(lang),
               style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 6),
-          Text('${formatSoum(p.priceSoum)} ${t.soumSuffix}${t.perKgShort}',
+          Text('${formatSoum(l.pricePerKg.toInt())} ${t.soumSuffix}${t.perKgShort}',
               style: tt.titleMedium?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
         ])),
         const SizedBox(width: 8),
@@ -217,8 +222,8 @@ class _CartRow extends ConsumerWidget {
         // Qty stepper — minus / readout / plus, capsule-shaped. Tapping below 1 removes the row.
         _QtyStepper(
           qty: item.qty,
-          onDec: () => ref.read(cartProvider.notifier).setQty(p.id, item.qty - 1),
-          onInc: () => ref.read(cartProvider.notifier).setQty(p.id, item.qty + 1)),
+          onDec: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty - 1),
+          onInc: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty + 1)),
       ]));
   }
 }

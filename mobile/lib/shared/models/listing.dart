@@ -1,33 +1,23 @@
-// Listing — mirrors backend listings.Listing. Decimal fields arrive as quoted strings; v2 adds photo gallery + halal/freshness/cold-chain.
+// Listing — mirrors backend apps/listings/Listing after the v3.1 catalog overhaul.
+//
+// Schema in line with the new Django model:
+//   • Belongs to ONE Market (vendor) — nested MarketSummary expanded inline
+//   • Has ONE MeatCategory (facet) — nested MeatCategorySummary expanded inline
+//   • Bilingual name + description (uz / ru). Display layer picks based on Localizations.localeOf().
+//   • Status: ACTIVE / OUT_OF_STOCK / ARCHIVED (no DRAFT / PAUSED — see apps/listings/models.py)
+//   • Photos: list of ListingPhoto rows; first one is the primary thumbnail
+//
+// DEPRECATED & REMOVED: title, meatType, halalCertified, freshnessDate, coldChain, serviceAreaCsv.
 import 'package:json_annotation/json_annotation.dart';
 
 part 'listing.g.dart';
 
 
-/// Closed enum mirroring backend Listing.MeatType. Drives the meat-type filter chips and badges.
-enum MeatType {
-  @JsonValue('BEEF') beef,
-  @JsonValue('MUTTON') mutton,
-  @JsonValue('CHICKEN') chicken,
-  @JsonValue('GOAT') goat,
-  @JsonValue('HORSE') horse,
-  @JsonValue('OTHER') other,
-}
-
-
-/// Closed enum mirroring backend Listing.Status. Drives buyer visibility + supplier badge color.
+/// Closed enum mirroring backend Listing.Status. Drives buyer visibility + admin badge colour.
 enum ListingStatus {
   @JsonValue('ACTIVE') active,
-  @JsonValue('SOLD_OUT') soldOut,
-  @JsonValue('INACTIVE') inactive,
-}
-
-
-/// Closed enum mirroring backend Listing.ColdChain. Three meat states drive freshness badges + buyer expectations.
-enum ColdChain {
-  @JsonValue('FRESH') fresh,
-  @JsonValue('CHILLED') chilled,
-  @JsonValue('FROZEN') frozen,
+  @JsonValue('OUT_OF_STOCK') outOfStock,
+  @JsonValue('ARCHIVED') archived,
 }
 
 
@@ -48,40 +38,89 @@ class ListingPhoto {
 }
 
 
+/// Nested Market embed returned inside Listing.market. Compact: only the fields a product card needs to render
+/// the "from <Market> in <region>" line — full market detail comes from the dedicated /markets/<slug>/ endpoint.
+@JsonSerializable()
+class MarketSummary {
+  final int id;
+  final String slug;
+  @JsonKey(name: 'name_uz') final String nameUz;
+  @JsonKey(name: 'name_ru') final String nameRu;
+  final String region;
+  @JsonKey(name: 'logo_url', defaultValue: '') final String logoUrl;
+  @JsonKey(name: 'is_active', defaultValue: true) final bool isActive;
+
+  const MarketSummary({required this.id, required this.slug, required this.nameUz, required this.nameRu,
+                       required this.region, required this.logoUrl, required this.isActive});
+
+  factory MarketSummary.fromJson(Map<String, dynamic> json) => _$MarketSummaryFromJson(json);
+  Map<String, dynamic> toJson() => _$MarketSummaryToJson(this);
+
+  /// Display name for the active locale code. Falls back to Uzbek for any non-RU language.
+  String displayName(String languageCode) => languageCode == 'ru' ? nameRu : nameUz;
+}
+
+
+/// Nested MeatCategory embed returned inside Listing.category. Same compact shape as MarketSummary.
+@JsonSerializable()
+class MeatCategorySummary {
+  final String slug;
+  @JsonKey(name: 'name_uz') final String nameUz;
+  @JsonKey(name: 'name_ru') final String nameRu;
+  @JsonKey(name: 'image_url', defaultValue: '') final String imageUrl;
+
+  const MeatCategorySummary({required this.slug, required this.nameUz, required this.nameRu,
+                             required this.imageUrl});
+
+  factory MeatCategorySummary.fromJson(Map<String, dynamic> json) => _$MeatCategorySummaryFromJson(json);
+  Map<String, dynamic> toJson() => _$MeatCategorySummaryToJson(this);
+
+  String displayName(String languageCode) => languageCode == 'ru' ? nameRu : nameUz;
+}
+
+
 @JsonSerializable()
 class Listing {
   final int id;
-  @JsonKey(name: 'supplier_id', defaultValue: 0) final int supplierId;
-  @JsonKey(name: 'supplier_email') final String supplierEmail;
-  @JsonKey(name: 'supplier_business_name') final String supplierBusinessName;
-  @JsonKey(name: 'supplier_verified', defaultValue: false) final bool supplierVerified;
-  final String title;
-  @JsonKey(name: 'meat_type') final MeatType meatType;
+  final String slug;
+
+  // Nested embeds — present in responses; on writes the caller sends market_id / category_id instead.
+  final MarketSummary market;
+  final MeatCategorySummary category;
+
+  // Bilingual content
+  @JsonKey(name: 'name_uz') final String nameUz;
+  @JsonKey(name: 'name_ru') final String nameRu;
+  @JsonKey(name: 'description_uz', defaultValue: '') final String descriptionUz;
+  @JsonKey(name: 'description_ru', defaultValue: '') final String descriptionRu;
+
+  // Commerce
   @JsonKey(name: 'quantity_kg', fromJson: _decimalFromString, toJson: _decimalToString) final double quantityKg;
   @JsonKey(name: 'price_per_kg', fromJson: _decimalFromString, toJson: _decimalToString) final double pricePerKg;
   final String location;
   @JsonKey(name: 'available_from') final String availableFrom;
-  final String description;
   final ListingStatus status;
 
-  // v2 fields ----------------------------------------------------------------
-  @JsonKey(name: 'halal_certified', defaultValue: false) final bool halalCertified;
-  @JsonKey(name: 'freshness_date') final String? freshnessDate;            // ISO date or null
-  @JsonKey(name: 'cold_chain', defaultValue: ColdChain.fresh) final ColdChain coldChain;
-  @JsonKey(name: 'service_area_csv', defaultValue: '') final String serviceAreaCsv;
+  // Legacy supplier embeds — still on the response for chat / order code paths to identify the seller
+  @JsonKey(name: 'supplier_id', defaultValue: 0) final int supplierId;
+  @JsonKey(name: 'supplier_email', defaultValue: '') final String supplierEmail;
+
   @JsonKey(defaultValue: <ListingPhoto>[]) final List<ListingPhoto> photos;
 
-  const Listing({required this.id, required this.supplierId, required this.supplierEmail,
-                 required this.supplierBusinessName, required this.supplierVerified,
-                 required this.title, required this.meatType, required this.quantityKg,
-                 required this.pricePerKg, required this.location, required this.availableFrom,
-                 required this.description, required this.status, required this.halalCertified,
-                 required this.freshnessDate, required this.coldChain, required this.serviceAreaCsv,
-                 required this.photos});
+  const Listing({required this.id, required this.slug, required this.market, required this.category,
+                 required this.nameUz, required this.nameRu, required this.descriptionUz, required this.descriptionRu,
+                 required this.quantityKg, required this.pricePerKg, required this.location,
+                 required this.availableFrom, required this.status,
+                 required this.supplierId, required this.supplierEmail, required this.photos});
 
   factory Listing.fromJson(Map<String, dynamic> json) => _$ListingFromJson(json);
   Map<String, dynamic> toJson() => _$ListingToJson(this);
 
-  /// First photo URL or null — used by listing cards for the thumbnail.
+  /// First photo URL or null — used by listing cards for the thumbnail. Returns null when there are no photos
+  /// (UI falls back to a category icon or placeholder).
   String? get primaryPhotoUrl => photos.isEmpty ? null : photos.first.url;
+
+  /// Display name for the active locale. Falls back to Uzbek for any non-RU language.
+  String displayName(String languageCode) =>
+      languageCode == 'ru' && nameRu.isNotEmpty ? nameRu : nameUz;
 }

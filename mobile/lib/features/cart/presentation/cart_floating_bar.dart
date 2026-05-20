@@ -184,28 +184,33 @@ class _PeekRow extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final p = item.product;
+    final l = item.listing;
+    final lang = Localizations.localeOf(context).languageCode;
 
     return Padding(padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(children: [
-        Container(width: 44, height: 44,
-          decoration: BoxDecoration(color: Color(p.accentArgb), borderRadius: BorderRadius.circular(10)),
-          child: Icon(p.icon, size: 22, color: Colors.brown.shade700)),
+        // Thumbnail — Image.network with category-icon fallback when there's no photo
+        ClipRRect(borderRadius: BorderRadius.circular(10),
+          child: Container(width: 44, height: 44, color: cs.surfaceContainerHighest,
+            child: l.primaryPhotoUrl != null
+                ? Image.network(l.primaryPhotoUrl!, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Icon(Icons.image_outlined, size: 22, color: cs.onSurfaceVariant))
+                : Icon(Icons.restaurant_outlined, size: 22, color: cs.onSurfaceVariant))),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(p.displayName(Localizations.localeOf(context).languageCode),
+          Text(l.displayName(lang),
             style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
-          Text('${formatSoum(p.priceSoum)} ${t.soumSuffix}${t.perKgShort}',
+          Text('${formatSoum(l.pricePerKg.toInt())} ${t.soumSuffix}${t.perKgShort}',
             style: tt.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
         ])),
         // Compact stepper — InkResponse over an Icon, no IconButton (avoids the _RenderInputPadding sizing chain
         // that triggered the original layout exception).
         _PeekStepper(
           qty: item.qty,
-          onDec: () => ref.read(cartProvider.notifier).setQty(p.id, item.qty - 1),
-          onInc: () => ref.read(cartProvider.notifier).setQty(p.id, item.qty + 1)),
+          onDec: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty - 1),
+          onInc: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty + 1)),
       ]));
   }
 }

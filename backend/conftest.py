@@ -4,10 +4,23 @@ Why fixtures here (project root) rather than per-app conftest: the same fixtures
 test module, so co-locating them here means less duplication. Tests pull what they need by argument name.
 """
 import pytest
+from django.conf import settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.suppliers.models import SupplierProfile
+
+
+@pytest.fixture(autouse=True)
+def _celery_eager_mode():
+    """Run every test with Celery in eager mode so tasks fire inline (no Redis broker required).
+
+    `autouse=True` applies to every test — keeps the test suite hermetic. If a future test wants to assert
+    that a task was DEFERRED (not run), it can override this fixture locally or use celery's apply_async chain.
+    """
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
+    yield
 
 
 @pytest.fixture
