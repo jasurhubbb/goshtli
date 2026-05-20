@@ -19,7 +19,7 @@ class InsufficientStock(ValidationError):
 
 
 class ListingNotOrderable(ValidationError):
-    """Listing is INACTIVE or SOLD_OUT — only ACTIVE listings accept new orders per workflow spec."""
+    """Listing is OUT_OF_STOCK or ARCHIVED — only ACTIVE listings accept new orders per workflow spec."""
 
 
 class InvalidStatusTransition(ValidationError):
@@ -47,7 +47,7 @@ BUYER_CANCELLABLE_FROM = {Order.Status.PENDING}  # buyer's only allowed transiti
 
 @transaction.atomic
 def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_address: str, notes: str = "") -> Order:
-    """Place an order: lock the listing row, validate stock, decrement quantity, flip to SOLD_OUT if zero, snapshot price."""
+    """Place an order: lock the listing row, validate stock, decrement quantity, flip to OUT_OF_STOCK if zero, snapshot price."""
     # select_for_update locks the listing row until commit — concurrent buyers can't both succeed when only 1kg remains
     try: listing = Listing.objects.select_for_update().get(pk=listing_id)
     except Listing.DoesNotExist: raise ValidationError({"listing": "Listing does not exist."})
@@ -62,16 +62,16 @@ def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_addre
     order = Order.objects.create(buyer=buyer, listing=listing, quantity_kg=quantity_kg,
                                  total_price=total_price, delivery_address=delivery_address, notes=notes)
 
-    # Decrement stock and auto-flip to SOLD_OUT when fully drained — single save() to keep DB writes minimal
+    # Decrement stock and auto-flip to OUT_OF_STOCK when fully drained — single save() to keep DB writes minimal
     listing.quantity_kg -= quantity_kg
-    if listing.quantity_kg <= 0: listing.status = Listing.Status.SOLD_OUT
+    if listing.quantity_kg <= 0: listing.status = Listing.Status.OUT_OF_STOCK
     listing.save(update_fields=("quantity_kg", "status", "updated_at"))
     return order
 
 
 @transaction.atomic
 def cancel_order(*, order_id: int, by_user) -> Order:
-    """Cancel an order and restore listing stock — re-activates listing if it was SOLD_OUT and is now back above zero."""
+    """Cancel an order and restore listing stock — re-activates listing if it was OUT_OF_STOCK and is now back above zero."""
     # Lock both the order and its listing so a concurrent status update can't race the cancellation
     order = Order.objects.select_for_update().select_related("listing").get(pk=order_id)
     listing = Listing.objects.select_for_update().get(pk=order.listing_id)
@@ -91,9 +91,9 @@ def cancel_order(*, order_id: int, by_user) -> Order:
     order.status = Order.Status.CANCELLED
     order.save(update_fields=("status", "updated_at"))
 
-    # Restore stock — and bring the listing back to ACTIVE if it was SOLD_OUT but now has stock again
+    # Restore stock — and bring the listing back to ACTIVE if it was OUT_OF_STOCK but now has stock again
     listing.quantity_kg += order.quantity_kg
-    if listing.status == Listing.Status.SOLD_OUT and listing.quantity_kg > 0:
+    if listing.status == Listing.Status.OUT_OF_STOCK and listing.quantity_kg > 0:
         listing.status = Listing.Status.ACTIVE
     listing.save(update_fields=("quantity_kg", "status", "updated_at"))
     return order

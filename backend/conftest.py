@@ -44,6 +44,43 @@ def admin_user(db):
     return User.objects.create_superuser(email="admin@test.local", password="AdminPass123!", full_name="Admin")
 
 
+# ---------- Catalog fixtures (v3.1 schema) ----------
+
+@pytest.fixture
+def meat_category_beef(db):
+    """Seed the Mol go'shti category for tests. Mirrors what migration 0004 inserts in real DBs."""
+    from apps.listings.models import MeatCategory
+    cat, _ = MeatCategory.objects.get_or_create(
+        slug="mol-goshti", defaults={"name_uz": "Mol go'shti", "name_ru": "Говядина", "display_order": 10})
+    return cat
+
+
+@pytest.fixture
+def meat_category_mutton(db):
+    from apps.listings.models import MeatCategory
+    cat, _ = MeatCategory.objects.get_or_create(
+        slug="qoy-goshti", defaults={"name_uz": "Qo'y go'shti", "name_ru": "Баранина", "display_order": 20})
+    return cat
+
+
+@pytest.fixture
+def market(db):
+    """A baseline Market — most listing tests need one to attach products to.
+
+    Important: we deliberately do NOT depend on `verified_supplier` here. Going through that fixture would
+    flip is_verified=True on the shared supplier@test.local user — which then breaks the
+    'unverified-supplier blocked from POST' tests that need that same user to still be UNverified.
+    Instead the market has its own owner user, fully isolated from the supplier_client/verified_supplier chain.
+    """
+    from apps.markets.models import Market
+    owner, _ = User.objects.get_or_create(email="market-owner@test.local", defaults={
+        "full_name": "Market Owner", "role": User.Role.SUPPLIER})
+    return Market.objects.create(
+        slug="test-market", name_uz="Test bozori", name_ru="Тестовый рынок",
+        region="Tashkent", address="—", is_active=True,
+        created_by=owner, updated_by=owner)
+
+
 def _auth_client(user):
     """Helper — logs the user in via simplejwt and returns an APIClient with the bearer header attached."""
     client = APIClient()

@@ -23,4 +23,4 @@ class Favorite(TimeStampedModel):
         # Composite unique — toggling heart on/off uses get_or_create + delete so duplicates are impossible by design
         constraints = [models.UniqueConstraint(fields=("user", "listing"), name="uniq_favorite_user_listing")]
 
-    def __str__(self): return f"{self.user.email} ♥ {self.listing.title}"
+    def __str__(self): return f"{self.user.email} ♥ {self.listing.name_uz}"

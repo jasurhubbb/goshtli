@@ -36,8 +36,8 @@ class SupplierDashboardView(APIView):
         l_agg = Listing.objects.filter(supplier=u).aggregate(
             total=Count("id"),
             active=Count("id", filter=Q(status=Listing.Status.ACTIVE)),
-            sold_out=Count("id", filter=Q(status=Listing.Status.SOLD_OUT)),
-            inactive=Count("id", filter=Q(status=Listing.Status.INACTIVE)))
+            sold_out=Count("id", filter=Q(status=Listing.Status.OUT_OF_STOCK)),
+            inactive=Count("id", filter=Q(status=Listing.Status.ARCHIVED)))
         # Order counts on this supplier's listings — collapse the in-progress states into one bucket for UI simplicity
         IN_PROGRESS = (Order.Status.CONFIRMED, Order.Status.PROCESSING, Order.Status.IN_TRANSIT)
         o_agg = Order.objects.filter(listing__supplier=u).aggregate(

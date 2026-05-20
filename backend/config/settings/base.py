@@ -14,18 +14,24 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost", cast=Csv(
 # Apps split into Django built-ins, third-party libs, and our own domain apps for readability
 DJANGO_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
                "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles"]
-THIRD_PARTY_APPS = ["rest_framework", "rest_framework_simplejwt", "django_filters", "corsheaders", "drf_spectacular"]
+THIRD_PARTY_APPS = ["rest_framework", "rest_framework_simplejwt", "django_filters", "corsheaders", "drf_spectacular",
+                    # Row-level audit trail (apps.listings.Listing, apps.markets.Market) — v3.1 catalog overhaul
+                    "simple_history"]
 LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               "apps.listings", "apps.orders", "apps.notifications",
               # v2 Milestone C — social + trust features
-              "apps.favorites", "apps.reviews", "apps.chats"]
+              "apps.favorites", "apps.reviews", "apps.chats",
+              # v3.1 catalog overhaul — vendor entity sitting above Listing
+              "apps.markets"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF
 MIDDLEWARE = ["corsheaders.middleware.CorsMiddleware", "django.middleware.security.SecurityMiddleware",
               "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware",
               "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware",
-              "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware"]
+              "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware",
+              # Captures request.user on the HistoricalRecords rows for Listing/Market — must come AFTER AuthenticationMiddleware
+              "simple_history.middleware.HistoryRequestMiddleware"]
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"

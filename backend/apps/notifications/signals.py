@@ -53,7 +53,7 @@ def _notify_order_event(sender, instance, created, **kwargs):
     if created:
         _notify(instance.listing.supplier, Notification.Kind.ORDER_PLACED,
             f"New order #{instance.pk}",
-            f"{instance.buyer.email} ordered {instance.quantity_kg}kg of {instance.listing.title}.",
+            f"{instance.buyer.email} ordered {instance.quantity_kg}kg of {instance.listing.name_uz}.",
             f"/orders/{instance.pk}")
         return
 
@@ -65,11 +65,11 @@ def _notify_order_event(sender, instance, created, **kwargs):
         for u in (instance.buyer, instance.listing.supplier):
             _notify(u, Notification.Kind.ORDER_CANCELLED,
                 f"Order #{instance.pk} cancelled",
-                f"Stock for {instance.listing.title} has been restored.",
+                f"Stock for {instance.listing.name_uz} has been restored.",
                 f"/orders/{instance.pk}")
     else:
         # Forward transition (CONFIRMED/PROCESSING/IN_TRANSIT/DELIVERED) — buyer is the one tracking the order
         _notify(instance.buyer, Notification.Kind.ORDER_STATUS_CHANGED,
             f"Order #{instance.pk}: {instance.get_status_display()}",
-            f"Your order for {instance.listing.title} is now {instance.get_status_display().lower()}.",
+            f"Your order for {instance.listing.name_uz} is now {instance.get_status_display().lower()}.",
             f"/orders/{instance.pk}")

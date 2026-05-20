@@ -16,13 +16,17 @@ class ListingListCreateView(generics.ListCreateAPIView):
     """GET (public, only ACTIVE) + POST (verified-supplier) on /api/v1/listings/."""
     serializer_class = ListingSerializer
     filterset_class = ListingFilter
-    search_fields = ("title", "description", "location")
+    # Search across bilingual name + description fields so buyers find products in either Uzbek or Russian
+    search_fields = ("name_uz", "name_ru", "description_uz", "description_ru", "location")
     ordering_fields = ("price_per_kg", "available_from", "created_at")
     ordering = ("-created_at",)
 
     def get_queryset(self):
-        # Public browse hides INACTIVE/SOLD_OUT by default. Prefetch photos so the list endpoint doesn't N+1.
-        qs = Listing.objects.select_related("supplier", "supplier__supplier_profile").prefetch_related("photos")
+        # Public browse hides ARCHIVED/OUT_OF_STOCK by default. select_related the FKs so each card render is
+        # 1 query, not N+1; prefetch photos for the same reason.
+        qs = (Listing.objects
+              .select_related("supplier", "market", "category")
+              .prefetch_related("photos"))
         if self.request.method in ("GET", "HEAD") and "status" not in self.request.query_params:
             qs = qs.filter(status=Listing.Status.ACTIVE)
         return qs
@@ -33,20 +37,31 @@ class ListingListCreateView(generics.ListCreateAPIView):
         return [IsVerifiedSupplier()]
 
     def perform_create(self, serializer):
-        # supplier always taken from authenticated user — never trust client input for ownership
-        serializer.save(supplier=self.request.user, status=Listing.Status.ACTIVE)
+        # supplier always taken from authenticated user — never trust client input for ownership.
+        # created_by stamps who made the row; _actor is a non-field attribute consumed by the price-history signal
+        # on subsequent updates (not used on create — the signal short-circuits when created=True).
+        serializer.save(supplier=self.request.user, created_by=self.request.user, status=Listing.Status.ACTIVE)
+
+    def perform_update(self, serializer):
+        # Set _actor on the existing instance BEFORE save() fires the signal. _actor is not a model field, so it
+        # can't be passed through serializer.save() kwargs — assign it directly to the instance object.
+        if serializer.instance is not None:
+            serializer.instance._actor = self.request.user
+        serializer.save(updated_by=self.request.user)
 
 
 class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PATCH/DELETE /api/v1/listings/{id}/ — buyers read public listings; owner manages their own."""
     serializer_class = ListingSerializer
-    queryset = Listing.objects.select_related("supplier", "supplier__supplier_profile").prefetch_related("photos")
+    queryset = (Listing.objects
+                .select_related("supplier", "market", "category")
+                .prefetch_related("photos"))
     permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsListingOwnerOrReadOnly)
 
     def perform_destroy(self, instance):
-        # Refuse deletion if there are orders attached — preserves audit trail; supplier should INACTIVATE instead
+        # Refuse hard-delete if there are orders attached — preserves FK integrity. Set status=ARCHIVED for soft delete.
         if instance.orders.exists():
-            raise PermissionDenied("Cannot delete a listing that has orders. Set status to INACTIVE instead.")
+            raise PermissionDenied("Cannot delete a listing that has orders. Set status to ARCHIVED instead.")
         instance.delete()
 
 
@@ -59,7 +74,8 @@ class MyListingsView(generics.ListAPIView):
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False): return Listing.objects.none()
-        return Listing.objects.filter(supplier=self.request.user).prefetch_related("photos")
+        return (Listing.objects.filter(supplier=self.request.user)
+                .select_related("market", "category").prefetch_related("photos"))
 
 
 # ---------- Photo upload + delete (v2) ----------

@@ -1,15 +1,45 @@
-"""Notification tests — auto-create on domain events, list scoping, mark-read, unread-count."""
+"""Notification tests — auto-create on domain events, list scoping, mark-read, unread-count.
+
+v3.1 catalog overhaul: the listing helper now needs a Market + MeatCategory to satisfy the new FK constraints.
+We bundle them into one fixture (`_ctx`) the tests pull in by name."""
 import pytest
 from datetime import date, timedelta
 
-from apps.listings.models import Listing
+from apps.listings.models import Listing, MeatCategory
+from apps.markets.models import Market
 from apps.notifications.models import Notification
 
 
-def _listing(supplier):
-    return Listing.objects.create(supplier=supplier, title="t", meat_type=Listing.MeatType.BEEF,
+@pytest.fixture
+def _ctx(db):
+    """Market + MeatCategory the notification tests' Listing factory anchors to.
+
+    Uses its own dedicated owner user — NOT verified_supplier — so the fixture doesn't have the side effect of
+    flipping is_verified=True on the shared supplier@test.local. Same isolation pattern as conftest.market.
+    """
+    from apps.accounts.models import User
+    owner, _ = User.objects.get_or_create(email="notif-market-owner@test.local", defaults={
+        "full_name": "Notif Market Owner", "role": User.Role.SUPPLIER})
+    market = Market.objects.create(slug="notif-market", name_uz="Notif Market", name_ru="Уведомления Рынок",
+                                   region="Tashkent", address="—", is_active=True,
+                                   created_by=owner, updated_by=owner)
+    category, _ = MeatCategory.objects.get_or_create(
+        slug="mol-goshti", defaults={"name_uz": "Mol go'shti", "name_ru": "Говядина", "display_order": 10})
+    return market, category
+
+
+def _listing(supplier, ctx):
+    """Compact Listing factory for notification tests — minimum fields, sane defaults."""
+    market, category = ctx
+    l = Listing(
+        supplier=supplier, market=market, category=category,
+        slug="t", name_uz="t", name_ru="t",
         quantity_kg="100.00", price_per_kg="50000.00", location="x",
-        available_from=date.today() + timedelta(days=1))
+        available_from=date.today() + timedelta(days=1),
+    )
+    l._skip_price_history = True
+    l.save()
+    return l
 
 
 @pytest.mark.django_db
@@ -29,15 +59,15 @@ class TestAutoCreate:
         # Going True→False should NOT create a notification
         assert Notification.objects.filter(user=verified_supplier, kind=Notification.Kind.SUPPLIER_VERIFIED).count() == 0
 
-    def test_new_order_notifies_supplier(self, buyer_client, verified_supplier):
-        l = _listing(verified_supplier)
+    def test_new_order_notifies_supplier(self, buyer_client, verified_supplier, _ctx):
+        l = _listing(verified_supplier, _ctx)
         Notification.objects.filter(user=verified_supplier).delete()  # ignore the verification one
         buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
                                                "delivery_address": "addr"}, format="json")
         assert Notification.objects.filter(user=verified_supplier, kind=Notification.Kind.ORDER_PLACED).count() == 1
 
-    def test_status_change_notifies_buyer(self, buyer_client, verified_supplier_client, verified_supplier, buyer_user):
-        l = _listing(verified_supplier)
+    def test_status_change_notifies_buyer(self, buyer_client, verified_supplier_client, verified_supplier, buyer_user, _ctx):
+        l = _listing(verified_supplier, _ctx)
         oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         Notification.objects.filter(user=buyer_user).delete()
@@ -45,8 +75,8 @@ class TestAutoCreate:
                                       {"status": "CONFIRMED"}, format="json")
         assert Notification.objects.filter(user=buyer_user, kind=Notification.Kind.ORDER_STATUS_CHANGED).count() == 1
 
-    def test_cancellation_notifies_both_parties(self, buyer_client, buyer_user, verified_supplier):
-        l = _listing(verified_supplier)
+    def test_cancellation_notifies_both_parties(self, buyer_client, buyer_user, verified_supplier, _ctx):
+        l = _listing(verified_supplier, _ctx)
         oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         Notification.objects.all().delete()
