@@ -469,4 +469,159 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get sectionButchers => 'Qassoblar';
+
+  @override
+  String get appLanguage => 'Ilova tili';
+
+  @override
+  String appVersionLabel(String version) {
+    return 'Ilova versiyasi $version';
+  }
+
+  @override
+  String get privacyPolicyLink => 'maxfiylik siyosatini';
+
+  @override
+  String get termsOfUseLink => 'foydalanish shartlarini';
+
+  @override
+  String privacyTagline(String policy, String terms) {
+    return 'Bosish orqali siz $policy va $terms qabul qilasiz.';
+  }
+
+  @override
+  String get anonWelcomeTitle => 'Go\'sht Bozoriga xush kelibsiz';
+
+  @override
+  String get anonWelcomeSubtitle =>
+      'E\'lonlarni ko\'rib chiqing — buyurtma berish vaqtida ro\'yxatdan o\'tasiz.';
+
+  @override
+  String get onbLocationTitle => 'Sizning hududingiz';
+
+  @override
+  String get onbLocationBody =>
+      'Yaqin atrofdagi go\'sht sotuvchilarini ko\'rsatish uchun joylashuvingizdan foydalanamiz. Bu ixtiyoriy — keyinroq Profil sahifasidan o\'zgartirishingiz mumkin.';
+
+  @override
+  String get onbDetectLocation => 'Joylashuvni aniqlash';
+
+  @override
+  String get onbNotNow => 'Hozir emas';
+
+  @override
+  String get pickLanguageTitle => 'Tilni tanlang';
+
+  @override
+  String get continueAction => 'Davom eting';
+
+  @override
+  String get savedListingsTitle => 'Saqlangan e\'lonlar';
+
+  @override
+  String get noSavedListingsYet => 'Hozircha saqlangan e\'lonlar yo\'q';
+
+  @override
+  String get messageHint => 'Xabar…';
+
+  @override
+  String get noConversationsYet => 'Hozircha suhbatlar yo\'q';
+
+  @override
+  String get noNotificationsYet => 'Hozircha bildirishnomalar yo\'q';
+
+  @override
+  String get leaveReviewTitle => 'Sharh qoldirish';
+
+  @override
+  String get reviewCommentOptional => 'Izoh (ixtiyoriy)';
+
+  @override
+  String get serviceAreaHint => 'Toshkent, Samarqand, ...';
+
+  @override
+  String get tabMenu => 'Menyu';
+
+  @override
+  String get tabCart => 'Savat';
+
+  @override
+  String get tabOrders => 'Buyurtmalar';
+
+  @override
+  String get cartTitle => 'Savat';
+
+  @override
+  String cartItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta mahsulot',
+      one: '1 ta mahsulot',
+      zero: '0 ta mahsulot',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cartEmptyTitle => 'Savat bo\'sh';
+
+  @override
+  String get cartEmptyHint =>
+      'Menyu sahifasidan biror mahsulotni tanlab qo\'shing.';
+
+  @override
+  String get cartGoToMenu => 'Menyuga o\'tish';
+
+  @override
+  String get cartShopNoteLabel => 'Do\'konga izoh';
+
+  @override
+  String get cartShopNoteHint =>
+      'Masalan: 1 kg bo\'lakka kesilsin, suyaksiz, kechqurun yetkazib bering';
+
+  @override
+  String get cartSubTotal => 'Oraliq summa';
+
+  @override
+  String get cartTotal => 'JAMI';
+
+  @override
+  String get cartCheckout => 'Buyurtma berish';
+
+  @override
+  String get cartCheckoutSnack =>
+      'Buyurtma berildi — backend ulanishi keyinroq.';
+
+  @override
+  String get soumSuffix => 'so\'m';
+
+  @override
+  String get perKgShort => '/kg';
+
+  @override
+  String get cartAdd => 'Qo\'shish';
+
+  @override
+  String get cartPeekTitle => 'Sizning savatingiz';
+
+  @override
+  String get cartPeekChip => 'Ko\'rish';
+
+  @override
+  String get cartPeekViewAll => 'Savatga qo\'shish';
+
+  @override
+  String cartItemsShort(int count) {
+    return '$count ta';
+  }
+
+  @override
+  String get cartFloatingPeek => 'Ko\'rish uchun bosing';
+
+  @override
+  String get menuTitle => 'Menyu';
+
+  @override
+  String get menuPickHint => 'Bugun nima pishirasiz?';
 }

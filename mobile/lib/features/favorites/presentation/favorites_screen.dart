@@ -23,14 +23,14 @@ class FavoritesScreen extends ConsumerWidget {
           ref..invalidate(favoritesListProvider)..invalidate(favoritedIdsProvider);
         },
         child: CustomScrollView(slivers: [
-          SliverAppBar.large(title: const Text('Saved listings')),
+          SliverAppBar.large(title: Text(t.savedListingsTitle)),
           async.when(
             data: (page) => page.results.isEmpty
                 ? SliverFillRemaining(hasScrollBody: false,
                     child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.favorite_border, size: 56, color: cs.onSurfaceVariant),
                       const SizedBox(height: 12),
-                      Text('No saved listings yet',
+                      Text(t.noSavedListingsYet,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant)),
                     ])))
                 : SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),

@@ -2,6 +2,9 @@
     <!-- INTERNET is required for the API client. Flutter adds it automatically in debug builds but NOT in release;
          declaring here makes it explicit and ensures release APKs can reach the backend. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Location — v3 onboarding asks for coarse location to filter listings by region. Coarse is enough; fine
+         would require justifying GPS-accuracy which we don't need for a regional marketplace. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
         android:label="@string/app_name"

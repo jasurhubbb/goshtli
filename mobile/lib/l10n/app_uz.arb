@@ -211,5 +211,75 @@
   },
   "viewAll": "Barchasi",
   "sectionFarmers": "Fermalar",
-  "sectionButchers": "Qassoblar"
+  "sectionButchers": "Qassoblar",
+
+  "appLanguage": "Ilova tili",
+  "appVersionLabel": "Ilova versiyasi {version}",
+  "@appVersionLabel": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "privacyPolicyLink": "maxfiylik siyosatini",
+  "termsOfUseLink": "foydalanish shartlarini",
+  "privacyTagline": "Bosish orqali siz {policy} va {terms} qabul qilasiz.",
+  "@privacyTagline": {
+    "placeholders": {
+      "policy": { "type": "String" },
+      "terms": { "type": "String" }
+    }
+  },
+
+  "anonWelcomeTitle": "Go'sht Bozoriga xush kelibsiz",
+  "anonWelcomeSubtitle": "E'lonlarni ko'rib chiqing — buyurtma berish vaqtida ro'yxatdan o'tasiz.",
+
+  "onbLocationTitle": "Sizning hududingiz",
+  "onbLocationBody": "Yaqin atrofdagi go'sht sotuvchilarini ko'rsatish uchun joylashuvingizdan foydalanamiz. Bu ixtiyoriy — keyinroq Profil sahifasidan o'zgartirishingiz mumkin.",
+  "onbDetectLocation": "Joylashuvni aniqlash",
+  "onbNotNow": "Hozir emas",
+
+  "pickLanguageTitle": "Tilni tanlang",
+  "continueAction": "Davom eting",
+
+  "savedListingsTitle": "Saqlangan e'lonlar",
+  "noSavedListingsYet": "Hozircha saqlangan e'lonlar yo'q",
+
+  "messageHint": "Xabar…",
+  "noConversationsYet": "Hozircha suhbatlar yo'q",
+
+  "noNotificationsYet": "Hozircha bildirishnomalar yo'q",
+
+  "leaveReviewTitle": "Sharh qoldirish",
+  "reviewCommentOptional": "Izoh (ixtiyoriy)",
+
+  "serviceAreaHint": "Toshkent, Samarqand, ...",
+
+  "tabMenu": "Menyu",
+  "tabCart": "Savat",
+  "tabOrders": "Buyurtmalar",
+  "cartTitle": "Savat",
+  "cartItemsCount": "{count, plural, =0{0 ta mahsulot} =1{1 ta mahsulot} other{{count} ta mahsulot}}",
+  "@cartItemsCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cartEmptyTitle": "Savat bo'sh",
+  "cartEmptyHint": "Menyu sahifasidan biror mahsulotni tanlab qo'shing.",
+  "cartGoToMenu": "Menyuga o'tish",
+  "cartShopNoteLabel": "Do'konga izoh",
+  "cartShopNoteHint": "Masalan: 1 kg bo'lakka kesilsin, suyaksiz, kechqurun yetkazib bering",
+  "cartSubTotal": "Oraliq summa",
+  "cartTotal": "JAMI",
+  "cartCheckout": "Buyurtma berish",
+  "cartCheckoutSnack": "Buyurtma berildi — backend ulanishi keyinroq.",
+  "soumSuffix": "so'm",
+  "perKgShort": "/kg",
+  "cartAdd": "Qo'shish",
+  "cartPeekTitle": "Sizning savatingiz",
+  "cartPeekChip": "Ko'rish",
+  "cartPeekViewAll": "Savatga qo'shish",
+  "cartItemsShort": "{count} ta",
+  "@cartItemsShort": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cartFloatingPeek": "Ko'rish uchun bosing",
+  "menuTitle": "Menyu",
+  "menuPickHint": "Bugun nima pishirasiz?"
 }

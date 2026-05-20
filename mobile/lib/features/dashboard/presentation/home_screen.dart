@@ -1,19 +1,23 @@
-// HomeScreen — v2 Safia-style redesign: hero greeting card, category tiles for meat types, verification banner
-// for unverified suppliers, "Sotaman" floating action button.
+// HomeScreen (Menyu tab) — v3.1 product-grid redesign.
 //
-// Categories deep-link into the Search tab pre-filtered by meat type — go() switches tabs, push() of /search would just
-// stack a duplicate. Category tap → context.go('/search?meat=BEEF') (search screen reads the query param on build).
+// What you see: brand-tinted hero (small, just a greeting + "Bugun nima pishirasiz?" hint), then a 2-column grid of
+// 10 fake products with brand-coloured prices and inline add/qty controls. Tapping the (+) on a card adds qty 1 to
+// the cart; once a product is in the cart, the card's CTA flips into a qty stepper that mirrors the cart state.
+//
+// All product data is sourced from `fake_products.dart` — when the real /listings API lands, swap the
+// fakeProductsProvider for the listings provider and the rest of this screen stays the same.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/models/listing.dart';
+import '../../../shared/utils/format.dart';
 import '../../../shared/widgets/language_picker.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/auth_state.dart';
-import '../../listings/providers/listings_providers.dart';
-import '../providers/dashboard_providers.dart';
+import '../../cart/data/fake_products.dart';
+import '../../cart/providers/cart_providers.dart';
 
 
 class HomeScreen extends ConsumerWidget {
@@ -23,33 +27,45 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
     final auth = ref.watch(authNotifierProvider);
-    if (auth is! AuthAuthenticated) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    final user = auth.user;
+    final products = ref.watch(fakeProductsProvider);
+    final greetingName = auth is AuthAuthenticated ? auth.user.fullName : '';
+
     return Scaffold(
-      // FAB only for verified suppliers — unverified see the verification banner instead. Avoids the
-      // "tap, get rejected" dead-end.
-      floatingActionButton: _SellFab(user: user),
       body: CustomScrollView(slivers: [
-        SliverAppBar.large(title: Text(t.appTitle), actions: const [LanguagePicker()]),
-        SliverPadding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+        // Compact app bar — keeps the focus on products below
+        SliverAppBar(
+          title: Text(t.menuTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          floating: true, snap: true,
+          actions: const [LanguagePicker(), SizedBox(width: 8)],
+        ),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
           sliver: SliverList.list(children: [
-            _GreetingCard(name: user.fullName),
-            const SizedBox(height: 20),
-            const _VerificationBannerIfNeeded(),
-            Text(t.sectionListings.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant, letterSpacing: 0.6)),
-            const SizedBox(height: 12),
-            const _CategoryGrid(),
+            // Greeting (auth users) OR welcome card (anonymous) — same gradient treatment as before
+            if (greetingName.isNotEmpty) _GreetingCard(name: greetingName)
+            else const _AnonymousWelcome(),
+            const SizedBox(height: 18),
+            // Section label — "Pick what you'll cook today" style hint
+            Padding(padding: const EdgeInsets.only(left: 4, bottom: 12),
+              child: Text(t.menuPickHint, style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700))),
           ])),
+
+        // Product grid — 2 columns with a 0.72 aspect ratio (taller than square) to fit photo + name + price + cta
+        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.72),
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _ProductCard(product: products[i]),
+              childCount: products.length))),
       ]),
     );
   }
 }
 
 
-/// Hero card at the top — soft gradient + greeting + supplier/buyer flavor text.
-/// This is where future "personalization" plugs in (recent orders preview, suggested listings, etc.)
+// ---------- Greeting / welcome cards (same gradient treatment as before, lighter text now) ----------
+
 class _GreetingCard extends StatelessWidget {
   final String name;
   const _GreetingCard({required this.name});
@@ -59,129 +75,146 @@ class _GreetingCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final t = AppLocalizations.of(context);
-    return Container(padding: const EdgeInsets.all(20),
+    return Container(padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: [cs.primaryContainer.withValues(alpha: 0.7), cs.tertiaryContainer.withValues(alpha: 0.5)])),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(t.greeting(name), style: tt.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
-        const SizedBox(height: 6),
-        Text(t.welcomeSubtitle, style: tt.bodyMedium?.copyWith(color: cs.onPrimaryContainer.withValues(alpha: 0.85))),
       ]));
   }
 }
 
 
-/// Shown to unverified suppliers — visible inline so they can't miss it. Verified users see nothing here.
-class _VerificationBannerIfNeeded extends ConsumerWidget {
-  const _VerificationBannerIfNeeded();
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = AppLocalizations.of(context);
-    final auth = ref.watch(authNotifierProvider);
-    if (auth is! AuthAuthenticated || !auth.user.isSupplier) return const SizedBox.shrink();
-    final async = ref.watch(supplierDashboardProvider);
-    return async.maybeWhen(
-      data: (d) {
-        if (d.isVerified) return const SizedBox.shrink();
-        final cs = Theme.of(context).colorScheme;
-        return Padding(padding: const EdgeInsets.only(bottom: 20),
-          child: Container(padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: cs.errorContainer.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(14)),
-            child: Row(children: [
-              Icon(Icons.info_outline, color: cs.onErrorContainer), const SizedBox(width: 12),
-              Expanded(child: Text(t.verificationPendingBanner,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer))),
-            ])));
-      },
-      orElse: () => const SizedBox.shrink(),
-    );
-  }
-}
-
-
-/// 6-tile category grid — each tile drills into /search filtered by that meat type. Safia-style: soft tinted card,
-/// icon up top, label below, generous touch target (~110pt tall).
-class _CategoryGrid extends StatelessWidget {
-  const _CategoryGrid();
+class _AnonymousWelcome extends StatelessWidget {
+  const _AnonymousWelcome();
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    // Each entry: (meat type, icon, optional accent color via Material palette)
-    final categories = <(MeatType, IconData, String)>[
-      (MeatType.beef, Icons.set_meal_outlined, t.meatBeef),
-      (MeatType.mutton, Icons.set_meal_outlined, t.meatMutton),
-      (MeatType.chicken, Icons.egg_outlined, t.meatChicken),
-      (MeatType.goat, Icons.pets_outlined, t.meatGoat),
-      (MeatType.horse, Icons.sports_score_outlined, t.meatHorse),
-      (MeatType.other, Icons.more_horiz, t.meatOther),
-    ];
-    return GridView.count(
-      crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.5, mainAxisSpacing: 12, crossAxisSpacing: 12,
-      children: [for (final (m, icon, label) in categories) _CategoryTile(meatType: m, icon: icon, label: label)]);
-  }
-}
-
-
-/// Single category tile — tap deep-links into Search tab with the meat-type pre-applied via Riverpod.
-/// (Filter is applied through the filter notifier so back-stack still works.)
-class _CategoryTile extends ConsumerWidget {
-  final MeatType meatType;
-  final IconData icon;
-  final String label;
-  const _CategoryTile({required this.meatType, required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    return Material(
-      color: cs.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          // Apply the meat-type filter, then switch to the Search tab so the user lands on a pre-filtered list
-          ref.read(listingFiltersProvider.notifier).state =
-              ref.read(listingFiltersProvider).copyWith(meatType: () => _wire(meatType));
-          context.go('/search');
-        },
-        child: Container(padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5),
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [cs.secondaryContainer.withValues(alpha: 0.4), cs.surfaceContainerLowest])),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Icon(icon, size: 28, color: cs.onSecondaryContainer),
-            Text(label, style: tt.titleMedium),
-          ]))));
+    return Container(padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [cs.primaryContainer.withValues(alpha: 0.7), cs.tertiaryContainer.withValues(alpha: 0.5)])),
+      child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(t.anonWelcomeTitle, style: tt.titleMedium?.copyWith(
+              color: cs.onPrimaryContainer, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(t.anonWelcomeSubtitle,
+               style: tt.bodySmall?.copyWith(color: cs.onPrimaryContainer.withValues(alpha: 0.85))),
+        ])),
+        const SizedBox(width: 12),
+        TextButton(onPressed: () => context.push('/register'),
+          child: Text(t.signIn, style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w700))),
+      ]));
   }
-
-  static String _wire(MeatType t) => switch (t) {
-    MeatType.beef => 'BEEF', MeatType.mutton => 'MUTTON', MeatType.chicken => 'CHICKEN',
-    MeatType.goat => 'GOAT', MeatType.horse => 'HORSE', MeatType.other => 'OTHER',
-  };
 }
 
 
-/// "Sotaman" FAB — only shown to verified suppliers so we don't dead-end other roles.
-class _SellFab extends ConsumerWidget {
-  final dynamic user;  // simpler than threading the full User type here for one boolean check
-  const _SellFab({required this.user});
+// ---------- Product card ----------
+
+/// One product tile — photo region on top, name + price + add/qty CTA on the bottom. The CTA flips from "+" pill to
+/// a stepper as soon as the product is in the cart, mirroring how Instamart's product cards behave.
+class _ProductCard extends ConsumerWidget {
+  final FakeProduct product;
+  const _ProductCard({required this.product});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
-    final async = ref.watch(supplierDashboardProvider);
-    return async.maybeWhen(
-      data: (d) => d.isVerified
-          ? FloatingActionButton.extended(onPressed: () => context.push('/listings/new'),
-              icon: const Icon(Icons.add), label: Text(t.newListing))
-          : const SizedBox.shrink(),
-      orElse: () => const SizedBox.shrink(),
-    );
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // Only watch the row this card cares about — keeps grid rebuilds local when a single product's qty changes
+    final qty = ref.watch(cartProvider.select((s) => s.items[product.id]?.qty ?? 0));
+
+    return Container(
+      decoration: BoxDecoration(color: cs.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4), width: 0.5)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Image region — coloured background + product icon. Will become Image.network with a fallback later.
+        Expanded(child: Container(color: Color(product.accentArgb),
+          child: Center(child: Icon(product.icon, size: 64, color: Colors.brown.shade700)))),
+
+        // Info region — name + price + add CTA
+        Padding(padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(product.displayName(Localizations.localeOf(context).languageCode),
+              style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 6),
+            Row(children: [
+              // Price: brand-coloured, bold; "/kg" suffix demoted to a lighter weight beside it
+              Expanded(child: RichText(text: TextSpan(
+                style: tt.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w800),
+                children: [
+                  TextSpan(text: '${formatSoum(product.priceSoum)} ${t.soumSuffix}'),
+                  TextSpan(text: t.perKgShort,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                ]))),
+              const SizedBox(width: 6),
+              // CTA: + pill before any qty; stepper once the product is in the cart
+              qty == 0
+                  ? _AddPill(onTap: () { HapticFeedback.lightImpact(); ref.read(cartProvider.notifier).add(product); })
+                  : _CardStepper(qty: qty,
+                      onDec: () => ref.read(cartProvider.notifier).setQty(product.id, qty - 1),
+                      onInc: () => ref.read(cartProvider.notifier).setQty(product.id, qty + 1)),
+            ]),
+          ])),
+      ]));
+  }
+}
+
+
+class _AddPill extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPill({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(color: cs.primary, shape: const CircleBorder(),
+      child: InkWell(customBorder: const CircleBorder(), onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(6), child: Icon(Icons.add, size: 18, color: cs.onPrimary))));
+  }
+}
+
+
+class _CardStepper extends StatelessWidget {
+  final int qty;
+  final VoidCallback onDec, onInc;
+  const _CardStepper({required this.qty, required this.onDec, required this.onInc});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // Inline stepper — minus / qty / plus, capsule-shaped, sized to fit the card's tight footer.
+    return Container(decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(999)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        _Step(icon: Icons.remove, onTap: () { HapticFeedback.selectionClick(); onDec(); }, fg: cs.onPrimary),
+        SizedBox(width: 22, child: Center(child: Text('$qty',
+          style: tt.bodyMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w800)))),
+        _Step(icon: Icons.add, onTap: () { HapticFeedback.selectionClick(); onInc(); }, fg: cs.onPrimary),
+      ]));
+  }
+}
+
+
+class _Step extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color fg;
+  const _Step({required this.icon, required this.onTap, required this.fg});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(onTap: onTap, radius: 18,
+      child: Padding(padding: const EdgeInsets.all(4),
+        child: Icon(icon, size: 16, color: fg)));
   }
 }

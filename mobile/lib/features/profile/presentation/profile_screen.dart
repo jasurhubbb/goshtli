@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/locale/locale_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/language_picker.dart';
+import '../../../shared/widgets/privacy_tagline.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/providers/auth_state.dart';
@@ -22,6 +24,9 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
     final auth = ref.watch(authNotifierProvider);
+    // v3 pivot: Profile tab handles three states distinctly. Anonymous users see a clear sign-in CTA so they know
+    // why their orders/saved items aren't here yet.
+    if (auth is AuthAnonymous || auth is AuthUnauthenticated) return const _AnonymousProfile();
     if (auth is! AuthAuthenticated) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final user = auth.user;
     final roleLabel = user.isSupplier ? t.roleSupplier : user.isBuyer ? t.roleBuyer : t.roleAdmin;
@@ -31,11 +36,10 @@ class ProfileScreen extends ConsumerWidget {
         SliverPadding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 32), sliver: SliverList.list(children: [
           _UserHero(name: user.fullName, email: user.email, phone: user.phone, role: roleLabel),
           const SizedBox(height: 24),
-          // Shortcuts that match v2 spec: orders + my listings + saved listings live under Profile tab now
+          // v3 pivot: buyer-only shortcuts. "Mening e'lonlarim" removed since sellers don't exist on the mobile side.
           _GroupedShortcuts(items: [
             (Icons.receipt_long_outlined, t.myOrders, () => context.go('/profile/orders')),
-            (Icons.list_alt_outlined, t.myListings, () => context.go('/profile/listings')),
-            (Icons.favorite_border, 'Saved listings', () => context.push('/profile/saved')),
+            (Icons.favorite_border, t.savedListingsTitle, () => context.push('/profile/saved')),
           ]),
           const SizedBox(height: 24),
           if (user.isSupplier) const _SupplierProfileCard()
@@ -50,6 +54,116 @@ class ProfileScreen extends ConsumerWidget {
         ])),
       ]),
     );
+  }
+}
+
+
+/// Profile screen for anonymous users (v3 pivot, Instamart-style design).
+///
+/// Layout: top hero is a brand-coloured section that fills the screen down to ~58% — hosts the for-profile-page.png
+/// illustration (sized to fit, never cropped). Below the hero, a white panel with rounded top corners holds a primary
+/// "Kirish" CTA, the privacy/terms tagline, a single rounded-card row for "Ilova tili" (replacing Offers/Feedback in
+/// the reference), and the app version line.
+class _AnonymousProfile extends ConsumerWidget {
+  const _AnonymousProfile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final currentLocale = ref.watch(localeNotifierProvider);
+    // Self-name each language in its own script — what the user actually sees in the row "value" slot
+    final localeLabel = switch (currentLocale.languageCode) {
+      'ru' => 'Русский', 'uz' => "O'zbekcha", _ => currentLocale.languageCode };
+    // Hero colour: deep-red brand seed (matches the Instamart reference's full-bleed top section)
+    final heroColor = cs.primary;
+
+    return Scaffold(
+      // Body extends behind the status bar so the hero color reaches the top edge — matches the Instamart screenshot
+      backgroundColor: heroColor,
+      body: Column(children: [
+        // ---------- Hero (brand-colour, hosts the illustration pinned to the top) ----------
+        // SafeArea handles the status-bar inset. The image fills the screen width and auto-sizes to its natural
+        // aspect-ratio height — no Expanded/Center, so no blank red bands above or below.
+        SafeArea(bottom: false, child: Image.asset('assets/images/for-profile-page.png',
+            width: double.infinity, fit: BoxFit.fitWidth,
+            alignment: Alignment.topCenter, filterQuality: FilterQuality.medium)),
+
+        // ---------- White bottom panel with rounded top corners ----------
+        // Expanded so the panel grabs all remaining vertical space — its content stays top-aligned, the rest is
+        // surface-colour fill (matches Instamart's layout where the panel reaches the tab bar).
+        Expanded(child: Container(width: double.infinity,
+          decoration: BoxDecoration(color: cs.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+          child: SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // Primary CTA — full-width "Sign in", routes to /register (login screen has a "Have account?" link)
+              SizedBox(width: double.infinity, height: 52, child: FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: heroColor, foregroundColor: cs.onPrimary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                onPressed: () => context.push('/register'),
+                child: Text(t.signIn, style: tt.titleMedium?.copyWith(
+                    color: cs.onPrimary, fontWeight: FontWeight.w600)))),
+              const SizedBox(height: 12),
+              // Reusable PrivacyTagline — owns the link-span splitting so any auth/onboarding screen can drop it in
+              const PrivacyTagline(),
+              const SizedBox(height: 20),
+              // Single rounded-card row — only "App language" per the spec (Offers/Feedback in the reference removed).
+              _SettingsCard(child: _SettingsTile(
+                leading: const Text('🇺🇿', style: TextStyle(fontSize: 22)),
+                label: t.appLanguage,
+                value: localeLabel,
+                onTap: () => showLanguageSheet(context, ref))),
+              const SizedBox(height: 16),
+              Center(child: Text(t.appVersionLabel('1.0.0'),
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant))),
+            ]))))),
+      ]),
+    );
+  }
+}
+
+
+/// Rounded-card wrapper used for grouped settings rows in the anonymous profile.
+class _SettingsCard extends StatelessWidget {
+  final Widget child;
+  const _SettingsCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(decoration: BoxDecoration(color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4), width: 0.5)),
+      clipBehavior: Clip.antiAlias,
+      child: child);
+  }
+}
+
+
+/// Reusable settings-row tile — flag/icon, label, right-aligned value text, chevron. Used inside _SettingsCard.
+class _SettingsTile extends StatelessWidget {
+  final Widget leading;
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+  const _SettingsTile({required this.leading, required this.label, required this.onTap, this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return InkWell(onTap: onTap, child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(children: [
+        SizedBox(width: 28, child: Center(child: leading)),
+        const SizedBox(width: 12),
+        Expanded(child: Text(label, style: tt.bodyLarge)),
+        if (value != null) Text(value!, style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+        const SizedBox(width: 4),
+        Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+      ])));
   }
 }
 

@@ -1,28 +1,22 @@
-// LocaleNotifier — single source of truth for the active language. Defaults to system locale on first run, falls back to Uzbek
-// (the primary user audience) when the system locale isn't English / Russian / Uzbek.
-import 'dart:ui' show PlatformDispatcher;
-
+// LocaleNotifier — single source of truth for the active language.
+//
+// v3 pivot: the app ships in Uzbek + Russian only. English is the ARB template (Flutter requires one) but is
+// NOT user-selectable. Default is Uzbek regardless of the OS locale — our market is Uzbek-first.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'locale_storage.dart';
 
 
-/// Three locales we ship — keep in sync with the ARB files in lib/l10n/.
-const supportedLocales = [Locale('en'), Locale('uz'), Locale('ru')];
+/// Locales the user can pick. Order here drives the order in the language picker.
+const supportedLocales = [Locale('uz'), Locale('ru')];
 
 
 class LocaleNotifier extends StateNotifier<Locale> {
   final LocaleStorage _storage;
-  LocaleNotifier(this._storage) : super(_initial()) { _load(); }
+  LocaleNotifier(this._storage) : super(const Locale('uz')) { _load(); }
 
-  /// Pick a sensible default before we've read storage — whatever the OS reports if we support it, else Uzbek.
-  static Locale _initial() {
-    final sys = PlatformDispatcher.instance.locale.languageCode;
-    return supportedLocales.firstWhere((l) => l.languageCode == sys, orElse: () => const Locale('uz'));
-  }
-
-  /// Hydrate from disk on app start; if a stored value exists and is supported, override the OS default.
+  /// Hydrate from disk on app start; if a stored value exists and is supported, override the Uzbek default.
   Future<void> _load() async {
     final code = await _storage.read();
     if (code == null) return;

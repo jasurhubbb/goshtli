@@ -467,4 +467,158 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sectionButchers => 'Мясники';
+
+  @override
+  String get appLanguage => 'Язык приложения';
+
+  @override
+  String appVersionLabel(String version) {
+    return 'Версия приложения $version';
+  }
+
+  @override
+  String get privacyPolicyLink => 'политику конфиденциальности';
+
+  @override
+  String get termsOfUseLink => 'условия использования';
+
+  @override
+  String privacyTagline(String policy, String terms) {
+    return 'Нажимая, вы принимаете $policy и $terms.';
+  }
+
+  @override
+  String get anonWelcomeTitle => 'Добро пожаловать в Мясной рынок';
+
+  @override
+  String get anonWelcomeSubtitle =>
+      'Просматривайте объявления — регистрация потребуется при оформлении заказа.';
+
+  @override
+  String get onbLocationTitle => 'Ваш регион';
+
+  @override
+  String get onbLocationBody =>
+      'Мы используем ваше местоположение, чтобы показать ближайших продавцов мяса. Это необязательно — можно изменить позже в Профиле.';
+
+  @override
+  String get onbDetectLocation => 'Определить местоположение';
+
+  @override
+  String get onbNotNow => 'Не сейчас';
+
+  @override
+  String get pickLanguageTitle => 'Выберите язык';
+
+  @override
+  String get continueAction => 'Продолжить';
+
+  @override
+  String get savedListingsTitle => 'Сохранённые объявления';
+
+  @override
+  String get noSavedListingsYet => 'Пока нет сохранённых объявлений';
+
+  @override
+  String get messageHint => 'Сообщение…';
+
+  @override
+  String get noConversationsYet => 'Пока нет переписок';
+
+  @override
+  String get noNotificationsYet => 'Пока нет уведомлений';
+
+  @override
+  String get leaveReviewTitle => 'Оставить отзыв';
+
+  @override
+  String get reviewCommentOptional => 'Комментарий (необязательно)';
+
+  @override
+  String get serviceAreaHint => 'Ташкент, Самарканд, ...';
+
+  @override
+  String get tabMenu => 'Меню';
+
+  @override
+  String get tabCart => 'Корзина';
+
+  @override
+  String get tabOrders => 'Заказы';
+
+  @override
+  String get cartTitle => 'Корзина';
+
+  @override
+  String cartItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count товара',
+      one: '1 товар',
+      zero: '0 товаров',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cartEmptyTitle => 'Корзина пуста';
+
+  @override
+  String get cartEmptyHint => 'Перейдите в Меню и добавьте любой товар.';
+
+  @override
+  String get cartGoToMenu => 'Перейти в меню';
+
+  @override
+  String get cartShopNoteLabel => 'Заметка магазину';
+
+  @override
+  String get cartShopNoteHint =>
+      'Например: нарезать по 1 кг, без костей, доставить вечером';
+
+  @override
+  String get cartSubTotal => 'Подытог';
+
+  @override
+  String get cartTotal => 'ИТОГО';
+
+  @override
+  String get cartCheckout => 'Оформить заказ';
+
+  @override
+  String get cartCheckoutSnack =>
+      'Заказ оформлен — подключение к серверу скоро.';
+
+  @override
+  String get soumSuffix => 'сум';
+
+  @override
+  String get perKgShort => '/кг';
+
+  @override
+  String get cartAdd => 'Добавить';
+
+  @override
+  String get cartPeekTitle => 'Ваша корзина';
+
+  @override
+  String get cartPeekChip => 'Показать';
+
+  @override
+  String get cartPeekViewAll => 'Добавить ещё';
+
+  @override
+  String cartItemsShort(int count) {
+    return '$count шт';
+  }
+
+  @override
+  String get cartFloatingPeek => 'Нажмите для просмотра';
+
+  @override
+  String get menuTitle => 'Меню';
+
+  @override
+  String get menuPickHint => 'Что будете готовить сегодня?';
 }

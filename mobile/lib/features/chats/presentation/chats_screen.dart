@@ -26,7 +26,7 @@ class ChatsScreen extends ConsumerWidget {
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.forum_outlined, size: 56, color: cs.onSurfaceVariant),
                       const SizedBox(height: 12),
-                      Text('No conversations yet',
+                      Text(t.noConversationsYet,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant)),
                     ])))
                 : SliverPadding(padding: const EdgeInsets.symmetric(vertical: 8),

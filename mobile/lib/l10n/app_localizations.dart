@@ -975,6 +975,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Butchers'**
   String get sectionButchers;
+
+  /// No description provided for @appLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'App language'**
+  String get appLanguage;
+
+  /// No description provided for @appVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'App version {version}'**
+  String appVersionLabel(String version);
+
+  /// No description provided for @privacyPolicyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'privacy policy'**
+  String get privacyPolicyLink;
+
+  /// No description provided for @termsOfUseLink.
+  ///
+  /// In en, this message translates to:
+  /// **'terms of use'**
+  String get termsOfUseLink;
+
+  /// Template — UI splits on {policy}/{terms} placeholders to render them as underlined links
+  ///
+  /// In en, this message translates to:
+  /// **'By tapping, I accept the {policy} & {terms}.'**
+  String privacyTagline(String policy, String terms);
+
+  /// No description provided for @anonWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Meat Marketplace'**
+  String get anonWelcomeTitle;
+
+  /// No description provided for @anonWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse listings — you\'ll register when placing an order.'**
+  String get anonWelcomeSubtitle;
+
+  /// No description provided for @onbLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your area'**
+  String get onbLocationTitle;
+
+  /// No description provided for @onbLocationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We use your location to show nearby meat sellers. This is optional — you can change it later in Profile.'**
+  String get onbLocationBody;
+
+  /// No description provided for @onbDetectLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect location'**
+  String get onbDetectLocation;
+
+  /// No description provided for @onbNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get onbNotNow;
+
+  /// No description provided for @pickLanguageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose language'**
+  String get pickLanguageTitle;
+
+  /// No description provided for @continueAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueAction;
+
+  /// No description provided for @savedListingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved listings'**
+  String get savedListingsTitle;
+
+  /// No description provided for @noSavedListingsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved listings yet'**
+  String get noSavedListingsYet;
+
+  /// No description provided for @messageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message…'**
+  String get messageHint;
+
+  /// No description provided for @noConversationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet'**
+  String get noConversationsYet;
+
+  /// No description provided for @noNotificationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get noNotificationsYet;
+
+  /// No description provided for @leaveReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review'**
+  String get leaveReviewTitle;
+
+  /// No description provided for @reviewCommentOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment (optional)'**
+  String get reviewCommentOptional;
+
+  /// No description provided for @serviceAreaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tashkent, Samarkand, ...'**
+  String get serviceAreaHint;
+
+  /// No description provided for @tabMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get tabMenu;
+
+  /// No description provided for @tabCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart'**
+  String get tabCart;
+
+  /// No description provided for @tabOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders'**
+  String get tabOrders;
+
+  /// No description provided for @cartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart'**
+  String get cartTitle;
+
+  /// No description provided for @cartItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{0 items} =1{1 item} other{{count} items}}'**
+  String cartItemsCount(int count);
+
+  /// No description provided for @cartEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart is empty'**
+  String get cartEmptyTitle;
+
+  /// No description provided for @cartEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap any product on the Menu to add it here.'**
+  String get cartEmptyHint;
+
+  /// No description provided for @cartGoToMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to menu'**
+  String get cartGoToMenu;
+
+  /// No description provided for @cartShopNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note to the shop'**
+  String get cartShopNoteLabel;
+
+  /// No description provided for @cartShopNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'E.g. cut into 1 kg pieces, no bones, deliver in the evening'**
+  String get cartShopNoteHint;
+
+  /// No description provided for @cartSubTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get cartSubTotal;
+
+  /// No description provided for @cartTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL'**
+  String get cartTotal;
+
+  /// No description provided for @cartCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Place order'**
+  String get cartCheckout;
+
+  /// No description provided for @cartCheckoutSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Order placed — backend wiring coming soon.'**
+  String get cartCheckoutSnack;
+
+  /// No description provided for @soumSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'so\'m'**
+  String get soumSuffix;
+
+  /// No description provided for @perKgShort.
+  ///
+  /// In en, this message translates to:
+  /// **'/kg'**
+  String get perKgShort;
+
+  /// No description provided for @cartAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get cartAdd;
+
+  /// No description provided for @cartPeekTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart'**
+  String get cartPeekTitle;
+
+  /// No description provided for @cartPeekChip.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get cartPeekChip;
+
+  /// No description provided for @cartPeekViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Add more'**
+  String get cartPeekViewAll;
+
+  /// No description provided for @cartItemsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pcs'**
+  String cartItemsShort(int count);
+
+  /// No description provided for @cartFloatingPeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to peek'**
+  String get cartFloatingPeek;
+
+  /// No description provided for @menuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get menuTitle;
+
+  /// No description provided for @menuPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick what you\'ll cook today'**
+  String get menuPickHint;
 }
 
 class _AppLocalizationsDelegate

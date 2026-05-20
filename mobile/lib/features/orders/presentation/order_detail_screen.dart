@@ -93,7 +93,7 @@ class _Body extends ConsumerWidget {
             // Buyer-side review — only on DELIVERED orders. Backend rejects double-review at the DB-level.
             if (isBuyer && order.status == model.OrderStatus.delivered)
               FilledButton.icon(icon: const Icon(Icons.star_outline),
-                label: const Text('Leave a review'),
+                label: Text(t.leaveReviewTitle),
                 onPressed: () => showReviewSubmitSheet(context, ref,
                     orderId: order.id, supplierId: order.supplierUserId)),
             // Supplier-side actions — buttons for legal next states

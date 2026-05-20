@@ -1,4 +1,7 @@
-// AuthNotifier — single source of truth for whether the user is logged in. Routing + role gates read this.
+// AuthNotifier — single source of truth for whether the user is logged in.
+//
+// v3 pivot: fresh installs and logout drop into AuthAnonymous (not AuthUnauthenticated). The app's home tab is
+// reachable without a session; auth-required actions surface a sign-in sheet on demand.
 //
 // v2 Milestone E.5 hook: on successful login/register/resume we ask the OS for notification permission and
 // register this device's FCM token with the backend so push events reach the right user.
@@ -18,22 +21,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier({required AuthRepository repo, required TokenStorage tokens, required FcmService fcm})
       : _repo = repo, _tokens = tokens, _fcm = fcm, super(const AuthInitial()) { _resume(); }
 
-  /// Called once from constructor — if we have a stored token, try /me and resume the session; otherwise sit at Unauthenticated.
+  /// Called once from constructor. v3 pivot:
+  ///   • no stored token → AuthAnonymous (browse freely, no login wall)
+  ///   • stored token + /me works → AuthAuthenticated
+  ///   • stored token but /me fails → tokens were stale → clear + AuthAnonymous
   Future<void> _resume() async {
     final access = await _tokens.readAccess();
-    if (access == null) { state = const AuthUnauthenticated(); return; }
+    if (access == null) { state = const AuthAnonymous(); return; }
     try {
       final user = await _repo.fetchMe();
       state = AuthAuthenticated(user);
-      // Resume = the user already trusted us once; (re-)register push so events reach this device
       _registerPushQuietly();
     } catch (_) {
       await _tokens.clear();
-      state = const AuthUnauthenticated();
+      state = const AuthAnonymous();
     }
   }
 
-  /// Called from login screen submit — flips through Loading→Authenticated or Loading→Unauthenticated(error).
+  /// Called from login screen submit — flips through Loading → Authenticated, or back to Unauthenticated(error)
+  /// if the credentials were wrong (so the login screen can show the error inline).
   Future<void> login(String email, String password) async {
     state = const AuthLoading();
     try {
@@ -54,11 +60,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
   }
 
-  /// Logout — clears tokens and flips state. The FCM token stays on the device (Firebase persists it per install);
-  /// next login re-registers it under the new user via update_or_create on the backend.
+  /// Logout — clears tokens and drops back to anonymous. User keeps browsing without a forced login screen.
+  /// FCM token stays on the device (Firebase persists per-install); next login re-registers it under the new user.
   Future<void> logout() async {
     await _repo.logout();
-    state = const AuthUnauthenticated();
+    state = const AuthAnonymous();
   }
 
   /// Hook called by ApiClient when a refresh attempt fails — keeps the auth state in sync without duplicating clear logic.

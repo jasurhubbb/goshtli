@@ -1,4 +1,5 @@
-// Register screen — same Apple-style hero treatment as login. Form fields inherit theme's filled style.
+// Register screen — buyer-only signup (v3 pivot: the mobile app is buyer-side only; sellers are managed via Django Admin).
+// The previous role picker is gone — every new account is a buyer.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +25,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
-  UserRole _role = UserRole.buyer;
+  // v3: role is hard-coded to buyer — no picker on the mobile signup form
+  final UserRole _role = UserRole.buyer;
 
   @override
   void dispose() {
@@ -74,15 +76,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           TextFormField(controller: _confirm, obscureText: true,
             decoration: InputDecoration(labelText: t.confirmPassword),
             validator: (v) => v != _password.text ? t.validatePasswordMatch : null),
-          const SizedBox(height: 20),
-          // Role picker — full-width segmented control like iOS
-          SizedBox(width: double.infinity, child: SegmentedButton<UserRole>(
-            segments: [
-              ButtonSegment(value: UserRole.buyer, label: Text(t.roleBuyer), icon: const Icon(Icons.shopping_cart_outlined)),
-              ButtonSegment(value: UserRole.supplier, label: Text(t.roleSupplier), icon: const Icon(Icons.storefront_outlined)),
-            ],
-            selected: {_role},
-            onSelectionChanged: loading ? null : (s) => setState(() => _role = s.first))),
+          // v3 pivot: role picker removed — every new mobile account is a buyer. Sellers manage from Django Admin.
           if (error != null) Padding(padding: const EdgeInsets.only(top: 12),
               child: Text(error, style: tt.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error))),
           const SizedBox(height: 28),

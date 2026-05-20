@@ -468,4 +468,157 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionButchers => 'Butchers';
+
+  @override
+  String get appLanguage => 'App language';
+
+  @override
+  String appVersionLabel(String version) {
+    return 'App version $version';
+  }
+
+  @override
+  String get privacyPolicyLink => 'privacy policy';
+
+  @override
+  String get termsOfUseLink => 'terms of use';
+
+  @override
+  String privacyTagline(String policy, String terms) {
+    return 'By tapping, I accept the $policy & $terms.';
+  }
+
+  @override
+  String get anonWelcomeTitle => 'Welcome to Meat Marketplace';
+
+  @override
+  String get anonWelcomeSubtitle =>
+      'Browse listings — you\'ll register when placing an order.';
+
+  @override
+  String get onbLocationTitle => 'Your area';
+
+  @override
+  String get onbLocationBody =>
+      'We use your location to show nearby meat sellers. This is optional — you can change it later in Profile.';
+
+  @override
+  String get onbDetectLocation => 'Detect location';
+
+  @override
+  String get onbNotNow => 'Not now';
+
+  @override
+  String get pickLanguageTitle => 'Choose language';
+
+  @override
+  String get continueAction => 'Continue';
+
+  @override
+  String get savedListingsTitle => 'Saved listings';
+
+  @override
+  String get noSavedListingsYet => 'No saved listings yet';
+
+  @override
+  String get messageHint => 'Message…';
+
+  @override
+  String get noConversationsYet => 'No conversations yet';
+
+  @override
+  String get noNotificationsYet => 'No notifications yet';
+
+  @override
+  String get leaveReviewTitle => 'Leave a review';
+
+  @override
+  String get reviewCommentOptional => 'Comment (optional)';
+
+  @override
+  String get serviceAreaHint => 'Tashkent, Samarkand, ...';
+
+  @override
+  String get tabMenu => 'Menu';
+
+  @override
+  String get tabCart => 'Cart';
+
+  @override
+  String get tabOrders => 'Orders';
+
+  @override
+  String get cartTitle => 'Cart';
+
+  @override
+  String cartItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+      zero: '0 items',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cartEmptyTitle => 'Your cart is empty';
+
+  @override
+  String get cartEmptyHint => 'Tap any product on the Menu to add it here.';
+
+  @override
+  String get cartGoToMenu => 'Go to menu';
+
+  @override
+  String get cartShopNoteLabel => 'Note to the shop';
+
+  @override
+  String get cartShopNoteHint =>
+      'E.g. cut into 1 kg pieces, no bones, deliver in the evening';
+
+  @override
+  String get cartSubTotal => 'Subtotal';
+
+  @override
+  String get cartTotal => 'TOTAL';
+
+  @override
+  String get cartCheckout => 'Place order';
+
+  @override
+  String get cartCheckoutSnack => 'Order placed — backend wiring coming soon.';
+
+  @override
+  String get soumSuffix => 'so\'m';
+
+  @override
+  String get perKgShort => '/kg';
+
+  @override
+  String get cartAdd => 'Add';
+
+  @override
+  String get cartPeekTitle => 'Your cart';
+
+  @override
+  String get cartPeekChip => 'View';
+
+  @override
+  String get cartPeekViewAll => 'Add more';
+
+  @override
+  String cartItemsShort(int count) {
+    return '$count pcs';
+  }
+
+  @override
+  String get cartFloatingPeek => 'Tap to peek';
+
+  @override
+  String get menuTitle => 'Menu';
+
+  @override
+  String get menuPickHint => 'Pick what you\'ll cook today';
 }

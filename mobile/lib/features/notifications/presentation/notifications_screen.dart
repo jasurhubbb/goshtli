@@ -22,18 +22,18 @@ class NotificationsScreen extends ConsumerWidget {
         },
         child: CustomScrollView(slivers: [
           SliverAppBar.large(
-            title: const Text('Notifications'),
+            title: Text(t.notificationsTitle),
             actions: [
               TextButton(onPressed: () async {
                 await ref.read(notificationsRepositoryProvider).markAllRead();
                 ref..invalidate(notificationsListProvider)..invalidate(unreadNotificationsCountProvider);
-              }, child: const Text('Mark all read')),
+              }, child: Text(t.markAllRead)),
             ],
           ),
           async.when(
             data: (page) => page.results.isEmpty
                 ? SliverFillRemaining(hasScrollBody: false,
-                    child: Center(child: Text('No notifications yet',
+                    child: Center(child: Text(t.noNotificationsYet,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant))))
                 : SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),

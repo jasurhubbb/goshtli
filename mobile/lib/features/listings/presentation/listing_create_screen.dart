@@ -186,7 +186,7 @@ class _ListingCreateScreenState extends ConsumerState<ListingCreateScreen> {
 
           TextFormField(controller: _serviceArea,
             decoration: InputDecoration(labelText: t.serviceArea,
-              hintText: 'Tashkent, Samarkand, ...')),
+              hintText: t.serviceAreaHint)),
           const SizedBox(height: 12),
 
           TextFormField(controller: _desc, maxLines: 3,

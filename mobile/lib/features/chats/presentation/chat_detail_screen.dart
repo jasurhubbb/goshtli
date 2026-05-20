@@ -74,7 +74,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
               color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)))),
           child: Row(children: [
             Expanded(child: TextField(controller: _input, minLines: 1, maxLines: 4,
-              decoration: const InputDecoration(hintText: 'Message…', isDense: true),
+              decoration: InputDecoration(hintText: t.messageHint, isDense: true),
               onSubmitted: (_) => _send())),
             const SizedBox(width: 8),
             IconButton.filledTonal(onPressed: _send, icon: const Icon(Icons.send)),

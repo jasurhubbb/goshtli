@@ -211,5 +211,76 @@
   },
   "viewAll": "View all",
   "sectionFarmers": "Farmers",
-  "sectionButchers": "Butchers"
+  "sectionButchers": "Butchers",
+
+  "appLanguage": "App language",
+  "appVersionLabel": "App version {version}",
+  "@appVersionLabel": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "privacyPolicyLink": "privacy policy",
+  "termsOfUseLink": "terms of use",
+  "privacyTagline": "By tapping, I accept the {policy} & {terms}.",
+  "@privacyTagline": {
+    "description": "Template — UI splits on {policy}/{terms} placeholders to render them as underlined links",
+    "placeholders": {
+      "policy": { "type": "String" },
+      "terms": { "type": "String" }
+    }
+  },
+
+  "anonWelcomeTitle": "Welcome to Meat Marketplace",
+  "anonWelcomeSubtitle": "Browse listings — you'll register when placing an order.",
+
+  "onbLocationTitle": "Your area",
+  "onbLocationBody": "We use your location to show nearby meat sellers. This is optional — you can change it later in Profile.",
+  "onbDetectLocation": "Detect location",
+  "onbNotNow": "Not now",
+
+  "pickLanguageTitle": "Choose language",
+  "continueAction": "Continue",
+
+  "savedListingsTitle": "Saved listings",
+  "noSavedListingsYet": "No saved listings yet",
+
+  "messageHint": "Message…",
+  "noConversationsYet": "No conversations yet",
+
+  "noNotificationsYet": "No notifications yet",
+
+  "leaveReviewTitle": "Leave a review",
+  "reviewCommentOptional": "Comment (optional)",
+
+  "serviceAreaHint": "Tashkent, Samarkand, ...",
+
+  "tabMenu": "Menu",
+  "tabCart": "Cart",
+  "tabOrders": "Orders",
+  "cartTitle": "Cart",
+  "cartItemsCount": "{count, plural, =0{0 items} =1{1 item} other{{count} items}}",
+  "@cartItemsCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cartEmptyTitle": "Your cart is empty",
+  "cartEmptyHint": "Tap any product on the Menu to add it here.",
+  "cartGoToMenu": "Go to menu",
+  "cartShopNoteLabel": "Note to the shop",
+  "cartShopNoteHint": "E.g. cut into 1 kg pieces, no bones, deliver in the evening",
+  "cartSubTotal": "Subtotal",
+  "cartTotal": "TOTAL",
+  "cartCheckout": "Place order",
+  "cartCheckoutSnack": "Order placed — backend wiring coming soon.",
+  "soumSuffix": "so'm",
+  "perKgShort": "/kg",
+  "cartAdd": "Add",
+  "cartPeekTitle": "Your cart",
+  "cartPeekChip": "View",
+  "cartPeekViewAll": "Add more",
+  "cartItemsShort": "{count} pcs",
+  "@cartItemsShort": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cartFloatingPeek": "Tap to peek",
+  "menuTitle": "Menu",
+  "menuPickHint": "Pick what you'll cook today"
 }

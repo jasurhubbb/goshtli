@@ -211,5 +211,75 @@
   },
   "viewAll": "Все",
   "sectionFarmers": "Фермеры",
-  "sectionButchers": "Мясники"
+  "sectionButchers": "Мясники",
+
+  "appLanguage": "Язык приложения",
+  "appVersionLabel": "Версия приложения {version}",
+  "@appVersionLabel": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "privacyPolicyLink": "политику конфиденциальности",
+  "termsOfUseLink": "условия использования",
+  "privacyTagline": "Нажимая, вы принимаете {policy} и {terms}.",
+  "@privacyTagline": {
+    "placeholders": {
+      "policy": { "type": "String" },
+      "terms": { "type": "String" }
+    }
+  },
+
+  "anonWelcomeTitle": "Добро пожаловать в Мясной рынок",
+  "anonWelcomeSubtitle": "Просматривайте объявления — регистрация потребуется при оформлении заказа.",
+
+  "onbLocationTitle": "Ваш регион",
+  "onbLocationBody": "Мы используем ваше местоположение, чтобы показать ближайших продавцов мяса. Это необязательно — можно изменить позже в Профиле.",
+  "onbDetectLocation": "Определить местоположение",
+  "onbNotNow": "Не сейчас",
+
+  "pickLanguageTitle": "Выберите язык",
+  "continueAction": "Продолжить",
+
+  "savedListingsTitle": "Сохранённые объявления",
+  "noSavedListingsYet": "Пока нет сохранённых объявлений",
+
+  "messageHint": "Сообщение…",
+  "noConversationsYet": "Пока нет переписок",
+
+  "noNotificationsYet": "Пока нет уведомлений",
+
+  "leaveReviewTitle": "Оставить отзыв",
+  "reviewCommentOptional": "Комментарий (необязательно)",
+
+  "serviceAreaHint": "Ташкент, Самарканд, ...",
+
+  "tabMenu": "Меню",
+  "tabCart": "Корзина",
+  "tabOrders": "Заказы",
+  "cartTitle": "Корзина",
+  "cartItemsCount": "{count, plural, =0{0 товаров} =1{1 товар} other{{count} товара}}",
+  "@cartItemsCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cartEmptyTitle": "Корзина пуста",
+  "cartEmptyHint": "Перейдите в Меню и добавьте любой товар.",
+  "cartGoToMenu": "Перейти в меню",
+  "cartShopNoteLabel": "Заметка магазину",
+  "cartShopNoteHint": "Например: нарезать по 1 кг, без костей, доставить вечером",
+  "cartSubTotal": "Подытог",
+  "cartTotal": "ИТОГО",
+  "cartCheckout": "Оформить заказ",
+  "cartCheckoutSnack": "Заказ оформлен — подключение к серверу скоро.",
+  "soumSuffix": "сум",
+  "perKgShort": "/кг",
+  "cartAdd": "Добавить",
+  "cartPeekTitle": "Ваша корзина",
+  "cartPeekChip": "Показать",
+  "cartPeekViewAll": "Добавить ещё",
+  "cartItemsShort": "{count} шт",
+  "@cartItemsShort": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cartFloatingPeek": "Нажмите для просмотра",
+  "menuTitle": "Меню",
+  "menuPickHint": "Что будете готовить сегодня?"
 }
