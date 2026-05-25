@@ -515,7 +515,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get continueAction => 'Continue';
 
   @override
-  String get savedListingsTitle => 'Saved listings';
+  String get savedListingsTitle => 'Favorite listings';
 
   @override
   String get noSavedListingsYet => 'No saved listings yet';
@@ -621,4 +621,243 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuPickHint => 'Pick what you\'ll cook today';
+
+  @override
+  String get homeSearchHint => 'Search products...';
+
+  @override
+  String get homeRegionPickerTitle => 'Choose region';
+
+  @override
+  String get homeRegionAll => 'All regions';
+
+  @override
+  String get addressesTitle => 'Addresses';
+
+  @override
+  String get addressesEmpty => 'No saved addresses yet.';
+
+  @override
+  String get addressesNewCta => 'New address';
+
+  @override
+  String get addressesSignInCta => 'Sign in to save addresses';
+
+  @override
+  String get addressFormTitleNew => 'New address';
+
+  @override
+  String get addressFormTitleEdit => 'Address details';
+
+  @override
+  String get addressFieldLabel => 'Address label';
+
+  @override
+  String get addressFieldLabelHint => 'Home, Office, Restaurant...';
+
+  @override
+  String get addressFieldStreet => 'Address';
+
+  @override
+  String get addressFieldStreetHint => 'Street, neighbourhood, house number';
+
+  @override
+  String get addressFieldEntrance => 'Entrance';
+
+  @override
+  String get addressFieldFloor => 'Floor';
+
+  @override
+  String get addressFieldApartment => 'Apartment';
+
+  @override
+  String get addressFieldNotes => 'Delivery instructions';
+
+  @override
+  String get addressFieldNotesHelp => 'Helps the courier find you faster';
+
+  @override
+  String get addressFieldDefault => 'Make this my default address';
+
+  @override
+  String get addressSaveCta => 'Save address';
+
+  @override
+  String get addressDeleteCta => 'Delete';
+
+  @override
+  String get addressDeleteConfirm => 'Delete this address?';
+
+  @override
+  String get addressMapTitle => 'Pick your address on the map';
+
+  @override
+  String get addressMapConfirmTitle => 'Everything correct?';
+
+  @override
+  String get addressMapConfirmBody =>
+      'Make sure the marker is at the entrance and confirm';
+
+  @override
+  String get addressMapConfirmCta => 'Refine house number';
+
+  @override
+  String get addressMapMyLocation => 'My location';
+
+  @override
+  String get phoneAuthTitle => 'Your phone number';
+
+  @override
+  String get phoneAuthSubtitle => 'Enter your number to sign in or sign up';
+
+  @override
+  String get phoneAuthHint => '90 123 45 67';
+
+  @override
+  String get phoneAuthContinue => 'Continue';
+
+  @override
+  String get phoneAuthInvalid => 'Enter a 9-digit phone number';
+
+  @override
+  String get phoneDetailsTitle => 'About you';
+
+  @override
+  String get phoneDetailsSubtitle => 'We need your name for orders';
+
+  @override
+  String get phoneDetailsNameLabel => 'Your name';
+
+  @override
+  String get phoneDetailsBusinessLabel => 'Business name (optional)';
+
+  @override
+  String get phoneDetailsCta => 'Sign in';
+
+  @override
+  String get profileSettingsTitle => 'Profile settings';
+
+  @override
+  String get profileTapToEdit => 'Edit';
+
+  @override
+  String get profileFieldLastName => 'Last name';
+
+  @override
+  String get profileFieldFirstName => 'First name';
+
+  @override
+  String get profileFieldPatronymic => 'Patronymic';
+
+  @override
+  String get profileFieldPatronymicHint => 'Enter patronymic';
+
+  @override
+  String get profileFieldDateOfBirth => 'Date of birth';
+
+  @override
+  String get profileFieldDateOfBirthHint => 'Pick a date';
+
+  @override
+  String get profileFieldGender => 'Gender';
+
+  @override
+  String get genderMale => 'Male';
+
+  @override
+  String get genderFemale => 'Female';
+
+  @override
+  String get profileFieldPhone => 'Phone number';
+
+  @override
+  String get profileMyCards => 'My cards';
+
+  @override
+  String get profileCardsEmpty => 'No cards yet';
+
+  @override
+  String get profileContactUs => 'Contact us';
+
+  @override
+  String get profileTelegramOpenFailed => 'Could not open Telegram';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get adminEnterCta => 'Enter as admin';
+
+  @override
+  String get adminEnterPasswordTitle => 'Admin password';
+
+  @override
+  String get adminEnterPasswordHint => 'Enter password';
+
+  @override
+  String get adminEnterPasswordWrong => 'Wrong password';
+
+  @override
+  String get adminTitle => 'Admin';
+
+  @override
+  String get adminTabNewListing => 'New listing';
+
+  @override
+  String get adminTabManage => 'Manage';
+
+  @override
+  String get adminNewListingPickSupplier => 'Pick a supplier';
+
+  @override
+  String get adminNewListingSubmit => 'Save listing';
+
+  @override
+  String get adminManageListings => 'Listings';
+
+  @override
+  String get adminManageSuppliers => 'Suppliers';
+
+  @override
+  String get adminManageCategories => 'Categories';
+
+  @override
+  String get adminManageMarkets => 'Markets';
+
+  @override
+  String get adminManageHint => 'Create/edit items in the selected section';
+
+  @override
+  String get adminComingSoon => 'Coming soon';
+
+  @override
+  String get adminListingCreated => 'Listing created';
+
+  @override
+  String get adminPermissionDenied =>
+      'Admin permissions required — sign in with an admin account';
+
+  @override
+  String get adminNewListingPhotos => 'Photos';
+
+  @override
+  String get adminPickFromGallery => 'Pick from gallery';
+
+  @override
+  String get adminPickFromCamera => 'Take a photo';
+
+  @override
+  String get adminMarketDetailListings => 'Listings at this market';
+
+  @override
+  String get adminMarketEditCta => 'Edit';
+
+  @override
+  String get adminMarketDeleteCta => 'Delete market';
+
+  @override
+  String get adminMarketPhoneLabel => 'Phone number';
+
+  @override
+  String get adminMarketEmpty => 'No listings yet';
 }

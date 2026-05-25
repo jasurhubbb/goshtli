@@ -1057,7 +1057,7 @@ abstract class AppLocalizations {
   /// No description provided for @savedListingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Saved listings'**
+  /// **'Favorite listings'**
   String get savedListingsTitle;
 
   /// No description provided for @noSavedListingsYet.
@@ -1245,6 +1245,480 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick what you\'ll cook today'**
   String get menuPickHint;
+
+  /// No description provided for @homeSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search products...'**
+  String get homeSearchHint;
+
+  /// No description provided for @homeRegionPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose region'**
+  String get homeRegionPickerTitle;
+
+  /// No description provided for @homeRegionAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All regions'**
+  String get homeRegionAll;
+
+  /// No description provided for @addressesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Addresses'**
+  String get addressesTitle;
+
+  /// No description provided for @addressesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved addresses yet.'**
+  String get addressesEmpty;
+
+  /// No description provided for @addressesNewCta.
+  ///
+  /// In en, this message translates to:
+  /// **'New address'**
+  String get addressesNewCta;
+
+  /// No description provided for @addressesSignInCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to save addresses'**
+  String get addressesSignInCta;
+
+  /// No description provided for @addressFormTitleNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New address'**
+  String get addressFormTitleNew;
+
+  /// No description provided for @addressFormTitleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Address details'**
+  String get addressFormTitleEdit;
+
+  /// No description provided for @addressFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address label'**
+  String get addressFieldLabel;
+
+  /// No description provided for @addressFieldLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Home, Office, Restaurant...'**
+  String get addressFieldLabelHint;
+
+  /// No description provided for @addressFieldStreet.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get addressFieldStreet;
+
+  /// No description provided for @addressFieldStreetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Street, neighbourhood, house number'**
+  String get addressFieldStreetHint;
+
+  /// No description provided for @addressFieldEntrance.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrance'**
+  String get addressFieldEntrance;
+
+  /// No description provided for @addressFieldFloor.
+  ///
+  /// In en, this message translates to:
+  /// **'Floor'**
+  String get addressFieldFloor;
+
+  /// No description provided for @addressFieldApartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Apartment'**
+  String get addressFieldApartment;
+
+  /// No description provided for @addressFieldNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery instructions'**
+  String get addressFieldNotes;
+
+  /// No description provided for @addressFieldNotesHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Helps the courier find you faster'**
+  String get addressFieldNotesHelp;
+
+  /// No description provided for @addressFieldDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Make this my default address'**
+  String get addressFieldDefault;
+
+  /// No description provided for @addressSaveCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save address'**
+  String get addressSaveCta;
+
+  /// No description provided for @addressDeleteCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get addressDeleteCta;
+
+  /// No description provided for @addressDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this address?'**
+  String get addressDeleteConfirm;
+
+  /// No description provided for @addressMapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your address on the map'**
+  String get addressMapTitle;
+
+  /// No description provided for @addressMapConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything correct?'**
+  String get addressMapConfirmTitle;
+
+  /// No description provided for @addressMapConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Make sure the marker is at the entrance and confirm'**
+  String get addressMapConfirmBody;
+
+  /// No description provided for @addressMapConfirmCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Refine house number'**
+  String get addressMapConfirmCta;
+
+  /// No description provided for @addressMapMyLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'My location'**
+  String get addressMapMyLocation;
+
+  /// No description provided for @phoneAuthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone number'**
+  String get phoneAuthTitle;
+
+  /// No description provided for @phoneAuthSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your number to sign in or sign up'**
+  String get phoneAuthSubtitle;
+
+  /// No description provided for @phoneAuthHint.
+  ///
+  /// In en, this message translates to:
+  /// **'90 123 45 67'**
+  String get phoneAuthHint;
+
+  /// No description provided for @phoneAuthContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get phoneAuthContinue;
+
+  /// No description provided for @phoneAuthInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a 9-digit phone number'**
+  String get phoneAuthInvalid;
+
+  /// No description provided for @phoneDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About you'**
+  String get phoneDetailsTitle;
+
+  /// No description provided for @phoneDetailsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We need your name for orders'**
+  String get phoneDetailsSubtitle;
+
+  /// No description provided for @phoneDetailsNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get phoneDetailsNameLabel;
+
+  /// No description provided for @phoneDetailsBusinessLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Business name (optional)'**
+  String get phoneDetailsBusinessLabel;
+
+  /// No description provided for @phoneDetailsCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get phoneDetailsCta;
+
+  /// No description provided for @profileSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile settings'**
+  String get profileSettingsTitle;
+
+  /// No description provided for @profileTapToEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get profileTapToEdit;
+
+  /// No description provided for @profileFieldLastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get profileFieldLastName;
+
+  /// No description provided for @profileFieldFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get profileFieldFirstName;
+
+  /// No description provided for @profileFieldPatronymic.
+  ///
+  /// In en, this message translates to:
+  /// **'Patronymic'**
+  String get profileFieldPatronymic;
+
+  /// No description provided for @profileFieldPatronymicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter patronymic'**
+  String get profileFieldPatronymicHint;
+
+  /// No description provided for @profileFieldDateOfBirth.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of birth'**
+  String get profileFieldDateOfBirth;
+
+  /// No description provided for @profileFieldDateOfBirthHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get profileFieldDateOfBirthHint;
+
+  /// No description provided for @profileFieldGender.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get profileFieldGender;
+
+  /// No description provided for @genderMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get genderMale;
+
+  /// No description provided for @genderFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get genderFemale;
+
+  /// No description provided for @profileFieldPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get profileFieldPhone;
+
+  /// No description provided for @profileMyCards.
+  ///
+  /// In en, this message translates to:
+  /// **'My cards'**
+  String get profileMyCards;
+
+  /// No description provided for @profileCardsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No cards yet'**
+  String get profileCardsEmpty;
+
+  /// No description provided for @profileContactUs.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact us'**
+  String get profileContactUs;
+
+  /// No description provided for @profileTelegramOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open Telegram'**
+  String get profileTelegramOpenFailed;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @adminEnterCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter as admin'**
+  String get adminEnterCta;
+
+  /// No description provided for @adminEnterPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin password'**
+  String get adminEnterPasswordTitle;
+
+  /// No description provided for @adminEnterPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password'**
+  String get adminEnterPasswordHint;
+
+  /// No description provided for @adminEnterPasswordWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password'**
+  String get adminEnterPasswordWrong;
+
+  /// No description provided for @adminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get adminTitle;
+
+  /// No description provided for @adminTabNewListing.
+  ///
+  /// In en, this message translates to:
+  /// **'New listing'**
+  String get adminTabNewListing;
+
+  /// No description provided for @adminTabManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get adminTabManage;
+
+  /// No description provided for @adminNewListingPickSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a supplier'**
+  String get adminNewListingPickSupplier;
+
+  /// No description provided for @adminNewListingSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Save listing'**
+  String get adminNewListingSubmit;
+
+  /// No description provided for @adminManageListings.
+  ///
+  /// In en, this message translates to:
+  /// **'Listings'**
+  String get adminManageListings;
+
+  /// No description provided for @adminManageSuppliers.
+  ///
+  /// In en, this message translates to:
+  /// **'Suppliers'**
+  String get adminManageSuppliers;
+
+  /// No description provided for @adminManageCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get adminManageCategories;
+
+  /// No description provided for @adminManageMarkets.
+  ///
+  /// In en, this message translates to:
+  /// **'Markets'**
+  String get adminManageMarkets;
+
+  /// No description provided for @adminManageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create/edit items in the selected section'**
+  String get adminManageHint;
+
+  /// No description provided for @adminComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get adminComingSoon;
+
+  /// No description provided for @adminListingCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Listing created'**
+  String get adminListingCreated;
+
+  /// No description provided for @adminPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin permissions required — sign in with an admin account'**
+  String get adminPermissionDenied;
+
+  /// No description provided for @adminNewListingPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get adminNewListingPhotos;
+
+  /// No description provided for @adminPickFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick from gallery'**
+  String get adminPickFromGallery;
+
+  /// No description provided for @adminPickFromCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get adminPickFromCamera;
+
+  /// No description provided for @adminMarketDetailListings.
+  ///
+  /// In en, this message translates to:
+  /// **'Listings at this market'**
+  String get adminMarketDetailListings;
+
+  /// No description provided for @adminMarketEditCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get adminMarketEditCta;
+
+  /// No description provided for @adminMarketDeleteCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete market'**
+  String get adminMarketDeleteCta;
+
+  /// No description provided for @adminMarketPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get adminMarketPhoneLabel;
+
+  /// No description provided for @adminMarketEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No listings yet'**
+  String get adminMarketEmpty;
 }
 
 class _AppLocalizationsDelegate

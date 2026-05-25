@@ -11,8 +11,10 @@ python manage.py collectstatic --noinput
 
 # Seed demo accounts + listings on boot. Idempotent — get_or_create skips already-existing rows. Set SEED_DEMO=0 in
 # env to disable once you're ready for real users (or just delete the demo accounts via Django Admin afterward).
+# `|| echo ...` so a bad/incompatible seed run (e.g. after a schema change) doesn't take the whole deploy down — the
+# real app still boots and you can debug seed_demo separately.
 if [ "${SEED_DEMO:-1}" = "1" ]; then
-    python manage.py seed_demo
+    python manage.py seed_demo || echo "[entrypoint] seed_demo failed; continuing anyway"
 fi
 
 # exec replaces the shell with gunicorn so signals (SIGTERM on container stop) propagate cleanly

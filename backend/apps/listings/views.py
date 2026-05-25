@@ -1,15 +1,51 @@
-"""Listing views — public browse, owner-scoped CRUD, plus the v2 photo upload + delete endpoints."""
+"""Listing views — public browse, owner-scoped CRUD, plus the v2 photo upload + delete endpoints.
+v3.3: admin role bypasses owner / verification checks (see common.permissions) and may set supplier_id on create."""
+from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework import generics, permissions, status
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsListingOwnerOrReadOnly, IsVerifiedSupplier
+from apps.common.permissions import IsAdminRole, IsListingOwnerOrReadOnly, IsVerifiedSupplier
 from .filters import ListingFilter
-from .models import Listing, ListingPhoto
-from .serializers import ListingPhotoSerializer, ListingSerializer
+from .models import Listing, ListingPhoto, MeatCategory
+from .serializers import ListingPhotoSerializer, ListingSerializer, MeatCategorySerializer
+
+User = get_user_model()
+
+
+class MeatCategoryListCreateView(generics.ListCreateAPIView):
+    """GET /api/v1/categories/  — public; only active categories sorted by display_order
+    POST /api/v1/categories/  — admin-only; new category for the home grid"""
+    serializer_class = MeatCategorySerializer
+
+    def get_queryset(self):
+        qs = MeatCategory.objects.all()
+        if self.request.method in permissions.SAFE_METHODS and self.request.query_params.get("include_inactive") != "1":
+            qs = qs.filter(is_active=True)
+        return qs.order_by("display_order", "name_uz")
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS: return [permissions.AllowAny()]
+        return [IsAdminRole()]
+
+
+class MeatCategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET (public) / PATCH (admin) / DELETE (admin, soft-archive) /api/v1/categories/<pk>/."""
+    serializer_class = MeatCategorySerializer
+    queryset = MeatCategory.objects.all()
+    http_method_names = ("get", "patch", "delete", "head", "options")
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS: return [permissions.AllowAny()]
+        return [IsAdminRole()]
+
+    def perform_destroy(self, instance):
+        # Soft-delete preserves listings.category FK so existing rows don't break. Hard-delete = Django Admin only.
+        instance.is_active = False
+        instance.save(update_fields=["is_active", "updated_at"])
 
 
 class ListingListCreateView(generics.ListCreateAPIView):
@@ -28,7 +64,11 @@ class ListingListCreateView(generics.ListCreateAPIView):
               .select_related("supplier", "market", "category")
               .prefetch_related("photos"))
         if self.request.method in ("GET", "HEAD") and "status" not in self.request.query_params:
-            qs = qs.filter(status=Listing.Status.ACTIVE)
+            # v3.3: ADMIN users skip the ACTIVE-only default — the in-app admin "E'lonlar" tab needs to see
+            # every listing including ARCHIVED + OUT_OF_STOCK to manage them. Buyers/anonymous still get only ACTIVE.
+            u = self.request.user
+            if not (u.is_authenticated and u.is_admin_role):
+                qs = qs.filter(status=Listing.Status.ACTIVE)
         return qs
 
     def get_permissions(self):
@@ -37,10 +77,29 @@ class ListingListCreateView(generics.ListCreateAPIView):
         return [IsVerifiedSupplier()]
 
     def perform_create(self, serializer):
-        # supplier always taken from authenticated user — never trust client input for ownership.
-        # created_by stamps who made the row; _actor is a non-field attribute consumed by the price-history signal
-        # on subsequent updates (not used on create — the signal short-circuits when created=True).
-        serializer.save(supplier=self.request.user, created_by=self.request.user, status=Listing.Status.ACTIVE)
+        # Default: supplier = authenticated user (a verified supplier creating their own listing).
+        # v3.3 admin paths (in-app admin treats Bozor = supplier as one concept):
+        #   1. Caller passes supplier_id → resolve to that User (explicit override; legacy contract)
+        #   2. Caller passes only market_id → resolve to the Market's backing owner_user (preferred — admin
+        #      picks a Market in the UI and the backend transparently maps it to a User)
+        # If neither path yields a supplier we raise; admins MUST tie a listing to a Market via owner_user.
+        supplier = self.request.user
+        if self.request.user.is_admin_role:
+            sup_id = self.request.data.get("supplier_id")
+            if sup_id is not None:
+                try:
+                    supplier = User.objects.get(pk=int(sup_id))
+                except (User.DoesNotExist, ValueError, TypeError):
+                    raise ValidationError({"supplier_id": "Unknown supplier."})
+            else:
+                # Resolve supplier from the validated market's owner_user — set during MarketSerializer.create()
+                market = serializer.validated_data.get("market")
+                if market is None or market.owner_user_id is None:
+                    raise ValidationError({"market_id": "This market has no backing supplier user. Recreate it."})
+                supplier = market.owner_user
+        # _actor is a non-field attribute consumed by the price-history signal on subsequent updates (not used on
+        # create — the signal short-circuits when created=True).
+        serializer.save(supplier=supplier, created_by=self.request.user, status=Listing.Status.ACTIVE)
 
     def perform_update(self, serializer):
         # Set _actor on the existing instance BEFORE save() fires the signal. _actor is not a model field, so it
@@ -95,7 +154,8 @@ class ListingPhotoUploadView(APIView):
     def post(self, request, listing_pk):
         try: listing = Listing.objects.get(pk=listing_pk)
         except Listing.DoesNotExist: raise NotFound()
-        if listing.supplier_id != request.user.id:
+        # v3.3 admin bypass: ADMIN-role users can attach photos to any listing (they own all listings conceptually).
+        if listing.supplier_id != request.user.id and not request.user.is_admin_role:
             raise PermissionDenied("You don't own this listing.")
         if "image" not in request.FILES:
             return Response({"image": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
@@ -116,7 +176,8 @@ class ListingPhotoDeleteView(APIView):
     def delete(self, request, listing_pk, pk):
         try: photo = ListingPhoto.objects.select_related("listing").get(pk=pk, listing_id=listing_pk)
         except ListingPhoto.DoesNotExist: raise NotFound()
-        if photo.listing.supplier_id != request.user.id:
+        # v3.3 admin bypass — see ListingPhotoUploadView.post.
+        if photo.listing.supplier_id != request.user.id and not request.user.is_admin_role:
             raise PermissionDenied("You don't own this listing.")
         # Delete the file from storage before the DB row so we never leak orphaned files on partial failure
         photo.image.delete(save=False)

@@ -514,7 +514,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get continueAction => 'Продолжить';
 
   @override
-  String get savedListingsTitle => 'Сохранённые объявления';
+  String get savedListingsTitle => 'Избранные объявления';
 
   @override
   String get noSavedListingsYet => 'Пока нет сохранённых объявлений';
@@ -621,4 +621,244 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get menuPickHint => 'Что будете готовить сегодня?';
+
+  @override
+  String get homeSearchHint => 'Поиск продуктов...';
+
+  @override
+  String get homeRegionPickerTitle => 'Выберите регион';
+
+  @override
+  String get homeRegionAll => 'Все регионы';
+
+  @override
+  String get addressesTitle => 'Адреса';
+
+  @override
+  String get addressesEmpty => 'Пока нет сохранённых адресов.';
+
+  @override
+  String get addressesNewCta => 'Новый адрес';
+
+  @override
+  String get addressesSignInCta => 'Войдите, чтобы сохранять адреса';
+
+  @override
+  String get addressFormTitleNew => 'Новый адрес';
+
+  @override
+  String get addressFormTitleEdit => 'Детали адреса';
+
+  @override
+  String get addressFieldLabel => 'Название адреса';
+
+  @override
+  String get addressFieldLabelHint => 'Дом, Офис, Ресторан...';
+
+  @override
+  String get addressFieldStreet => 'Адрес';
+
+  @override
+  String get addressFieldStreetHint => 'Улица, район, номер дома';
+
+  @override
+  String get addressFieldEntrance => 'Подъезд';
+
+  @override
+  String get addressFieldFloor => 'Этаж';
+
+  @override
+  String get addressFieldApartment => 'Квартира';
+
+  @override
+  String get addressFieldNotes => 'Подробности места доставки';
+
+  @override
+  String get addressFieldNotesHelp => 'Поможет курьеру быстрее найти вас';
+
+  @override
+  String get addressFieldDefault => 'Сделать основным адресом';
+
+  @override
+  String get addressSaveCta => 'Сохранить адрес';
+
+  @override
+  String get addressDeleteCta => 'Удалить';
+
+  @override
+  String get addressDeleteConfirm => 'Удалить этот адрес?';
+
+  @override
+  String get addressMapTitle => 'Выберите адрес на карте';
+
+  @override
+  String get addressMapConfirmTitle => 'Всё верно?';
+
+  @override
+  String get addressMapConfirmBody =>
+      'Убедитесь, что метка стоит у входа, и подтвердите адрес';
+
+  @override
+  String get addressMapConfirmCta => 'Уточнить номер дома';
+
+  @override
+  String get addressMapMyLocation => 'Моё местоположение';
+
+  @override
+  String get phoneAuthTitle => 'Ваш номер телефона';
+
+  @override
+  String get phoneAuthSubtitle =>
+      'Введите номер, чтобы войти или зарегистрироваться';
+
+  @override
+  String get phoneAuthHint => '90 123 45 67';
+
+  @override
+  String get phoneAuthContinue => 'Продолжить';
+
+  @override
+  String get phoneAuthInvalid => 'Введите 9-значный номер телефона';
+
+  @override
+  String get phoneDetailsTitle => 'О вас';
+
+  @override
+  String get phoneDetailsSubtitle => 'Имя нужно для оформления заказов';
+
+  @override
+  String get phoneDetailsNameLabel => 'Ваше имя';
+
+  @override
+  String get phoneDetailsBusinessLabel => 'Название компании (необязательно)';
+
+  @override
+  String get phoneDetailsCta => 'Войти';
+
+  @override
+  String get profileSettingsTitle => 'Настройки профиля';
+
+  @override
+  String get profileTapToEdit => 'Редактировать';
+
+  @override
+  String get profileFieldLastName => 'Фамилия';
+
+  @override
+  String get profileFieldFirstName => 'Имя';
+
+  @override
+  String get profileFieldPatronymic => 'Отчество';
+
+  @override
+  String get profileFieldPatronymicHint => 'Введите отчество';
+
+  @override
+  String get profileFieldDateOfBirth => 'Дата рождения';
+
+  @override
+  String get profileFieldDateOfBirthHint => 'Выберите дату';
+
+  @override
+  String get profileFieldGender => 'Пол';
+
+  @override
+  String get genderMale => 'Мужской';
+
+  @override
+  String get genderFemale => 'Женский';
+
+  @override
+  String get profileFieldPhone => 'Номер телефона';
+
+  @override
+  String get profileMyCards => 'Мои карты';
+
+  @override
+  String get profileCardsEmpty => 'Пока нет карт';
+
+  @override
+  String get profileContactUs => 'Связаться с нами';
+
+  @override
+  String get profileTelegramOpenFailed => 'Не удалось открыть Telegram';
+
+  @override
+  String get cancel => 'Отмена';
+
+  @override
+  String get adminEnterCta => 'Войти как админ';
+
+  @override
+  String get adminEnterPasswordTitle => 'Пароль администратора';
+
+  @override
+  String get adminEnterPasswordHint => 'Введите пароль';
+
+  @override
+  String get adminEnterPasswordWrong => 'Неверный пароль';
+
+  @override
+  String get adminTitle => 'Админ';
+
+  @override
+  String get adminTabNewListing => 'Новое объявление';
+
+  @override
+  String get adminTabManage => 'Управление';
+
+  @override
+  String get adminNewListingPickSupplier => 'Выберите поставщика';
+
+  @override
+  String get adminNewListingSubmit => 'Сохранить объявление';
+
+  @override
+  String get adminManageListings => 'Объявления';
+
+  @override
+  String get adminManageSuppliers => 'Поставщики';
+
+  @override
+  String get adminManageCategories => 'Категории';
+
+  @override
+  String get adminManageMarkets => 'Базары';
+
+  @override
+  String get adminManageHint => 'Создание/редактирование в выбранном разделе';
+
+  @override
+  String get adminComingSoon => 'Скоро будет';
+
+  @override
+  String get adminListingCreated => 'Объявление создано';
+
+  @override
+  String get adminPermissionDenied =>
+      'Требуются права администратора — войдите под учётной записью администратора';
+
+  @override
+  String get adminNewListingPhotos => 'Фото';
+
+  @override
+  String get adminPickFromGallery => 'Выбрать из галереи';
+
+  @override
+  String get adminPickFromCamera => 'Сделать фото';
+
+  @override
+  String get adminMarketDetailListings => 'Объявления этого базара';
+
+  @override
+  String get adminMarketEditCta => 'Редактировать';
+
+  @override
+  String get adminMarketDeleteCta => 'Удалить базар';
+
+  @override
+  String get adminMarketPhoneLabel => 'Номер телефона';
+
+  @override
+  String get adminMarketEmpty => 'Объявлений пока нет';
 }

@@ -18,6 +18,10 @@ urlpatterns = [
     path("api/v1/suppliers/", include("apps.suppliers.urls")),      # supplier profile + dashboard
     path("api/v1/buyers/", include("apps.buyers.urls")),            # buyer profile + dashboard
     path("api/v1/listings/", include("apps.listings.urls")),        # listing CRUD + browse + my + photos
+    # v3.3 split-out top-level catalog routes — categories list lives in apps.listings.urls.category_urlpatterns,
+    # markets is its own small app. Both expose GET to anyone + write to ADMIN role.
+    path("api/v1/categories/", include("apps.listings.category_urls")),
+    path("api/v1/markets/", include("apps.markets.urls")),
     path("api/v1/orders/", include("apps.orders.urls")),            # order create / cancel / status / list
     path("api/v1/notifications/", include("apps.notifications.urls")),  # in-app notifications + unread count
 

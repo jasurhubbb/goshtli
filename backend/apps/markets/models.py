@@ -68,6 +68,14 @@ class Market(TimeStampedModel):
     is_active = models.BooleanField(_("active"), default=True, db_index=True,
                                     help_text=_("Uncheck to hide from buyers; row stays in DB for history"))
 
+    # v3.3: each Market gets a backing SUPPLIER user that owns its listings. Auto-created in
+    # MarketSerializer.create() so the in-app admin can pick a Market when creating a listing and the
+    # backend resolves market.owner_user → Listing.supplier transparently. Nullable so historical rows
+    # + the migration don't break; new rows get one immediately.
+    owner_user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                      null=True, blank=True, related_name="owned_market",
+                                      help_text=_("Backing SUPPLIER user — auto-created with the market; owns its listings"))
+
     # ---- Audit fields (manual; django-simple-history adds the row-level log separately) ----
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="markets_created", editable=False)

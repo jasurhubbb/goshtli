@@ -4,9 +4,14 @@ from .models import BuyerProfile, SavedAddress
 
 
 class SavedAddressSerializer(serializers.ModelSerializer):
+    """Full address shape exposed to the mobile app. The new (v3.1) hint + geo fields are writeable;
+    timestamps + id stay read-only."""
     class Meta:
         model = SavedAddress
-        fields = ("id", "label", "address", "is_default", "created_at", "updated_at")
+        fields = ("id", "label", "address",
+                  "entrance", "floor", "apartment", "notes",
+                  "lat", "lng",
+                  "is_default", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
 
 

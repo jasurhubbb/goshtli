@@ -47,17 +47,11 @@ firebase-admin-key.json
 # Caddy + Docker volume artefacts (production stack)
 caddy_data/
 caddy_config/
-
-# Django collectstatic / uploads
 backend/staticfiles/
 backend/media/
-
-# Python packaging
 build/
 dist/
 *.egg-info/
-
-# Flutter / Dart
 mobile/.dart_tool/
 mobile/.packages
 mobile/.flutter-plugins
@@ -65,14 +59,11 @@ mobile/.flutter-plugins-dependencies
 mobile/.metadata
 mobile/build/
 mobile/coverage/
-
-# Flutter platform generated folders
 mobile/android/.gradle/
 mobile/android/app/debug/
 mobile/android/app/profile/
 mobile/android/app/release/
 
-# Android signing — NEVER commit. Losing these = locked out of Play Store updates forever; keep a backup outside git.
 mobile/android/key.properties
 mobile/android/**/*.jks
 mobile/android/**/*.keystore

@@ -1,11 +1,12 @@
-// HomeScreen (Menyu tab) — v3.1 catalog: 2-column product grid fed by the real /api/v1/listings/ endpoint.
+// HomeScreen (Menyu tab) — v3.1 catalog: location pill + search bar header, 2-column product grid below.
 //
-// Each card shows the product photo (or category icon fallback), bilingual name, brand-coloured price/kg, and a
-// + button that flips into an inline qty stepper once the product is in the cart. Tapping the card body drills
-// into the listing detail screen via /listings/<id>.
+// Header design follows the food-delivery convention (Swiggy / Wolt / Zomato):
+//   • Top row: small pin icon → currently-selected region → chevron-down. Tap to swap region via bottom sheet.
+//   • Below: full-width rounded search box. Submit (Enter / search button) updates the listing filters and
+//     triggers a server-side re-fetch (q param hits both name_uz and name_ru in apps/listings/filters.py).
 //
-// Catalog data comes from activeListingsProvider — backend serves ACTIVE-only by default; pull-to-refresh
-// invalidates the provider so workers see new products without restarting the app.
+// The greeting card + language picker + "pick what you'll cook" hint were removed — keeps the home calm and lets
+// the products themselves do the talking. Language picker still lives in Profile → Ilova tili.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,116 +15,454 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/listing.dart';
 import '../../../shared/utils/format.dart';
-import '../../../shared/widgets/language_picker.dart';
-import '../../auth/providers/auth_providers.dart';
-import '../../auth/providers/auth_state.dart';
+import '../../addresses/presentation/address_sheet.dart';
+import '../../addresses/providers/addresses_providers.dart';
 import '../../cart/providers/cart_providers.dart';
 import '../../listings/providers/listings_providers.dart';
 
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = AppLocalizations.of(context);
-    final auth = ref.watch(authNotifierProvider);
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  // ScrollController drives the sticky-chip-bar reveal. Threshold is roughly the height of the 4×2 grid:
+  // once the user has scrolled past the in-content category grid, the sticky chip bar fades in at the top
+  // so they can still switch categories without scrolling all the way back up.
+  late final ScrollController _scrollCtl;
+  bool _showStickyChips = false;
+  static const _stickyChipThreshold = 240.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtl = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() { _scrollCtl.removeListener(_onScroll); _scrollCtl.dispose(); super.dispose(); }
+
+  /// Single boolean toggle — only setState when crossing the threshold, not on every pixel scrolled.
+  /// Stops the home screen from rebuilding 60 times per second during a flick scroll.
+  void _onScroll() {
+    final show = _scrollCtl.offset > _stickyChipThreshold;
+    if (show != _showStickyChips) setState(() => _showStickyChips = show);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(activeListingsProvider);
-    final greetingName = auth is AuthAuthenticated ? auth.user.fullName : '';
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(activeListingsProvider),
-        child: CustomScrollView(slivers: [
-          SliverAppBar(
-            title: Text(t.menuTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-            floating: true, snap: true,
-            actions: const [LanguagePicker(), SizedBox(width: 8)],
-          ),
+      // Stack lets the sticky chip bar float over the scroll view — a SliverPersistentHeader could do this
+      // too but its shrinkOffset reveal animation is harder to make feel right. AnimatedSlide+Opacity is
+      // explicit and predictable.
+      body: Stack(children: [
+        RefreshIndicator(
+          onRefresh: () async => ref.invalidate(activeListingsProvider),
+          child: CustomScrollView(
+            controller: _scrollCtl,
+            slivers: [
+              // ---------- Header (location pill + search bar) ----------
+              // Generous spacing: top=44 (room from status bar), 22 between pill/search, 22 below search before grid.
+              SliverPadding(padding: const EdgeInsets.fromLTRB(16, 44, 16, 18),
+                sliver: SliverList.list(children: const [
+                  _LocationPill(),
+                  SizedBox(height: 22),
+                  _SearchBar(),
+                ])),
 
-          // Hero strip — greeting OR anonymous welcome, plus the "pick what you'll cook" section header
-          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            sliver: SliverList.list(children: [
-              if (greetingName.isNotEmpty) _GreetingCard(name: greetingName) else const _AnonymousWelcome(),
-              const SizedBox(height: 18),
-              Padding(padding: const EdgeInsets.only(left: 4, bottom: 12),
-                child: Text(t.menuPickHint, style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700))),
-            ])),
+              // ---------- 4×2 category quick-pick grid (in-flow) ----------
+              SliverPadding(padding: const EdgeInsets.fromLTRB(12, 6, 12, 18),
+                sliver: const _CategoriesGrid()),
 
-          // Product grid — three states (loading / error / data) all rendered as slivers so the scroll view
-          // stays a single CustomScrollView (better pull-to-refresh interaction than two stacked widgets).
-          async.when(
-            data: (page) => page.results.isEmpty
-                ? const SliverFillRemaining(hasScrollBody: false,
-                    child: Center(child: Padding(padding: EdgeInsets.all(48),
-                        child: Text('Hozircha mahsulotlar yo\'q.', textAlign: TextAlign.center))))
-                : SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.72),
-                      delegate: SliverChildBuilderDelegate(
-                        (_, i) => _ProductCard(listing: page.results[i]),
-                        childCount: page.results.length))),
-            loading: () => const SliverFillRemaining(hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator())),
-            error: (e, _) => SliverFillRemaining(hasScrollBody: false,
-                child: Center(child: Padding(padding: const EdgeInsets.all(24),
-                    child: Text(e.toString(), textAlign: TextAlign.center)))),
+              // ---------- Product grid ----------
+              async.when(
+                data: (page) => page.results.isEmpty
+                    ? const SliverFillRemaining(hasScrollBody: false,
+                        child: Center(child: Padding(padding: EdgeInsets.all(48),
+                            child: Text('Hozircha mahsulotlar yo\'q.', textAlign: TextAlign.center))))
+                    : SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        sliver: SliverGrid(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.72),
+                          delegate: SliverChildBuilderDelegate(
+                            (_, i) => _ProductCard(listing: page.results[i]),
+                            childCount: page.results.length))),
+                loading: () => const SliverFillRemaining(hasScrollBody: false,
+                    child: Center(child: CircularProgressIndicator())),
+                error: (e, _) => SliverFillRemaining(hasScrollBody: false,
+                    child: Center(child: Padding(padding: const EdgeInsets.all(24),
+                        child: Text(e.toString(), textAlign: TextAlign.center)))),
+              ),
+            ],
           ),
-        ]),
+        ),
+
+        // ---------- Sticky horizontal chip bar (overlays the top of the scroll view) ----------
+        // Combined slide-from-top + fade — 280ms gives a calm reveal, not a jarring snap. Curves.easeOutCubic
+        // is the iOS-y feel: decelerates as it settles. IgnorePointer when hidden so it doesn't intercept
+        // taps meant for the content underneath.
+        Positioned(top: 0, left: 0, right: 0,
+          child: IgnorePointer(ignoring: !_showStickyChips,
+            child: AnimatedSlide(
+              offset: _showStickyChips ? Offset.zero : const Offset(0, -1),
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              child: AnimatedOpacity(
+                opacity: _showStickyChips ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                child: const _StickyChipBar(),
+              )))),
+      ]),
+    );
+  }
+}
+
+
+// ---------- Header: location pill ----------
+
+/// Single-line location pill — matches the Uzum Tezkor reference exactly:
+///   📍  Uy · Bobur mahalla...arolar yig'ini, 6      ⌄
+///
+/// Format: "<label> · <street>" where the street is middle-elided so the START (mahalla / neighbourhood name)
+/// AND END (the house number) both stay visible — couriers care most about those two endpoints. The middle
+/// "fuqarolar yig'ini" type filler is the part that disappears with `...`.
+///
+/// Tap → opens the address bottom sheet (same flow for authenticated + anonymous; auth gate is at save-time,
+/// not browse-time).
+class _LocationPill extends ConsumerWidget {
+  const _LocationPill();
+
+  /// Custom middle-ellipsis truncator. Flutter's built-in TextOverflow.ellipsis only does END truncation,
+  /// which would lose the house number ("...yig'ini, 6"). We compute the truncated string by hand: keep
+  /// `startKeep` chars from the start, `endKeep` chars from the end, drop the rest, glue with '...'.
+  static String _midEllipsis(String s, {int startKeep = 13, int endKeep = 18}) {
+    if (s.length <= startKeep + endKeep + 3) return s;  // already fits — no truncation needed
+    return '${s.substring(0, startKeep).trimRight()}...${s.substring(s.length - endKeep).trimLeft()}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final selectedAddress = ref.watch(selectedAddressProvider);
+    final currentLocAsync = ref.watch(currentLocationProvider);
+
+    // Resolve the displayed text. Four cases:
+    //   1. Saved address selected → bold label + middle-elided street + house number
+    //   2. currentLocationProvider still resolving → small spinner + "Aniqlanmoqda..." (don't show fallback)
+    //   3. Anonymous-but-GPS-resolved → just the city/area name (no street known)
+    //   4. Permission denied / GPS off → "Manzil tanlang" fallback (user taps to pick on map)
+    final String label;
+    final String? street;
+    final bool loading;
+    if (selectedAddress != null) {
+      label = selectedAddress.label;
+      street = _midEllipsis(selectedAddress.address);
+      loading = false;
+    } else if (currentLocAsync.isLoading) {
+      label = 'Aniqlanmoqda';
+      street = null;
+      loading = true;
+    } else {
+      final loc = currentLocAsync.asData?.value;
+      if (loc != null && loc.cityOrArea.isNotEmpty) {
+        label = loc.cityOrArea;
+        street = null;
+      } else {
+        label = 'Manzil tanlang';
+        street = null;
+      }
+      loading = false;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        // Same destination for everyone — the sheet handles empty vs. populated lists itself.
+        onTap: () { HapticFeedback.selectionClick(); showAddressSheet(context); },
+        borderRadius: BorderRadius.circular(12),
+        // 14pt vertical pad → ~56pt total tap zone (above the 48pt Material accessibility minimum)
+        child: Padding(padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+          child: Row(children: [
+            // Spinner replaces the pin when the GPS+geocode chain is still resolving — signals "still working"
+            // instead of looking like a permanent failure to detect.
+            if (loading) SizedBox(width: 22, height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary))
+            else Icon(Icons.location_on_rounded, color: cs.primary, size: 26),
+            const SizedBox(width: 8),
+            // Compose a single line via Text.rich: bold-primary label + " · " separator + grey street.
+            // street == null (anonymous, no saved address) → just the label.
+            Expanded(child: Text.rich(
+              TextSpan(children: [
+                TextSpan(text: label,
+                  style: tt.titleMedium?.copyWith(color: cs.primary, fontWeight: FontWeight.w800)),
+                if (street != null) ...[
+                  TextSpan(text: '  ·  ',
+                    style: tt.titleMedium?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w500)),
+                  TextSpan(text: street,
+                    style: tt.titleMedium?.copyWith(color: cs.onSurface, fontWeight: FontWeight.w500)),
+                ],
+              ]),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+            )),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down_rounded, color: cs.onSurface, size: 22),
+          ])),
       ),
     );
   }
 }
 
 
-// ---------- Greeting / welcome cards ----------
+// ---------- Header: search bar ----------
 
-class _GreetingCard extends StatelessWidget {
-  final String name;
-  const _GreetingCard({required this.name});
+/// Rounded search input. Submit-on-enter writes `q` into the listing filter, which triggers a re-fetch.
+/// Clear button (`X`) on the right when there's text — single tap to reset the filter.
+class _SearchBar extends ConsumerStatefulWidget {
+  const _SearchBar();
+  @override
+  ConsumerState<_SearchBar> createState() => _SearchBarState();
+}
+
+
+class _SearchBarState extends ConsumerState<_SearchBar> {
+  late final TextEditingController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mirror the persisted q value into the controller so a re-mount (tab switch) doesn't blow away the input
+    _ctl = TextEditingController(text: ref.read(listingFiltersProvider).q ?? '');
+  }
+
+  @override
+  void dispose() { _ctl.dispose(); super.dispose(); }
+
+  void _submit() {
+    final q = _ctl.text.trim();
+    ref.read(listingFiltersProvider.notifier).update(
+        (f) => f.copyWith(q: () => q.isEmpty ? null : q));
+  }
+
+  void _clear() {
+    _ctl.clear();
+    ref.read(listingFiltersProvider.notifier).update((f) => f.copyWith(q: () => null));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final t = AppLocalizations.of(context);
-    return Container(padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [cs.primaryContainer.withValues(alpha: 0.7), cs.tertiaryContainer.withValues(alpha: 0.5)])),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(t.greeting(name), style: tt.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
-      ]));
+    final cs = Theme.of(context).colorScheme;
+    final hasText = _ctl.text.isNotEmpty;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
+      child: TextField(
+        controller: _ctl,
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => _submit(),
+        onChanged: (_) => setState(() {}),  // rebuild so the clear (X) shows/hides as the user types
+        decoration: InputDecoration(
+          hintText: t.homeSearchHint,
+          prefixIcon: Padding(padding: const EdgeInsets.only(left: 12, right: 8),
+              child: Icon(Icons.search_rounded, color: cs.primary, size: 24)),
+          prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          suffixIcon: hasText
+              ? IconButton(icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant), onPressed: _clear)
+              : null,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          border: InputBorder.none,
+        )),
+    );
   }
 }
 
 
-class _AnonymousWelcome extends StatelessWidget {
-  const _AnonymousWelcome();
+// ---------- Category quick-pick grid ----------
+
+/// Catalog facet data hardcoded here for now. Slugs match what migration 0004_seed_meat_categories inserts.
+/// When the backend gets a /api/v1/categories/ endpoint, replace this list with a FutureProvider that pulls
+/// from there — the rest of the widget is shape-agnostic.
+class _Cat {
+  final String slug, name;
+  final IconData icon;
+  final int colorArgb;
+  const _Cat(this.slug, this.name, this.icon, this.colorArgb);
+}
+
+// First entry is the "Hammasi" all-clear filter — slug == '' means "no category filter active". The rest are
+// the 7 meat-category buckets that match what migration 0004_seed_meat_categories inserts.
+// "Boshqa" (the catch-all) was dropped from the grid to keep it a clean 4×2 = 8 tiles; it's still available
+// in the sticky chip bar on scroll for completeness.
+const _categories = <_Cat>[
+  _Cat('',             'Hammasi',        Icons.apps_rounded,           0xFFFFF3E0),
+  _Cat('mol-goshti',   "Mol go'shti",    Icons.kebab_dining_outlined,  0xFFFCE4E4),
+  _Cat('qoy-goshti',   "Qo'y go'shti",   Icons.outdoor_grill_outlined, 0xFFFFE8D0),
+  _Cat('tovuq-goshti', "Tovuq go'shti",  Icons.egg_alt_outlined,       0xFFFFF5D0),
+  _Cat('echki-goshti', "Echki go'shti",  Icons.pets_outlined,          0xFFE3F2FD),
+  _Cat('ot-goshti',    "Ot go'shti",     Icons.sports_score_outlined,  0xFFEEEEFF),
+  _Cat('qiyma',        'Qiyma',          Icons.lunch_dining_outlined,  0xFFFFEFD5),
+  _Cat('jigar',        'Jigar',          Icons.local_dining_outlined,  0xFFFCE4EC),
+];
+
+
+/// 4-column, 2-row tile grid. Each tile toggles a category filter on listingFiltersProvider. Tap the same
+/// tile twice to clear the filter. Selected tile has a brand-coloured ring to signal active state.
+class _CategoriesGrid extends ConsumerWidget {
+  const _CategoriesGrid();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeSlug = ref.watch(listingFiltersProvider.select((f) => f.category));
+    return SliverGrid(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4, mainAxisSpacing: 14, crossAxisSpacing: 8, childAspectRatio: 0.78),
+      delegate: SliverChildBuilderDelegate(
+        (_, i) {
+          final c = _categories[i];
+          // "Hammasi" (slug == '') is the active tile when no category filter is set; the rest match by slug.
+          final isSelected = c.slug.isEmpty ? activeSlug == null : c.slug == activeSlug;
+          return _CategoryTile(category: c, selected: isSelected);
+        },
+        childCount: _categories.length),
+    );
+  }
+}
+
+
+// ---------- Sticky chip bar (revealed on scroll) ----------
+
+/// Horizontal scrollable list of category chips that floats over the top of the page once the user has
+/// scrolled past the in-flow category grid. Hammasi is the FIRST chip (clears the filter); the same 8 meat
+/// categories follow, mirroring the grid above.
+///
+/// Active state derives from the same listingFiltersProvider.category as the grid, so a tap on either
+/// surface keeps both in sync.
+class _StickyChipBar extends ConsumerWidget {
+  const _StickyChipBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final activeSlug = ref.watch(listingFiltersProvider.select((f) => f.category));
+
+    return Material(
+      color: cs.surface,
+      // Subtle elevation casts a soft shadow under the bar — clarifies that the products scroll BENEATH it
+      elevation: 2,
+      child: SafeArea(bottom: false, child: SizedBox(height: 56,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          children: [
+            // "Hammasi" — leftmost; active when no category filter is set (i.e. browse-all mode)
+            _StickyChip(label: 'Hammasi', selected: activeSlug == null,
+              onTap: () => ref.read(listingFiltersProvider.notifier).update((f) => f.copyWith(category: () => null))),
+            const SizedBox(width: 8),
+            for (final c in _categories) ...[
+              _StickyChip(label: c.name, selected: c.slug == activeSlug,
+                onTap: () => ref.read(listingFiltersProvider.notifier).update(
+                    (f) => f.copyWith(category: () => c.slug == activeSlug ? null : c.slug))),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ))),
+    );
+  }
+}
+
+
+/// Single chip — fully rounded capsule, brand-filled when active, soft-tinted otherwise. Tap = haptic +
+/// filter toggle. Keeps a comfortable 36pt height for finger taps.
+class _StickyChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _StickyChip({required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    return Container(padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [cs.primaryContainer.withValues(alpha: 0.7), cs.tertiaryContainer.withValues(alpha: 0.5)])),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(t.anonWelcomeTitle, style: tt.titleMedium?.copyWith(
-              color: cs.onPrimaryContainer, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text(t.anonWelcomeSubtitle,
-               style: tt.bodySmall?.copyWith(color: cs.onPrimaryContainer.withValues(alpha: 0.85))),
+    return InkWell(
+      onTap: () { HapticFeedback.selectionClick(); onTap(); },
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.5),
+            width: 0.5),
+        ),
+        child: Center(child: Text(label,
+          style: tt.bodyMedium?.copyWith(
+            color: selected ? cs.onPrimary : cs.onSurface,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+          ))),
+      ),
+    );
+  }
+}
+
+
+class _CategoryTile extends ConsumerWidget {
+  final _Cat category;
+  final bool selected;
+  const _CategoryTile({required this.category, required this.selected});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    // Special-case "Hammasi" (slug == '') so tapping it always clears the filter (no toggle ambiguity).
+    // For real categories: tap selects, tap again deselects (returns to Hammasi/all).
+    final isAll = category.slug.isEmpty;
+
+    // Material(transparent) → InkWell pattern is the canonical way to give the InkWell a guaranteed Material
+    // ancestor (needed for the ripple paint). The SizedBox.expand wrapping the Column ensures the InkWell's
+    // hit area = the FULL tile bounds from the SliverGrid, not just the icon+label visual area. Without that,
+    // taps in the empty space around the icon were silently ignored — the bug you ran into.
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          ref.read(listingFiltersProvider.notifier).update((f) =>
+              f.copyWith(category: () => isAll ? null : (selected ? null : category.slug)));
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox.expand(child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+          // Coloured square holds the icon. Brand-ring border appears when this is the active filter.
+          Container(width: 56, height: 56,
+            decoration: BoxDecoration(color: Color(category.colorArgb),
+                borderRadius: BorderRadius.circular(16),
+                border: selected ? Border.all(color: cs.primary, width: 2.5) : null),
+            child: Icon(category.icon, size: 28, color: Colors.brown.shade700)),
+          const SizedBox(height: 6),
+          // labelSmall (~11pt) + maxLines:1 fits the longest names ("Tovuq go'shti", "Echki go'shti") on one
+          // line at the tight 4-column width. Letter-spacing tightening gains a few extra pixels.
+          Text(category.name,
+            style: tt.labelSmall?.copyWith(
+                fontSize: 10.5,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? cs.primary : cs.onSurface,
+                height: 1.1, letterSpacing: -0.2),
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center),
         ])),
-        const SizedBox(width: 12),
-        TextButton(onPressed: () => context.push('/register'),
-          child: Text(t.signIn, style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w700))),
-      ]));
+      ),
+    );
   }
 }
 

@@ -6,8 +6,31 @@ Permission model mirrors the Catalog Editor / Catalog Publisher Django Groups + 
   • Hard delete is superuser-only; everyone else uses status=ARCHIVED for soft removal.
 """
 from django.contrib import admin
+from django.utils.html import format_html
 
-from .models import Listing, MeatCategory, PriceHistory
+from .models import Listing, ListingPhoto, MeatCategory, PriceHistory
+
+
+class ListingPhotoInline(admin.TabularInline):
+    """Drag-to-reorder photo inline on the Listing edit page. Workers add photos in the same form where they
+    edit the product — no second navigation. The post_save signal on ListingPhoto fires the async resize task
+    via Celery, so workers can upload large phone photos without stalling the save."""
+    model = ListingPhoto
+    extra = 1                                    # always show one empty row so adding a first photo is one click
+    fields = ("preview", "image", "position")
+    readonly_fields = ("preview",)
+    ordering = ("position", "id")
+
+    @admin.display(description="preview")
+    def preview(self, obj):
+        """Show a small thumbnail beside each row so workers can verify the right image is attached."""
+        if not obj.pk or not obj.image:
+            return "—"
+        # 80px height keeps the inline rows compact; `object-fit: contain` so portrait photos don't crop
+        return format_html(
+            '<img src="{}" style="max-height:80px;max-width:120px;object-fit:contain;border-radius:6px;" />',
+            obj.image.url,
+        )
 
 
 @admin.register(MeatCategory)
@@ -51,7 +74,7 @@ class ListingAdmin(admin.ModelAdmin):
     """
 
     # ---- List view ----
-    list_display = ("name_uz_or_title", "market_name", "category_name", "quantity_kg", "price_per_kg",
+    list_display = ("name_uz_or_title", "market_name", "category_name", "photo_count", "quantity_kg", "price_per_kg",
                     "status", "updated_at")
     list_display_links = ("name_uz_or_title",)
     list_filter = ("status", "category", "market", "market__region")
@@ -61,15 +84,22 @@ class ListingAdmin(admin.ModelAdmin):
     date_hierarchy = "available_from"
     list_per_page = 50
 
+    # Inline photos on the Listing edit page — workers add/reorder photos inline with the product fields
+    inlines = [ListingPhotoInline]
+
     # ---- Detail view ----
+    # The `supplier` FK is a v2 legacy field (auto-set to the worker who created the listing). We hide it from
+    # the editable form and only expose it as a read-only entry in the Audit section. Workers focus on the
+    # market + category + price; ownership is bookkeeping the system handles automatically.
     prepopulated_fields = {"slug": ("name_uz",)}
-    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
+    readonly_fields = ("supplier", "created_at", "updated_at", "created_by", "updated_by")
     fieldsets = (
         (None, {"fields": ("market", "category", "slug")}),
         ("Names + description", {"fields": (("name_uz", "name_ru"), ("description_uz", "description_ru"))}),
         ("Commerce", {"fields": (("quantity_kg", "price_per_kg"), ("status", "available_from"), "location")}),
-        ("Ownership", {"fields": ("supplier",)}),
-        ("Audit", {"fields": ("created_by", "updated_by", "created_at", "updated_at"), "classes": ("collapse",)}),
+        ("Audit", {"fields": ("supplier", "created_by", "updated_by", "created_at", "updated_at"),
+                    "classes": ("collapse",),
+                    "description": "Auto-set on save. 'supplier' is a v2 legacy field; the real vendor is the Market above."}),
     )
 
     # ---- Permission overrides ----
@@ -103,6 +133,48 @@ class ListingAdmin(admin.ModelAdmin):
 
     @admin.display(description="category", ordering="category__name_uz")
     def category_name(self, obj): return obj.category.name_uz if obj.category_id else "—"
+
+    @admin.display(description="photos")
+    def photo_count(self, obj):
+        """Tiny badge in the list — at-a-glance signal that a listing is missing its photos. The query is cheap
+        thanks to the .photos related_name on ListingPhoto; for larger admins we'd switch to a prefetch_related."""
+        n = obj.photos.count()
+        return f"{n} 📷" if n else "—"
+
+
+@admin.register(ListingPhoto)
+class ListingPhotoAdmin(admin.ModelAdmin):
+    """Standalone ListingPhoto admin — kept alongside the inline for power users who want to bulk-manage photos
+    without opening each listing one by one (e.g. delete a batch of broken uploads after a worker mistake)."""
+
+    list_display = ("preview", "listing_link", "position", "image_name", "updated_at")
+    list_display_links = ("preview",)
+    list_filter = ("listing__market", "listing__category")
+    search_fields = ("listing__name_uz", "listing__name_ru", "listing__slug")
+    list_select_related = ("listing", "listing__market", "listing__category")
+    ordering = ("listing", "position", "id")
+    list_per_page = 100
+
+    @admin.display(description="preview")
+    def preview(self, obj):
+        """Thumbnail in the list view so workers can scan visually rather than read filenames."""
+        if not obj.image: return "—"
+        return format_html('<img src="{}" style="max-height:60px;max-width:90px;object-fit:contain;'
+                           'border-radius:6px;" />', obj.image.url)
+
+    @admin.display(description="listing", ordering="listing__name_uz")
+    def listing_link(self, obj):
+        """Click-through into the parent Listing's edit page — faster than navigating via the market/category filters."""
+        return format_html('<a href="/admin/listings/listing/{}/change/">{}</a>',
+                           obj.listing_id, obj.listing.name_uz)
+
+    @admin.display(description="file")
+    def image_name(self, obj): return obj.image.name.rsplit("/", 1)[-1] if obj.image else "—"
+
+    def has_delete_permission(self, request, obj=None):
+        """Editors can delete individual photos (they're trivially re-uploadable); only the parent Listing
+        deletion stays superuser-only."""
+        return True
 
 
 @admin.register(PriceHistory)

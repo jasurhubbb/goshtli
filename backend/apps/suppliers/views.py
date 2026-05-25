@@ -1,11 +1,13 @@
-"""Supplier views — /me for profile read/update, /dashboard for the supplier home screen aggregate."""
+"""Supplier views — /me for profile read/update, /dashboard for the supplier home screen aggregate.
+v3.3 adds /list/ (admin-curated supplier picker) and /<id>/ (admin edit of any supplier profile)."""
 from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsSupplier
+from apps.common.permissions import IsAdminRole, IsSupplier
 from apps.listings.models import Listing
 from apps.orders.models import Order
 from .models import SupplierProfile
@@ -22,6 +24,33 @@ class SupplierMeView(generics.RetrieveUpdateAPIView):
         # get_or_create handles the rare case the signal didn't run (e.g. shell-created users); keeps /me always 200
         profile, _ = SupplierProfile.objects.get_or_create(user=self.request.user, defaults={"business_name": ""})
         return profile
+
+
+class SupplierListView(generics.ListAPIView):
+    """GET /api/v1/suppliers/list/ — admin-only; returns every SupplierProfile so the in-app admin picker can show
+    real suppliers when assigning a listing to one. Verified flag is included so the picker can mark non-verified
+    suppliers (admin still creates listings for them, but the UI hints at the verification state)."""
+    serializer_class = SupplierProfileSerializer
+    permission_classes = (IsAdminRole,)
+    queryset = SupplierProfile.objects.select_related("user").order_by("business_name", "user__full_name")
+
+
+class SupplierAdminDetailView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /api/v1/suppliers/<pk>/ — admin edits any supplier's profile (business_name/region/address). Verification
+    flag is writeable here because the in-app admin needs to flip it; SupplierMeView keeps it read-only for self-edit."""
+    serializer_class = SupplierProfileSerializer
+    permission_classes = (IsAdminRole,)
+    queryset = SupplierProfile.objects.select_related("user")
+    http_method_names = ("get", "patch", "head", "options")
+
+    def get_serializer_class(self):
+        # Admin path — drop is_verified from read_only_fields so admin can toggle it. Local subclass keeps the
+        # change scoped to this view; SupplierMeView still gets the verified-locked serializer.
+        Base = SupplierProfileSerializer
+        class _AdminSerializer(Base):
+            class Meta(Base.Meta):
+                read_only_fields = ("id", "created_at", "updated_at")  # is_verified writable for admin
+        return _AdminSerializer
 
 
 @extend_schema(responses={200: SupplierDashboardSerializer},

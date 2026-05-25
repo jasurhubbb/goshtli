@@ -12,7 +12,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/addresses/presentation/address_form_screen.dart';
+import '../../features/addresses/presentation/address_map_screen.dart';
+import '../../features/admin/presentation/admin_manage_section_screen.dart';
+import '../../features/admin/presentation/admin_market_detail_screen.dart';
+import '../../features/admin/presentation/admin_screen.dart';
+import '../../features/admin/providers/admin_auth_providers.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/phone_details_screen.dart';
+import '../../features/auth/presentation/phone_entry_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/providers/auth_providers.dart';
 import '../../features/auth/providers/auth_state.dart';
@@ -29,6 +37,7 @@ import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/orders/presentation/orders_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/profile/presentation/profile_settings_screen.dart';
 import '../location/location_providers.dart';
 import 'main_shell.dart';
 
@@ -43,6 +52,7 @@ class _SplashScreen extends StatelessWidget {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authNotifierProvider);
+  final adminAuth = ref.watch(adminAuthNotifierProvider);
   final onboardingDone = ref.watch(onboardingDoneProvider).asData?.value;
 
   return GoRouter(
@@ -57,12 +67,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!onboardingDone && loc != '/onboarding') return '/onboarding';
       if (onboardingDone && loc == '/onboarding') return '/';
 
-      // v3 pivot: no blanket auth wall. Anonymous can browse the app. Specific auth-required SCREENS guard themselves:
-      //   • /login or /register — accessible from anywhere; if already logged in, send home
-      //   • Everything else allowed for anonymous + authenticated alike
+      // v3 pivot: no blanket auth wall. Anonymous can browse the app. Specific auth-required SCREENS guard themselves.
+      // v3.2: phone-based auth is the primary mobile flow — the legacy /login + /register routes redirect to /auth/phone
+      // so existing links keep working while we phase the email-password screens out.
       final loggedIn = auth is AuthAuthenticated;
-      final atAuth = loc == '/login' || loc == '/register';
+      if (!loggedIn && (loc == '/login' || loc == '/register')) return '/auth/phone';
+      final atAuth = loc == '/login' || loc == '/register' || loc == '/auth/phone' || loc == '/auth/details';
       if (loggedIn && atAuth) return '/';
+
+      // v3.3: admin routes are gated on the SEPARATE admin auth (AdminAuthNotifier). If admin lock state is
+      // not unlocked and the user lands on /admin/*, bounce to /profile so they re-enter the password.
+      // This is independent of the user's main-app session — buyer-logged-in users can be admin-locked.
+      if (loc.startsWith('/admin') && !adminAuth.isUnlocked) return '/profile';
       return null;
     },
     routes: [
@@ -70,6 +86,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', name: 'onboarding', builder: (_, _) => const OnboardingScreen()),
 
       // ---------- Auth (no shell) ----------
+      // v3.2 phone-based flow — the primary mobile auth path. PhoneEntryScreen branches on phone-check, then
+      // pushes /auth/details with the phone in `extra` if it's a new account.
+      GoRoute(path: '/auth/phone', name: 'auth-phone', builder: (_, _) => const PhoneEntryScreen()),
+      GoRoute(path: '/auth/details', name: 'auth-details',
+        redirect: (_, gs) {
+          // Deep-links to /auth/details without `extra` carrying the phone are nonsense — bounce them to /auth/phone
+          // so the flow starts at step 1. Legitimate entry always carries extra={'phone': '+998XXXXXXXXX'}.
+          final phone = (gs.extra as Map<String, dynamic>?)?['phone'] as String?;
+          return (phone == null || phone.isEmpty) ? '/auth/phone' : null;
+        },
+        builder: (_, gs) {
+          final phone = (gs.extra as Map<String, dynamic>?)?['phone'] as String;
+          return PhoneDetailsScreen(phone: phone);
+        }),
+      // Legacy email-password screens — kept for now (redirect above sends anonymous traffic to /auth/phone).
       GoRoute(path: '/login', name: 'login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', name: 'register', builder: (_, _) => const RegisterScreen()),
 
@@ -82,6 +113,55 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/chats/:id', name: 'chat-detail',
         builder: (_, gs) => ChatDetailScreen(conversationId: int.parse(gs.pathParameters['id']!))),
       GoRoute(path: '/profile/saved', name: 'favorites', builder: (_, _) => const FavoritesScreen()),
+
+      // ---------- Admin (v3.3) ----------
+      // Soft-gated by a password prompt on the Profile screen; backend permissions still enforce ADMIN role on
+      // every mutation. Sub-section routes (Listings/Suppliers/Categories/Markets) push above /admin so back
+      // returns to the tab bar.
+      GoRoute(path: '/admin', name: 'admin', builder: (_, _) => const AdminScreen()),
+      GoRoute(path: '/admin/markets/:id', name: 'admin-market-detail',
+        builder: (_, gs) => AdminMarketDetailScreen(
+            marketId: int.parse(gs.pathParameters['id']!))),
+      GoRoute(path: '/admin/manage/:section', name: 'admin-manage-section',
+        builder: (_, gs) {
+          final raw = gs.pathParameters['section'] ?? '';
+          // Resolve the enum from the path param; default to Listings on any unknown value so we never crash on
+          // a malformed deep link.
+          final section = AdminSection.values.firstWhere((e) => e.name == raw,
+              orElse: () => AdminSection.listings);
+          return AdminManageSectionScreen(section: section);
+        }),
+
+      // v3.3 — editable buyer details (Familiya / Ism / Otasining ismi / DOB / Jins). Pushes above the tab bar
+      // so a back arrow returns to the Profile tab with the latest hero values refreshed.
+      GoRoute(path: '/profile/settings', name: 'profile-settings',
+        builder: (_, _) => const ProfileSettingsScreen()),
+
+      // ---------- Address management (v3.1) ----------
+      // /addresses/new   → create form
+      // /addresses/<id>  → edit form (loads from addressesProvider's cached list)
+      // /addresses/map   → OSM map picker, popped with {lat, lng, displayName} payload
+      GoRoute(path: '/addresses/new', name: 'address-new',
+        builder: (_, gs) {
+          // When this route is reached via the map → pushReplacement flow, the picked coordinates + display
+          // name + house number (if Nominatim resolved one) come in via `extra`. Otherwise opens blank.
+          final extra = gs.extra as Map<String, dynamic>? ?? const {};
+          return AddressFormScreen(
+            prefilledLat: extra['lat'] as double?,
+            prefilledLng: extra['lng'] as double?,
+            prefilledDisplayName: extra['displayName'] as String?,
+            prefilledHouseNumber: extra['houseNumber'] as String?);
+        }),
+      GoRoute(path: '/addresses/map', name: 'address-map',
+        builder: (_, gs) {
+          final extra = gs.extra as Map<String, dynamic>? ?? const {};
+          return AddressMapScreen(
+            initialLat: extra['initialLat'] as double?,
+            initialLng: extra['initialLng'] as double?,
+            initialQuery: extra['initialQuery'] as String?);
+        }),
+      GoRoute(path: '/addresses/:id', name: 'address-edit',
+        builder: (_, gs) => AddressFormScreen(addressId: int.parse(gs.pathParameters['id']!))),
 
       // ---------- Top-level routes for screens that left the bottom bar (kept for deep-links + nested nav) ----------
       GoRoute(path: '/search', name: 'search', builder: (_, _) => const ListingsScreen()),

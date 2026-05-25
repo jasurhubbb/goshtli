@@ -11,6 +11,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/format.dart' show formatSoum;
+import '../../addresses/presentation/address_sheet.dart';
+import '../../addresses/providers/addresses_providers.dart';
 import '../providers/cart_providers.dart';
 
 
@@ -114,6 +116,12 @@ class _CartContentState extends ConsumerState<_CartContent> {
 
     return Column(children: [
       Expanded(child: CustomScrollView(slivers: [
+        // ---------- Delivery address row ----------
+        // Surfaces the active address at the top of the cart so the buyer sees it before checkout. Tap →
+        // address sheet to switch / add. Empty state shows a prompt so the user knows checkout is gated.
+        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          sliver: const SliverToBoxAdapter(child: _DeliveryAddressRow())),
+
         // ---------- Product rows ----------
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           sliver: SliverList.separated(
@@ -168,11 +176,65 @@ class _CartContentState extends ConsumerState<_CartContent> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
             onPressed: () {
               HapticFeedback.mediumImpact();
+              // Require a delivery address before placing the order. If none selected, open the address sheet
+              // instead of submitting — feels less intrusive than blocking with an error dialog.
+              final addr = ref.read(selectedAddressProvider);
+              if (addr == null) { showAddressSheet(context); return; }
+              // Real /orders/ POST would happen here. For now we surface the snack and clear the cart.
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.cartCheckoutSnack)));
             },
             child: Text(t.cartCheckout,
               style: tt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w600)))))))
     ]);
+  }
+}
+
+
+// ---------- Delivery address row ----------
+
+/// Top-of-cart card showing the active delivery address. Tap → open the address sheet to switch / add.
+/// Empty state (no address selected) shows a prompt + brand-red border so it visually stands out as the
+/// blocking step before checkout.
+class _DeliveryAddressRow extends ConsumerWidget {
+  const _DeliveryAddressRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final address = ref.watch(selectedAddressProvider);
+    final hasAddress = address != null;
+
+    return InkWell(
+      onTap: () => showAddressSheet(context),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+                color: hasAddress
+                    ? cs.outlineVariant.withValues(alpha: 0.4)
+                    : cs.primary.withValues(alpha: 0.5),
+                width: 0.8)),
+        child: Row(children: [
+          Container(width: 40, height: 40,
+            decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.location_on_rounded, color: cs.primary, size: 22)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(hasAddress ? address.label : t.addressesEmpty,
+              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(hasAddress ? address.address : t.addressesNewCta,
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              maxLines: 2, overflow: TextOverflow.ellipsis),
+          ])),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+        ])),
+    );
   }
 }
 

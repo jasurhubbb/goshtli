@@ -43,13 +43,38 @@ TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "DIR
                                                  "django.contrib.auth.context_processors.auth",
                                                  "django.contrib.messages.context_processors.messages"]}}]
 
-# PostgreSQL connection pulled from .env — same shape works for local-Docker and production
-DATABASES = {"default": {"ENGINE": "django.db.backends.postgresql",
-                         "NAME": config("DB_NAME", default="meat_marketplace"),
-                         "USER": config("DB_USER", default="postgres"),
-                         "PASSWORD": config("DB_PASSWORD", default="postgres"),
-                         "HOST": config("DB_HOST", default="localhost"),
-                         "PORT": config("DB_PORT", default="5432")}}
+# PostgreSQL connection — supports two shapes for portability:
+#   1. DATABASE_URL=postgresql://user:pass@host:port/dbname  (Railway / Render / Heroku default)
+#   2. DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT   (legacy .env split)
+# The URL form takes precedence when set so cloud hosts that auto-inject DATABASE_URL just work.
+def _db_from_url(url):
+    """Tiny inline Postgres URL parser — avoids pulling in dj-database-url as a dep for one function.
+    Handles postgresql://user:pass@host:port/dbname?sslmode=require ; returns the dict Django expects."""
+    from urllib.parse import urlparse, parse_qs, unquote
+    p = urlparse(url)
+    options = {}
+    qs = parse_qs(p.query)
+    # Promote sslmode= to Django's OPTIONS so Railway/Render's TLS-enforced Postgres works without extra config
+    if "sslmode" in qs: options["sslmode"] = qs["sslmode"][0]
+    return {"ENGINE": "django.db.backends.postgresql",
+            "NAME": (p.path or "/").lstrip("/"),
+            "USER": unquote(p.username or ""),
+            "PASSWORD": unquote(p.password or ""),
+            "HOST": p.hostname or "",
+            "PORT": str(p.port or ""),
+            "OPTIONS": options,
+            "CONN_MAX_AGE": 60}                          # short-lived connection pool — fine for low traffic, restarts cleanly
+
+_DATABASE_URL = config("DATABASE_URL", default="")
+if _DATABASE_URL:
+    DATABASES = {"default": _db_from_url(_DATABASE_URL)}
+else:
+    DATABASES = {"default": {"ENGINE": "django.db.backends.postgresql",
+                             "NAME": config("DB_NAME", default="meat_marketplace"),
+                             "USER": config("DB_USER", default="postgres"),
+                             "PASSWORD": config("DB_PASSWORD", default="postgres"),
+                             "HOST": config("DB_HOST", default="localhost"),
+                             "PORT": config("DB_PORT", default="5432")}}
 
 # Custom user model — defined here so Django uses ours instead of django.contrib.auth.User from day one
 AUTH_USER_MODEL = "accounts.User"

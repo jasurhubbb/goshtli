@@ -516,7 +516,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get continueAction => 'Davom eting';
 
   @override
-  String get savedListingsTitle => 'Saqlangan e\'lonlar';
+  String get savedListingsTitle => 'Sevimli e\'lonlar';
 
   @override
   String get noSavedListingsYet => 'Hozircha saqlangan e\'lonlar yo\'q';
@@ -624,4 +624,246 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get menuPickHint => 'Bugun nima pishirasiz?';
+
+  @override
+  String get homeSearchHint => 'Mahsulot qidirish...';
+
+  @override
+  String get homeRegionPickerTitle => 'Hududni tanlang';
+
+  @override
+  String get homeRegionAll => 'Barcha hududlar';
+
+  @override
+  String get addressesTitle => 'Manzillar';
+
+  @override
+  String get addressesEmpty => 'Hozircha saqlangan manzil yo\'q.';
+
+  @override
+  String get addressesNewCta => 'Yangi manzil';
+
+  @override
+  String get addressesSignInCta => 'Manzilni saqlash uchun kiring';
+
+  @override
+  String get addressFormTitleNew => 'Yangi manzil';
+
+  @override
+  String get addressFormTitleEdit => 'Manzil tafsilotlari';
+
+  @override
+  String get addressFieldLabel => 'Manzil nomi';
+
+  @override
+  String get addressFieldLabelHint => 'Uy, Ofis, Restoran...';
+
+  @override
+  String get addressFieldStreet => 'Manzil';
+
+  @override
+  String get addressFieldStreetHint => 'Ko\'cha, mahalla, uy raqami';
+
+  @override
+  String get addressFieldEntrance => 'Kirish yo\'lagi';
+
+  @override
+  String get addressFieldFloor => 'Qavat';
+
+  @override
+  String get addressFieldApartment => 'Xonadon';
+
+  @override
+  String get addressFieldNotes => 'Belgilangan joy va manzil tafsilotlari';
+
+  @override
+  String get addressFieldNotesHelp =>
+      'Bu kuryerga sizni tezroq topishga yordam beradi';
+
+  @override
+  String get addressFieldDefault => 'Asosiy manzil sifatida belgilash';
+
+  @override
+  String get addressSaveCta => 'Manzilni saqlash';
+
+  @override
+  String get addressDeleteCta => 'O\'chirish';
+
+  @override
+  String get addressDeleteConfirm => 'Bu manzilni o\'chirasizmi?';
+
+  @override
+  String get addressMapTitle => 'Manzilni xaritadan tanlang';
+
+  @override
+  String get addressMapConfirmTitle => 'Hammasi to\'g\'rimi?';
+
+  @override
+  String get addressMapConfirmBody =>
+      'Marker kirish joyida ekanligiga ishonch hosil qiling va manzilni tasdiqlang';
+
+  @override
+  String get addressMapConfirmCta => 'Uy raqamini aniqlashtirish';
+
+  @override
+  String get addressMapMyLocation => 'Mening joylashuvim';
+
+  @override
+  String get phoneAuthTitle => 'Telefon raqamingiz';
+
+  @override
+  String get phoneAuthSubtitle =>
+      'Kirish yoki ro\'yxatdan o\'tish uchun raqamingizni kiriting';
+
+  @override
+  String get phoneAuthHint => '90 123 45 67';
+
+  @override
+  String get phoneAuthContinue => 'Davom etish';
+
+  @override
+  String get phoneAuthInvalid => '9 raqamli telefon raqami kiriting';
+
+  @override
+  String get phoneDetailsTitle => 'O\'zingiz haqida';
+
+  @override
+  String get phoneDetailsSubtitle => 'Buyurtmalar uchun ism kerak';
+
+  @override
+  String get phoneDetailsNameLabel => 'Ismingiz';
+
+  @override
+  String get phoneDetailsBusinessLabel => 'Biznes nomi (ixtiyoriy)';
+
+  @override
+  String get phoneDetailsCta => 'Kirish';
+
+  @override
+  String get profileSettingsTitle => 'Profil sozlamalari';
+
+  @override
+  String get profileTapToEdit => 'To\'g\'rilash';
+
+  @override
+  String get profileFieldLastName => 'Familiya';
+
+  @override
+  String get profileFieldFirstName => 'Ism';
+
+  @override
+  String get profileFieldPatronymic => 'Otasining ismi';
+
+  @override
+  String get profileFieldPatronymicHint => 'Ota ismini kiriting';
+
+  @override
+  String get profileFieldDateOfBirth => 'Tug\'ilgan kun';
+
+  @override
+  String get profileFieldDateOfBirthHint => 'Sanani tanlang';
+
+  @override
+  String get profileFieldGender => 'Jins';
+
+  @override
+  String get genderMale => 'Erkak';
+
+  @override
+  String get genderFemale => 'Ayol';
+
+  @override
+  String get profileFieldPhone => 'Telefon raqami';
+
+  @override
+  String get profileMyCards => 'Kartalarim';
+
+  @override
+  String get profileCardsEmpty => 'Hozircha kartalar yo\'q';
+
+  @override
+  String get profileContactUs => 'Biz bilan bog\'lanish';
+
+  @override
+  String get profileTelegramOpenFailed => 'Telegramni ochib bo\'lmadi';
+
+  @override
+  String get cancel => 'Bekor qilish';
+
+  @override
+  String get adminEnterCta => 'Admin sifatida kirish';
+
+  @override
+  String get adminEnterPasswordTitle => 'Admin paroli';
+
+  @override
+  String get adminEnterPasswordHint => 'Parolni kiriting';
+
+  @override
+  String get adminEnterPasswordWrong => 'Parol noto\'g\'ri';
+
+  @override
+  String get adminTitle => 'Admin';
+
+  @override
+  String get adminTabNewListing => 'Yangi e\'lon';
+
+  @override
+  String get adminTabManage => 'Boshqarish';
+
+  @override
+  String get adminNewListingPickSupplier => 'Yetkazib beruvchini tanlang';
+
+  @override
+  String get adminNewListingSubmit => 'E\'lonni saqlash';
+
+  @override
+  String get adminManageListings => 'E\'lonlar';
+
+  @override
+  String get adminManageSuppliers => 'Yetkazib beruvchilar';
+
+  @override
+  String get adminManageCategories => 'Kategoriyalar';
+
+  @override
+  String get adminManageMarkets => 'Bozorlar';
+
+  @override
+  String get adminManageHint =>
+      'Tanlangan bo\'limda yaratish/tahrirlash mumkin';
+
+  @override
+  String get adminComingSoon => 'Tez orada qo\'shiladi';
+
+  @override
+  String get adminListingCreated => 'E\'lon yaratildi';
+
+  @override
+  String get adminPermissionDenied =>
+      'Admin huquqlari kerak — admin akkaunt bilan kiring';
+
+  @override
+  String get adminNewListingPhotos => 'Rasmlar';
+
+  @override
+  String get adminPickFromGallery => 'Galereyadan tanlash';
+
+  @override
+  String get adminPickFromCamera => 'Kameradan suratga olish';
+
+  @override
+  String get adminMarketDetailListings => 'Bu bozordagi e\'lonlar';
+
+  @override
+  String get adminMarketEditCta => 'Tahrirlash';
+
+  @override
+  String get adminMarketDeleteCta => 'Bozorni o\'chirish';
+
+  @override
+  String get adminMarketPhoneLabel => 'Telefon raqami';
+
+  @override
+  String get adminMarketEmpty => 'Hozircha e\'lonlar yo\'q';
 }

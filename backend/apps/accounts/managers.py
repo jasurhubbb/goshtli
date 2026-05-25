@@ -33,3 +33,22 @@ class UserManager(BaseUserManager):
         if extra_fields.get("is_staff") is not True: raise ValueError(_("Superuser must have is_staff=True"))
         if extra_fields.get("is_superuser") is not True: raise ValueError(_("Superuser must have is_superuser=True"))
         return self._create_user(email, password, **extra_fields)
+
+    def create_user_from_phone(self, phone, full_name, **extra_fields):
+        """Phone-only registration (v3.2 buyer flow). No password, no real email — Django still requires both
+        for AbstractBaseUser, so we synthesize a non-clashing placeholder email and an unusable password.
+        The user authenticates by phone via the dedicated PhoneLoginView; the synthetic email never reaches them.
+
+        Phone uniqueness is enforced by the partial UniqueConstraint on User (see models.py); raises IntegrityError
+        if phone already exists, which the view layer turns into a 409 / friendly error.
+        """
+        if not phone: raise ValueError(_("Phone is required"))
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        extra_fields.setdefault("role", "BUYER")
+        # Synthetic email: strip the +, suffix .phone.goshtli.local — guaranteed unique because phone is unique
+        synthetic_email = f"{phone.lstrip('+')}@phone.goshtli.local"
+        user = self.model(email=synthetic_email, phone=phone, full_name=full_name, **extra_fields)
+        user.set_unusable_password()  # password-less account; logins go through PhoneLoginView, not /auth/login/
+        user.save(using=self._db)
+        return user

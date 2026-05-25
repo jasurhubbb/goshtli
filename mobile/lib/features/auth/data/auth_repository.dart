@@ -46,11 +46,24 @@ class AuthRepository {
     throw _toAuthException(r);
   }
 
-  /// PATCH /auth/me/ — updates the editable subset of the user record (full_name, phone). Email/role stay server-managed.
-  Future<User> updateMe({String? fullName, String? phone}) async {
+  /// PATCH /auth/me/ — updates the editable subset of the user record. Email/role stay server-managed.
+  /// v3.3 adds first/last/patronymic/dob/gender; full_name is server-recomputed from first+last when either
+  /// is supplied (see UserSerializer.update), so callers normally don't pass fullName once the structured
+  /// fields are filled.
+  Future<User> updateMe({
+    String? fullName, String? phone,
+    String? firstName, String? lastName, String? patronymic,
+    String? dateOfBirth, UserGender? gender,
+  }) async {
     final r = await _api.dio.patch('/auth/me/', data: {
       'full_name': ?fullName,  // Dart 3.5 null-aware map entry — omitted entirely if fullName is null
       'phone': ?phone,
+      'first_name': ?firstName,
+      'last_name': ?lastName,
+      'patronymic': ?patronymic,
+      'date_of_birth': ?dateOfBirth,
+      // Gender goes over the wire as 'M' / 'F' / '' (empty string clears the field server-side).
+      if (gender != null) 'gender': gender == UserGender.male ? 'M' : 'F',
     });
     if (r.statusCode == 200) return User.fromJson(r.data as Map<String, dynamic>);
     throw _toAuthException(r);
@@ -58,6 +71,38 @@ class AuthRepository {
 
   /// Local-only logout — backend has no logout endpoint (JWTs are stateless until expiry).
   Future<void> logout() => _tokens.clear();
+
+
+  // ---------- Phone-based auth (v3.2) ----------
+
+  /// POST /auth/phone-check/ — returns whether an account with this phone already exists.
+  /// Used by the mobile flow to branch between "log in this existing user" vs "ask for name + register".
+  Future<bool> phoneCheck(String phone) async {
+    final r = await _api.dio.post('/auth/phone-check/', data: {'phone': phone});
+    if (r.statusCode == 200) return r.data['exists'] as bool;
+    throw _toAuthException(r);
+  }
+
+  /// POST /auth/phone-login/ — passwordless login by phone. Backend returns JWT pair; persist + fetchMe.
+  Future<User> phoneLogin(String phone) async {
+    final r = await _api.dio.post('/auth/phone-login/', data: {'phone': phone});
+    if (r.statusCode != 200) throw _toAuthException(r);
+    await _tokens.writeBoth(access: r.data['access'] as String, refresh: r.data['refresh'] as String);
+    return fetchMe();
+  }
+
+  /// POST /auth/phone-register/ — creates a buyer account by phone + name (+ optional business). Returns JWT,
+  /// persists tokens, fetches the User record so callers can use it immediately.
+  Future<User> phoneRegister({required String phone, required String fullName, String businessName = ''}) async {
+    final r = await _api.dio.post('/auth/phone-register/', data: {
+      'phone': phone, 'full_name': fullName,
+      if (businessName.isNotEmpty) 'business_name': businessName,
+    });
+    if (r.statusCode != 201) throw _toAuthException(r);
+    await _tokens.writeBoth(access: r.data['access'] as String, refresh: r.data['refresh'] as String);
+    return fetchMe();
+  }
+
 
   /// DELETE /auth/me/ — permanently removes the user's account on the server. Caller logs out afterward.
   /// Surfaces the server's 409 message ("cancel active orders first") via AuthException.

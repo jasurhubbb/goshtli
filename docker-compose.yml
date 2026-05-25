@@ -42,6 +42,9 @@ services:
   # Celery worker — picks up tasks from Redis (image resize, future cache warming + reports).
   # Shares the backend image so the codebase is identical; just runs a different command. Concurrency=2 is plenty
   # for image work on a small box; raise it when you start running daily cron-like aggregations.
+  #
+  # The environment block OVERRIDES values from .env that would only work from the host: inside this container,
+  # Postgres is reachable as `postgres` and Redis as `redis` (docker-compose service hostnames), not localhost.
   worker:
     build:
       context: ./backend
@@ -51,6 +54,10 @@ services:
       - ./backend:/app
     env_file:
       - ./backend/.env
+    environment:
+      DB_HOST: postgres
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       - postgres
       - redis

@@ -25,11 +25,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
   ///   • no stored token → AuthAnonymous (browse freely, no login wall)
   ///   • stored token + /me works → AuthAuthenticated
   ///   • stored token but /me fails → tokens were stale → clear + AuthAnonymous
+  ///
+  /// v3.3 defense: an admin-role user must NEVER end up in the main app's auth state. The admin gate lives
+  /// in its own parallel stack (AdminAuthNotifier + AdminTokenStorage); if we ever see an ADMIN user here
+  /// it means something leaked an admin token into the main keystore — clear it and revert to anonymous so
+  /// the main app stays clean. (This also self-heals leftover state from earlier builds that wrongly stored
+  /// the admin JWT in the main TokenStorage.)
   Future<void> _resume() async {
     final access = await _tokens.readAccess();
     if (access == null) { state = const AuthAnonymous(); return; }
     try {
       final user = await _repo.fetchMe();
+      if (user.role == UserRole.admin) {
+        // Stale admin token leaked into the main keystore — wipe and stay anonymous.
+        await _tokens.clear();
+        state = const AuthAnonymous();
+        return;
+      }
       state = AuthAuthenticated(user);
       _registerPushQuietly();
     } catch (_) {
@@ -40,10 +52,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Called from login screen submit — flips through Loading → Authenticated, or back to Unauthenticated(error)
   /// if the credentials were wrong (so the login screen can show the error inline).
+  ///
+  /// v3.3 defense: refuse to log an ADMIN-role user into the main app's session. Admin lives in its own
+  /// auth context; if someone types admin@goshtli.local into the legacy email login form, we drop the
+  /// tokens and pretend the credentials were wrong.
   Future<void> login(String email, String password) async {
     state = const AuthLoading();
     try {
-      state = AuthAuthenticated(await _repo.login(email: email, password: password));
+      final user = await _repo.login(email: email, password: password);
+      if (user.role == UserRole.admin) {
+        await _repo.logout();
+        state = const AuthUnauthenticated('Invalid credentials');
+        return;
+      }
+      state = AuthAuthenticated(user);
       _registerPushQuietly();
     }
     on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
@@ -66,6 +88,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _repo.logout();
     state = const AuthAnonymous();
   }
+
+
+  // ---------- Phone-based auth (v3.2) ----------
+
+  /// Pure query — does NOT mutate auth state. PhoneEntryScreen calls this to decide whether to
+  /// auto-login or push the details screen for registration. Throws AuthException on network/server errors
+  /// so the screen can show an inline message.
+  Future<bool> phoneCheck(String phone) => _repo.phoneCheck(phone);
+
+  /// Passwordless phone login — used when phoneCheck returned true. Same state transitions as email login.
+  Future<void> phoneLogin(String phone) async {
+    state = const AuthLoading();
+    try {
+      state = AuthAuthenticated(await _repo.phoneLogin(phone));
+      _registerPushQuietly();
+    } on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
+  }
+
+  /// Phone registration — creates the buyer account and logs them in in one shot. Called from the
+  /// name-entry screen after phoneCheck returned false.
+  Future<void> phoneRegister({required String phone, required String fullName, String businessName = ''}) async {
+    state = const AuthLoading();
+    try {
+      state = AuthAuthenticated(await _repo.phoneRegister(
+          phone: phone, fullName: fullName, businessName: businessName));
+      _registerPushQuietly();
+    } on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
+  }
+
+  // NOTE: admin unlock is intentionally NOT here. The admin gate lives in its own parallel auth stack
+  // (see features/admin/providers/admin_auth_*); it must not touch the main app's user session. Entering
+  // /admin while logged in as a buyer keeps the buyer session intact; leaving /admin returns the user to
+  // their previous state untouched.
 
   /// Hook called by ApiClient when a refresh attempt fails — keeps the auth state in sync without duplicating clear logic.
   void onAuthExpired() {

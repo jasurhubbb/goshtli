@@ -23,6 +23,10 @@ dependencies:
   firebase_core: ^3.6.0                   # required by every Firebase package; initializes the SDK from google-services.json
   firebase_messaging: ^15.1.3             # FCM push — wakes the phone on order/notification events (v2 Milestone E.5)
   geolocator: ^13.0.1                     # current location for "near me" listings + onboarding location prompt (v3)
+  flutter_map: ^7.0.2                     # OSM tile map for the delivery-address picker (v3.1) — no API key required
+  latlong2: ^0.9.1                        # LatLng type used by flutter_map; tiny dependency
+  url_launcher: ^6.3.1                    # opens Telegram deep-link from the "Biz bilan bog'lanish" contact sheet
+  # image_picker is already declared above for listing photos; admin new-listing form reuses the same plugin.
 
 # Build/test/codegen-only deps — never shipped to users
 dev_dependencies:

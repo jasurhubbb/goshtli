@@ -28,19 +28,26 @@ class IsVerifiedSupplier(BasePermission):
     """The real seller gate — caller must have a SupplierProfile AND admin must have flipped is_verified=True.
     Used by listing-create + supplier dashboard endpoints. Profile is opt-in (created via /suppliers/me/ POST), so
     a new user with no profile is gated even before verification kicks in.
+
+    v3.3: ADMIN-role users bypass the verification gate entirely — admins curate listings on behalf of any supplier
+    from the mobile admin page.
     """
     def has_permission(self, request, view):
         u = request.user
         if not (u and u.is_authenticated): return False
+        if u.is_admin_role: return True                                                   # admin override
         return hasattr(u, "supplier_profile") and u.supplier_profile.is_verified
 
 
 # ---------- Object-level ownership gates ----------
 
 class IsListingOwnerOrReadOnly(BasePermission):
-    """Anyone can GET; only the listing's owner (the user who created it) can mutate it. Combined with auth at the view level."""
+    """Anyone can GET; only the listing's owner (the user who created it) can mutate it. Combined with auth at the view level.
+    v3.3: ADMIN-role users can mutate any listing — needed for the in-app admin "Boshqarish" tab.
+    """
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS: return True
+        if request.user.is_authenticated and request.user.is_admin_role: return True      # admin override
         return obj.supplier_id == request.user.id
 
 
