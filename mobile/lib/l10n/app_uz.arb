@@ -311,7 +311,7 @@
   "addressMapMyLocation": "Mening joylashuvim",
   "phoneAuthTitle": "Telefon raqamingiz",
   "phoneAuthSubtitle": "Kirish yoki ro'yxatdan o'tish uchun raqamingizni kiriting",
-  "phoneAuthHint": "90 123 45 67",
+  "phoneAuthHint": "90 123-45-67",
   "phoneAuthContinue": "Davom etish",
   "phoneAuthInvalid": "9 raqamli telefon raqami kiriting",
   "phoneDetailsTitle": "O'zingiz haqida",
@@ -360,5 +360,12 @@
   "adminMarketEditCta": "Tahrirlash",
   "adminMarketDeleteCta": "Bozorni o'chirish",
   "adminMarketPhoneLabel": "Telefon raqami",
-  "adminMarketEmpty": "Hozircha e'lonlar yo'q"
+  "adminMarketEmpty": "Hozircha e'lonlar yo'q",
+  "adminListingEditTitle": "E'lonni tahrirlash",
+  "adminListingSavedToast": "Saqlandi",
+  "adminListingDeleteCta": "E'lonni o'chirish",
+  "statusActive": "Faol",
+  "statusSoldOut": "Tugagan",
+  "statusInactive": "Faol emas",
+  "addressAutoDetectedHint": "Aniqlangan joylashuv · aniqlashtirish uchun bosing"
 }

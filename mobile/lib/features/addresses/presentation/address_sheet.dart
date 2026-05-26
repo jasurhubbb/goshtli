@@ -45,6 +45,10 @@ class _AddressSheet extends ConsumerWidget {
     // version, those don't get rendered. The first "Yangi manzil" tap cleans them up.
     final addressesState = ref.watch(addressesProvider);
     final selected = ref.watch(selectedAddressProvider);
+    // Fallback when no address is saved: the GPS-detected location the home pill is already showing.
+    // The user said "even if set by the system when I allow, it should be seen as location set" — so this
+    // sheet should reflect the same source the pill does, not pretend the location is empty.
+    final autoDetected = ref.watch(currentLocationProvider).asData?.value;
 
     // Loading state on first mount — quick spinner while the local store reads SharedPreferences.
     if (addressesState.isLoading && selected == null) {
@@ -68,12 +72,25 @@ class _AddressSheet extends ConsumerWidget {
         ]),
         const SizedBox(height: 18),
 
-        // Body — single address row OR empty-state hint
+        // Body — three branches:
+        //   1. Saved address selected → tap row to edit it
+        //   2. No saved address but GPS resolved → show the auto-detected location as the current address,
+        //      tap row to refine on the map (and save it permanently)
+        //   3. No saved + no GPS (permission denied / off) → fall back to the empty-state hint
         if (selected != null)
           _AddressRow(address: selected,
-            // Tap row → open edit form pre-populated. The form's `_isEdit` branch handles loading the row
-            // from addressesProvider's cached list, so no extra fetch is needed.
             onTap: () { Navigator.pop(context); context.push('/addresses/${selected.id}'); })
+        else if (autoDetected != null)
+          _AutoDetectedRow(location: autoDetected,
+            // Tap → jump to the map picker with the auto-detected coords as the starting pin so the user
+            // can fine-tune + label + save it permanently. Once saved it becomes the selected address and
+            // this branch falls back to #1.
+            onTap: () {
+              Navigator.pop(context);
+              context.push('/addresses/map', extra: {
+                'initialLat': autoDetected.lat, 'initialLng': autoDetected.lng,
+              });
+            })
         else
           Padding(padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(t.addressesEmpty,
@@ -103,6 +120,50 @@ class _AddressSheet extends ConsumerWidget {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(22))),
     child: SafeArea(top: false, child: child),
   );
+}
+
+
+/// Row shown when the user has no SAVED address but the GPS auto-detected one. Visually the same shape as
+/// `_AddressRow` so the sheet feels consistent, with a small "Aniqlangan joylashuv" subtitle so the user
+/// knows it came from the system and tapping refines it on the map (which then saves it permanently).
+class _AutoDetectedRow extends ConsumerWidget {
+  final CurrentLocation location;
+  final VoidCallback onTap;
+  const _AutoDetectedRow({required this.location, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final detail = location.regionOrCountry.isNotEmpty
+        ? '${location.cityOrArea} · ${location.regionOrCountry}'
+        : location.cityOrArea;
+    return Material(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(16),
+      child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16),
+        child: Padding(padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12)),
+              // Use a "near me" icon so the row reads as "current location" rather than a generic saved place
+              child: Icon(Icons.my_location_rounded, color: cs.primary, size: 22)),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(detail, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              // Subtle hint — without this, the user might wonder why the address isn't editable from here.
+              // Tapping opens the map so they can pin a precise spot + save it as their real Uy / Ofis address.
+              Text(t.addressAutoDetectedHint,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+            ])),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurfaceVariant),
+          ]))),
+    );
+  }
 }
 
 

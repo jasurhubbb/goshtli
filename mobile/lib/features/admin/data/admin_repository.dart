@@ -19,6 +19,7 @@
 //   • createListing(...)      → POST /listings/               (supplier resolved server-side from market.owner_user)
 //   • uploadListingPhoto(...) → POST /listings/<id>/photos/   (multipart; admin bypass on ownership)
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../shared/models/supplier_profile.dart';
 import '../../listings/data/listings_repository.dart';
@@ -167,16 +168,98 @@ class AdminRepository {
     if (r.statusCode != 201) throw _toErr(r);
   }
 
+  /// GET /listings/<id>/ — single-listing read for the admin edit screen. Returns the raw JSON map (the
+  /// admin edit screen reads many fields, some of which aren't on the buyer-side `Listing` model — easier
+  /// to read straight from the response than to extend that model just for this path).
+  Future<Map<String, dynamic>> getListing(int id) async {
+    final r = await _api.dio.get('/listings/$id/');
+    if (r.statusCode == 200) return r.data as Map<String, dynamic>;
+    throw _toErr(r);
+  }
+
+  /// PATCH /listings/<id>/ — partial update from the admin edit form. All fields optional; only what the
+  /// admin changed is sent. Backend's IsListingOwnerOrReadOnly admin bypass lets us mutate any row.
+  Future<void> patchListing(int id, {
+    int? marketId, int? categoryId,
+    String? nameUz, String? nameRu, String? descriptionUz, String? descriptionRu,
+    double? quantityKg, double? pricePerKg, String? location, String? status,
+  }) async {
+    final r = await _api.dio.patch('/listings/$id/', data: {
+      'market_id': ?marketId, 'category_id': ?categoryId,
+      'name_uz': ?nameUz, 'name_ru': ?nameRu,
+      'description_uz': ?descriptionUz, 'description_ru': ?descriptionRu,
+      // Backend stores quantity/price as Decimal — pass as strings to avoid float rounding
+      if (quantityKg != null) 'quantity_kg': quantityKg.toString(),
+      if (pricePerKg != null) 'price_per_kg': pricePerKg.toString(),
+      'location': ?location,
+      // status accepts ACTIVE / OUT_OF_STOCK / ARCHIVED per the Listing.Status enum
+      'status': ?status,
+    });
+    if (r.statusCode != 200) throw _toErr(r);
+  }
+
+  /// DELETE /listings/<id>/ — hard-delete if no orders, otherwise the backend refuses with 4xx and tells
+  /// the admin to ARCHIVE instead. We surface the server message in the caught ApiException.
+  Future<void> deleteListing(int id) async {
+    final r = await _api.dio.delete('/listings/$id/');
+    if (r.statusCode != 204) throw _toErr(r);
+  }
+
+  /// DELETE /listings/<listing_pk>/photos/<photo_pk>/ — remove a single photo from a listing.
+  Future<void> deleteListingPhoto(int listingId, int photoId) async {
+    final r = await _api.dio.delete('/listings/$listingId/photos/$photoId/');
+    if (r.statusCode != 204) throw _toErr(r);
+  }
+
   ApiException _toErr(Response r) {
+    // Defensive parser — DRF's error shape isn't perfectly consistent. We've seen all of:
+    //   {"detail": "string"}                              ← from PermissionDenied / NotFound
+    //   {"field": ["msg1", "msg2"]}                       ← normalized ValidationError
+    //   {"field": "msg"}                                  ← raise ValidationError({"field": "msg"}) — DRF
+    //                                                       does NOT auto-wrap into a list in this path
+    //   {"non_field_errors": [...]}                       ← top-level validation failures
+    //   {"field": {"nested": [...]}}                      ← nested serializer errors (rare here)
+    // The old parser only handled `e.value is List`, so when the backend sent {"market_id": "msg"} we
+    // silently produced an empty ApiException — UI showed an empty red banner. This handles every shape
+    // and always returns a non-empty message; falls back to "HTTP <code>" + raw body when all else fails.
+    debugPrint('[AdminRepository] error body (HTTP ${r.statusCode}): ${r.data}');
     final data = r.data;
-    if (data is Map<String, dynamic>) {
-      if (data['detail'] is String) return ApiException(data['detail'] as String);
-      final fieldErrors = <String, List<String>>{};
-      for (final e in data.entries) {
-        if (e.value is List) fieldErrors[e.key] = (e.value as List).map((x) => x.toString()).toList();
+    String? message;
+    Map<String, List<String>>? fieldErrors;
+    if (data is Map) {
+      final m = data.cast<String, dynamic>();
+      if (m['detail'] is String && (m['detail'] as String).isNotEmpty) {
+        message = m['detail'] as String;
+      } else {
+        fieldErrors = <String, List<String>>{};
+        for (final e in m.entries) {
+          final v = e.value;
+          if (v is List) {
+            fieldErrors[e.key] = v.map((x) => x.toString()).toList();
+          } else if (v is String) {
+            fieldErrors[e.key] = [v];                      // single-string field error (DRF doesn't always normalize)
+          } else if (v is Map) {
+            fieldErrors[e.key] = [v.toString()];           // nested error — flatten via toString
+          } else if (v != null) {
+            fieldErrors[e.key] = [v.toString()];
+          }
+        }
+        if (fieldErrors.isNotEmpty) {
+          // Per-field "field: msg" lines — admin can tell exactly which field the server rejected.
+          message = fieldErrors.entries.map((e) => '${e.key}: ${e.value.join(", ")}').join('\n');
+        }
       }
-      return ApiException(fieldErrors.values.expand((v) => v).join('; '), fieldErrors);
+    } else if (data is String && data.isNotEmpty) {
+      message = data;
     }
-    return ApiException('Request failed (HTTP ${r.statusCode}).');
+    // Guarantee a non-empty message — if everything failed, show the status code + a slice of the body.
+    if (message == null || message.isEmpty) {
+      final body = data == null ? '' : data.toString();
+      final preview = body.length > 200 ? '${body.substring(0, 200)}…' : body;
+      message = preview.isEmpty
+          ? 'Request failed (HTTP ${r.statusCode})'
+          : 'HTTP ${r.statusCode}: $preview';
+    }
+    return ApiException(message, fieldErrors);
   }
 }

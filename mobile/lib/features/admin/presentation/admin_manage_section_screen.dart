@@ -69,7 +69,9 @@ class _ListingsSection extends ConsumerWidget {
                   subtitle: Text('${l.supplierEmail} · ${l.pricePerKg.toStringAsFixed(0)} so\'m / kg',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   trailing: _StatusPill(status: l.status.name),
-                  onTap: () => context.push('/listings/${l.id}'),
+                  // Admin tap → admin edit screen (NOT the buyer detail). Edit screen handles status,
+                  // photo CRUD, and delete; falls back to the parent list on pop.
+                  onTap: () => context.push('/admin/listings/${l.id}'),
                 );
               }),
       ));

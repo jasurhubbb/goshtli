@@ -712,7 +712,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Введите номер, чтобы войти или зарегистрироваться';
 
   @override
-  String get phoneAuthHint => '90 123 45 67';
+  String get phoneAuthHint => '90 123-45-67';
 
   @override
   String get phoneAuthContinue => 'Продолжить';
@@ -861,4 +861,26 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get adminMarketEmpty => 'Объявлений пока нет';
+
+  @override
+  String get adminListingEditTitle => 'Редактировать объявление';
+
+  @override
+  String get adminListingSavedToast => 'Сохранено';
+
+  @override
+  String get adminListingDeleteCta => 'Удалить объявление';
+
+  @override
+  String get statusActive => 'Активно';
+
+  @override
+  String get statusSoldOut => 'Распродано';
+
+  @override
+  String get statusInactive => 'Неактивно';
+
+  @override
+  String get addressAutoDetectedHint =>
+      'Определённое местоположение · нажмите, чтобы уточнить';
 }

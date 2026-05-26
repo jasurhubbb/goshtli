@@ -711,7 +711,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phoneAuthSubtitle => 'Enter your number to sign in or sign up';
 
   @override
-  String get phoneAuthHint => '90 123 45 67';
+  String get phoneAuthHint => '90 123-45-67';
 
   @override
   String get phoneAuthContinue => 'Continue';
@@ -860,4 +860,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminMarketEmpty => 'No listings yet';
+
+  @override
+  String get adminListingEditTitle => 'Edit listing';
+
+  @override
+  String get adminListingSavedToast => 'Saved';
+
+  @override
+  String get adminListingDeleteCta => 'Delete listing';
+
+  @override
+  String get statusActive => 'Active';
+
+  @override
+  String get statusSoldOut => 'Sold out';
+
+  @override
+  String get statusInactive => 'Inactive';
+
+  @override
+  String get addressAutoDetectedHint => 'Detected location · tap to refine';
 }

@@ -716,7 +716,7 @@ class AppLocalizationsUz extends AppLocalizations {
       'Kirish yoki ro\'yxatdan o\'tish uchun raqamingizni kiriting';
 
   @override
-  String get phoneAuthHint => '90 123 45 67';
+  String get phoneAuthHint => '90 123-45-67';
 
   @override
   String get phoneAuthContinue => 'Davom etish';
@@ -866,4 +866,26 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get adminMarketEmpty => 'Hozircha e\'lonlar yo\'q';
+
+  @override
+  String get adminListingEditTitle => 'E\'lonni tahrirlash';
+
+  @override
+  String get adminListingSavedToast => 'Saqlandi';
+
+  @override
+  String get adminListingDeleteCta => 'E\'lonni o\'chirish';
+
+  @override
+  String get statusActive => 'Faol';
+
+  @override
+  String get statusSoldOut => 'Tugagan';
+
+  @override
+  String get statusInactive => 'Faol emas';
+
+  @override
+  String get addressAutoDetectedHint =>
+      'Aniqlangan joylashuv · aniqlashtirish uchun bosing';
 }

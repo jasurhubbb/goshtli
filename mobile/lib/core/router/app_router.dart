@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/addresses/presentation/address_form_screen.dart';
 import '../../features/addresses/presentation/address_map_screen.dart';
+import '../../features/admin/presentation/admin_listing_edit_screen.dart';
 import '../../features/admin/presentation/admin_manage_section_screen.dart';
 import '../../features/admin/presentation/admin_market_detail_screen.dart';
 import '../../features/admin/presentation/admin_screen.dart';
@@ -122,6 +123,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/markets/:id', name: 'admin-market-detail',
         builder: (_, gs) => AdminMarketDetailScreen(
             marketId: int.parse(gs.pathParameters['id']!))),
+      GoRoute(path: '/admin/listings/:id', name: 'admin-listing-edit',
+        builder: (_, gs) => AdminListingEditScreen(
+            listingId: int.parse(gs.pathParameters['id']!))),
       GoRoute(path: '/admin/manage/:section', name: 'admin-manage-section',
         builder: (_, gs) {
           final raw = gs.pathParameters['section'] ?? '';

@@ -312,7 +312,7 @@
   "addressMapMyLocation": "My location",
   "phoneAuthTitle": "Your phone number",
   "phoneAuthSubtitle": "Enter your number to sign in or sign up",
-  "phoneAuthHint": "90 123 45 67",
+  "phoneAuthHint": "90 123-45-67",
   "phoneAuthContinue": "Continue",
   "phoneAuthInvalid": "Enter a 9-digit phone number",
   "phoneDetailsTitle": "About you",
@@ -361,5 +361,12 @@
   "adminMarketEditCta": "Edit",
   "adminMarketDeleteCta": "Delete market",
   "adminMarketPhoneLabel": "Phone number",
-  "adminMarketEmpty": "No listings yet"
+  "adminMarketEmpty": "No listings yet",
+  "adminListingEditTitle": "Edit listing",
+  "adminListingSavedToast": "Saved",
+  "adminListingDeleteCta": "Delete listing",
+  "statusActive": "Active",
+  "statusSoldOut": "Sold out",
+  "statusInactive": "Inactive",
+  "addressAutoDetectedHint": "Detected location · tap to refine"
 }

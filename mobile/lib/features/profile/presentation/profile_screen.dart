@@ -143,7 +143,15 @@ class _AuthedProfile extends ConsumerWidget {
         );
       });
     });
-    if (ok == true && context.mounted) context.push('/admin');
+    if (ok == true && context.mounted) {
+      // Riverpod–router timing: `Provider<GoRouter>` watches adminAuthNotifierProvider, but the rebuilt
+      // GoRouter only takes effect after the next frame. Pushing /admin synchronously here would hit the
+      // OLD router whose redirect bounces locked users back to /profile — that's why the user used to need
+      // a second tap. Defer the push to post-frame so the router has observed the unlocked state.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.push('/admin');
+      });
+    }
   }
 
   // Stop-gap until Kartalarim has its own screen — keeps the row tap responsive without dead-ending the user.

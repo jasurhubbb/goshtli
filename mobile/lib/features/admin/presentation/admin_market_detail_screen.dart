@@ -150,7 +150,9 @@ class _Body extends ConsumerWidget {
                         '${rows[i].pricePerKg.toStringAsFixed(0)} so\'m / kg · ${rows[i].status.name}',
                         style: TextStyle(color: cs.onSurfaceVariant)),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/listings/${rows[i].id}'),
+                    // Admin tap → admin edit screen (NOT the buyer-side detail). Edit screen handles
+                    // photo CRUD + status + delete, then pops back so this market's listings refresh.
+                    onTap: () => context.push('/admin/listings/${rows[i].id}'),
                   ),
                   if (i < rows.length - 1) Padding(padding: const EdgeInsets.only(left: 16),
                     child: Divider(height: 0.5, color: cs.outlineVariant.withValues(alpha: 0.5))),

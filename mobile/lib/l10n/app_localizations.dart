@@ -1423,7 +1423,7 @@ abstract class AppLocalizations {
   /// No description provided for @phoneAuthHint.
   ///
   /// In en, this message translates to:
-  /// **'90 123 45 67'**
+  /// **'90 123-45-67'**
   String get phoneAuthHint;
 
   /// No description provided for @phoneAuthContinue.
@@ -1719,6 +1719,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No listings yet'**
   String get adminMarketEmpty;
+
+  /// No description provided for @adminListingEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit listing'**
+  String get adminListingEditTitle;
+
+  /// No description provided for @adminListingSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get adminListingSavedToast;
+
+  /// No description provided for @adminListingDeleteCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete listing'**
+  String get adminListingDeleteCta;
+
+  /// No description provided for @statusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get statusActive;
+
+  /// No description provided for @statusSoldOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold out'**
+  String get statusSoldOut;
+
+  /// No description provided for @statusInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get statusInactive;
+
+  /// No description provided for @addressAutoDetectedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected location · tap to refine'**
+  String get addressAutoDetectedHint;
 }
 
 class _AppLocalizationsDelegate

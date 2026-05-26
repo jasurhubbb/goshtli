@@ -311,7 +311,7 @@
   "addressMapMyLocation": "Моё местоположение",
   "phoneAuthTitle": "Ваш номер телефона",
   "phoneAuthSubtitle": "Введите номер, чтобы войти или зарегистрироваться",
-  "phoneAuthHint": "90 123 45 67",
+  "phoneAuthHint": "90 123-45-67",
   "phoneAuthContinue": "Продолжить",
   "phoneAuthInvalid": "Введите 9-значный номер телефона",
   "phoneDetailsTitle": "О вас",
@@ -360,5 +360,12 @@
   "adminMarketEditCta": "Редактировать",
   "adminMarketDeleteCta": "Удалить базар",
   "adminMarketPhoneLabel": "Номер телефона",
-  "adminMarketEmpty": "Объявлений пока нет"
+  "adminMarketEmpty": "Объявлений пока нет",
+  "adminListingEditTitle": "Редактировать объявление",
+  "adminListingSavedToast": "Сохранено",
+  "adminListingDeleteCta": "Удалить объявление",
+  "statusActive": "Активно",
+  "statusSoldOut": "Распродано",
+  "statusInactive": "Неактивно",
+  "addressAutoDetectedHint": "Определённое местоположение · нажмите, чтобы уточнить"
 }
