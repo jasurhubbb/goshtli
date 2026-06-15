@@ -63,19 +63,26 @@ class CartState {
 class CartNotifier extends StateNotifier<CartState> {
   CartNotifier() : super(const CartState.empty());
 
-  /// First tap on a product card — start the row at qty 1. Subsequent taps would normally bump via setQty, but
-  /// we keep add() idempotent-safe by +1ing if the row already exists (so accidental double-taps don't surprise).
+  /// First tap on a product card. PRD v2 §1: for BY_WEIGHT (raw meat / live by kg) the first tap jumps
+  /// straight to the 10kg wholesale minimum — buyers ordering 100kg shouldn't have to tap "+" 100 times.
+  /// For BY_HEAD (live qo'y / mol per head) we start at 1 (one animal).
+  /// Subsequent calls on an already-present row bump by the listing's `stepKg` (5kg for raw meat, 1 head
+  /// for live-by-head).
   void add(Listing listing) {
     final existing = state.items[listing.id];
     final next = Map<int, CartItem>.of(state.items);
-    next[listing.id] = existing == null
-        ? CartItem(listing: listing, qty: 1)
-        : existing.copyWith(qty: existing.qty + 1);
+    if (existing == null) {
+      // First add → land on the minimum order quantity, NOT 1. This is the "press +, jump to 10" UX rule.
+      next[listing.id] = CartItem(listing: listing, qty: listing.minOrderKg);
+    } else {
+      next[listing.id] = existing.copyWith(qty: existing.qty + listing.stepKg);
+    }
     state = state.copyWith(items: next);
   }
 
-  /// Used by every qty-stepper UI. qty <= 0 removes the row (user dragged below 1). The clamp at 99 is a soft
-  /// cap preventing accidental thousands when someone holds the + button — real backend enforces its own cap.
+  /// Used by every qty-stepper UI's +/- and the typeable editor sheet's confirm. Anything <= 0 removes the
+  /// row entirely (the buyer subtracted past the minimum). Clamp at 9999 — backend cap is much higher but
+  /// no real cart line needs more.
   void setQty(int listingId, int qty) {
     final next = Map<int, CartItem>.of(state.items);
     if (qty <= 0) {
@@ -83,9 +90,28 @@ class CartNotifier extends StateNotifier<CartState> {
     } else {
       final existing = next[listingId];
       if (existing == null) return;
-      next[listingId] = existing.copyWith(qty: qty.clamp(1, 99));
+      next[listingId] = existing.copyWith(qty: qty.clamp(1, 9999));
     }
     state = state.copyWith(items: next);
+  }
+
+  /// PRD-compliant "+" handler — bumps by the listing's stepKg. Stepper buttons call THIS rather than
+  /// `setQty(qty + 1)` so the rule lives in one place. Underflow (going below minOrderKg with the "-")
+  /// is handled separately: see decByStep().
+  void incByStep(int listingId) {
+    final existing = state.items[listingId];
+    if (existing == null) return;
+    setQty(listingId, existing.qty + existing.listing.stepKg);
+  }
+
+  /// "-" handler — drops by stepKg, but if that takes us below the listing's min order, remove the row
+  /// entirely (the buyer essentially abandoned the line). This avoids the buyer being "stuck" at the
+  /// minimum with no way to remove the item using the stepper.
+  void decByStep(int listingId) {
+    final existing = state.items[listingId];
+    if (existing == null) return;
+    final next = existing.qty - existing.listing.stepKg;
+    setQty(listingId, next < existing.listing.minOrderKg ? 0 : next);
   }
 
   /// Free-form note that ships with the order ("Eshikni 3 marta taqillating", "Pichoq qoshmang", etc.).

@@ -110,6 +110,37 @@ class Listing(TimeStampedModel):
     available_from = models.DateField(_("available from"))
     status = models.CharField(_("status"), max_length=15, choices=Status.choices, default=Status.ACTIVE, db_index=True)
 
+    # ---- v3.6 Live animal (Tirik chorva) fields per PRD v2 ----------------------------------------
+    # Per PRD §2: a listing can be raw meat (default) OR a live animal (mol/qo'y/ot). The two render
+    # differently in the buyer UI (different badge, different cart logic — see SaleType + butcher service
+    # offer) and price+stock semantics shift slightly: by_head sells per animal (head_count), by_weight
+    # sells per live kg (quantity_kg). The yield % lets the buyer estimate finished meat from a live carcass.
+    class SaleType(models.TextChoices):
+        BY_WEIGHT = "BY_WEIGHT", _("By weight (kg)")     # raw meat AND live-by-weight animals
+        BY_HEAD = "BY_HEAD", _("By head (per animal)")    # tirik chorva, donalab — uses head_count instead of kg
+
+    is_live_animal = models.BooleanField(_("is live animal"), default=False, db_index=True,
+                                         help_text=_("True = tirik chorva (live cow/sheep/horse); False = raw meat"))
+    sale_type = models.CharField(_("sale type"), max_length=10, choices=SaleType.choices,
+                                 default=SaleType.BY_WEIGHT,
+                                 help_text=_("BY_HEAD = sold per animal; BY_WEIGHT = sold per kg (raw meat OR live by kg)"))
+    # Estimated yield: how many kg of finished meat per kg of live weight (52-58% for cattle, 50-55% for sheep
+    # per the PRD). 0 means "not applicable" (raw meat listings). UI shows it on live-animal cards so the
+    # buyer can estimate finished-meat tonnage before committing.
+    estimated_meat_yield_pct = models.PositiveSmallIntegerField(_("estimated meat yield %"), default=0,
+                                                                help_text=_("Live-only: 0-100 (0 = N/A for raw meat). 55 means a 100kg animal yields ~55kg of finished meat"))
+    # Filter facets — both nullable so raw meat listings can leave them blank.
+    breed_type = models.CharField(_("breed"), max_length=80, blank=True, db_index=True,
+                                  help_text=_("Hisor, Shved, Gissar etc. — live animals only; blank for raw meat"))
+    head_count = models.PositiveIntegerField(_("head count"), default=0,
+                                             help_text=_("Number of animals available — only used when sale_type=BY_HEAD"))
+    # Per-head live weight (kg) for BY_HEAD listings. Lets the UI display "1 bosh ≈ 60kg" without forcing
+    # the buyer to compute it. For BY_WEIGHT listings, quantity_kg is the source of truth and this is 0.
+    live_weight_per_head_kg = models.DecimalField(_("live weight per head (kg)"), max_digits=8, decimal_places=2,
+                                                  default=Decimal("0.00"),
+                                                  validators=[MinValueValidator(Decimal("0.00"))],
+                                                  help_text=_("Average live weight per animal for BY_HEAD listings"))
+
     # ---- Audit ------------------------------------------------------------------------------------
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="listings_created", editable=False)

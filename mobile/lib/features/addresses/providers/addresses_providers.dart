@@ -158,63 +158,109 @@ class CurrentLocation {
 }
 
 
-/// One-shot async provider: returns the display fields the pill renders. We try sources in order:
+/// Generic fallback label when we HAVE GPS coords but reverse-geocoding failed (network down, Nominatim
+/// rate-limited, etc.). Kept on the Dart side so it doesn't depend on `BuildContext` — the pill maps it
+/// to the localized "Mening joylashuvim" string when rendering.
+const String kCurrentLocationFallbackLabel = '__current_location__';
+
+
+/// One-shot async provider: returns the display fields the pill renders. Sources tried, in order:
 ///   1. Cached lat/lng from onboarding (SharedPreferences `loc.lat`/`loc.lng`) — skips GPS entirely.
-///   2. Fresh GPS via Geolocator.getCurrentPosition (low accuracy, 6s timeout).
-///   3. Geolocator.getLastKnownPosition fallback if (2) times out.
-/// Whichever succeeds gets reverse-geocoded via Nominatim → CurrentLocation payload.
+///   2. Geolocator.getLastKnownPosition — instant if Android has a recent fix.
+///   3. Fresh GPS via Geolocator.getCurrentPosition (low accuracy, 10s timeout).
+///
+/// CRITICAL: once we have lat/lng from ANY source, we ALWAYS return a CurrentLocation, even when reverse
+/// geocoding fails. The pill then shows "Mening joylashuvim" instead of dropping back to "Manzil tanlang"
+/// (which was the bug — system-granted location was being silently discarded because Nominatim was slow
+/// or failed). The user knows their location is set; tap the pill to refine on the map.
 final currentLocationProvider = FutureProvider<CurrentLocation?>((ref) async {
   // ---- Step 1: cached coords from onboarding. Cheapest path. ----
   final prefs = await SharedPreferences.getInstance();
-  final cachedLat = prefs.getDouble('loc.lat');
-  final cachedLng = prefs.getDouble('loc.lng');
-  double? lat = cachedLat;
-  double? lng = cachedLng;
+  double? lat = prefs.getDouble('loc.lat');
+  double? lng = prefs.getDouble('loc.lng');
 
-  // ---- Step 2 + 3: fall through to fresh GPS if there's no cache ----
+  // ---- Step 2 + 3: fall through to GPS if there's no cache ----
+  // Track WHY we couldn't get coords so we can differentiate two states:
+  //   (a) user denied permission → return null, pill shows "Manzil tanlang" (correct UX)
+  //   (b) permission granted but GPS unavailable (emulator with no mock location, slow lock, etc.)
+  //       → fall through to Tashkent-centered fallback below. Pill shows "Mening joylashuvim".
+  //         Critical on Android emulators which don't have a default position set in Extended Controls.
+  bool permissionGranted = false;
   if (lat == null || lng == null) {
     final perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return null;
+    permissionGranted = true;
     if (!await Geolocator.isLocationServiceEnabled()) return null;
 
-    Position? pos;
-    try {
-      pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 6)));
-    } catch (_) {
-      pos = await Geolocator.getLastKnownPosition();
+    // Last-known-position FIRST — returns instantly when the OS has a recent fix, sparing the 10s wait.
+    Position? pos = await Geolocator.getLastKnownPosition();
+    if (pos == null) {
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 10),                              // was 6s — too tight on cold-start emulator + slow GPS
+          ));
+      } catch (_) {
+        pos = null;                                                        // GPS timed out / not available
+      }
     }
-    if (pos == null) return null;
-    lat = pos.latitude;
-    lng = pos.longitude;
-    await prefs.setDouble('loc.lat', lat);
-    await prefs.setDouble('loc.lng', lng);
+    if (pos != null) {
+      lat = pos.latitude;
+      lng = pos.longitude;
+      await prefs.setDouble('loc.lat', lat);
+      await prefs.setDouble('loc.lng', lng);
+    }
   }
 
-  // Reverse-geocode via Nominatim. Free tier, no API key, requires User-Agent.
+  // Permission granted but no GPS fix (emulator / indoors / GPS off) — surface the sentinel so the pill
+  // reads "Mening joylashuvim" instead of "Manzil tanlang". Default coords to Tashkent center so the map
+  // picker has something reasonable to show if the user taps to refine. We intentionally DON'T cache
+  // these fallback coords — next launch tries GPS again.
+  if (lat == null || lng == null) {
+    if (permissionGranted) {
+      return CurrentLocation(
+        lat: 41.3111, lng: 69.2406,                            // Toshkent markaz
+        cityOrArea: kCurrentLocationFallbackLabel,
+        regionOrCountry: '',
+      );
+    }
+    return null;
+  }
+
+  // At this point we DEFINITELY have lat/lng. Reverse-geocoding is a nice-to-have: if it succeeds we get
+  // a human-readable city name; if it fails we still return CurrentLocation with the fallback label so
+  // the pill never reverts to "Manzil tanlang" after the user already granted permission.
   final dio = Dio(BaseOptions(headers: {'User-Agent': 'goshtli/1.0 (Uzbekistan meat marketplace)'},
-                              connectTimeout: const Duration(seconds: 6),
-                              receiveTimeout: const Duration(seconds: 6)));
+                              connectTimeout: const Duration(seconds: 8),
+                              receiveTimeout: const Duration(seconds: 8)));
   try {
     final r = await dio.get('https://nominatim.openstreetmap.org/reverse', queryParameters: {
       'lat': lat.toStringAsFixed(6), 'lon': lng.toStringAsFixed(6),
       'format': 'json', 'addressdetails': 1, 'zoom': 14,
       'accept-language': 'uz,ru,en',
     });
-    if (r.statusCode != 200 || r.data is! Map) return null;
-    final data = r.data as Map<String, dynamic>;
-    final addr = data['address'] as Map<String, dynamic>? ?? const {};
-    final city = (addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['suburb']
-                 ?? addr['neighbourhood'] ?? addr['county'] ?? '').toString();
-    final region = (addr['state'] ?? addr['region'] ?? addr['country'] ?? '').toString();
-    return CurrentLocation(
-      lat: lat, lng: lng,
-      cityOrArea: city.isEmpty ? (data['display_name'] as String? ?? '').split(',').first : city,
-      regionOrCountry: region,
-    );
+    if (r.statusCode == 200 && r.data is Map) {
+      final data = r.data as Map<String, dynamic>;
+      final addr = data['address'] as Map<String, dynamic>? ?? const {};
+      final city = (addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['suburb']
+                   ?? addr['neighbourhood'] ?? addr['county'] ?? '').toString();
+      final region = (addr['state'] ?? addr['region'] ?? addr['country'] ?? '').toString();
+      final resolvedCity = city.isEmpty
+          ? (data['display_name'] as String? ?? '').split(',').first
+          : city;
+      if (resolvedCity.isNotEmpty) {
+        return CurrentLocation(lat: lat, lng: lng, cityOrArea: resolvedCity, regionOrCountry: region);
+      }
+    }
   } catch (_) {
-    return null;
+    // network / Nominatim timeout — fall through to the coords-only payload below
   } finally {
     dio.close();
   }
+
+  // Reverse-geocode failed but coords are valid — surface the location with a placeholder label.
+  // The pill maps this sentinel to its localized "Mening joylashuvim" string.
+  return CurrentLocation(lat: lat, lng: lng,
+      cityOrArea: kCurrentLocationFallbackLabel, regionOrCountry: '');
 });

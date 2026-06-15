@@ -62,13 +62,13 @@ class TestAutoCreate:
     def test_new_order_notifies_supplier(self, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
         Notification.objects.filter(user=verified_supplier).delete()  # ignore the verification one
-        buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                "delivery_address": "addr"}, format="json")
         assert Notification.objects.filter(user=verified_supplier, kind=Notification.Kind.ORDER_PLACED).count() == 1
 
     def test_status_change_notifies_buyer(self, buyer_client, verified_supplier_client, verified_supplier, buyer_user, _ctx):
         l = _listing(verified_supplier, _ctx)
-        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         Notification.objects.filter(user=buyer_user).delete()
         verified_supplier_client.post(f"/api/v1/orders/supplier/{oid}/status/",
@@ -77,7 +77,7 @@ class TestAutoCreate:
 
     def test_cancellation_notifies_both_parties(self, buyer_client, buyer_user, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
-        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         Notification.objects.all().delete()
         buyer_client.post(f"/api/v1/orders/{oid}/cancel/")

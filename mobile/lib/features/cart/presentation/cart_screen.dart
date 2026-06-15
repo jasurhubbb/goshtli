@@ -13,7 +13,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/format.dart' show formatSoum;
 import '../../addresses/presentation/address_sheet.dart';
 import '../../addresses/providers/addresses_providers.dart';
+import '../../addresses/providers/effective_address_provider.dart';
 import '../providers/cart_providers.dart';
+import 'qty_editor_sheet.dart';
 
 
 class CartScreen extends ConsumerWidget {
@@ -170,22 +172,39 @@ class _CartContentState extends ConsumerState<_CartContent> {
       Container(decoration: BoxDecoration(color: cs.surface,
           border: Border(top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)))),
         child: SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-          child: SizedBox(width: double.infinity, height: 54, child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              // Require a delivery address before placing the order. If none selected, open the address sheet
-              // instead of submitting — feels less intrusive than blocking with an error dialog.
-              final addr = ref.read(selectedAddressProvider);
-              if (addr == null) { showAddressSheet(context); return; }
-              // Real /orders/ POST would happen here. For now we surface the snack and clear the cart.
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.cartCheckoutSnack)));
-            },
-            child: Text(t.cartCheckout,
-              style: tt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w600)))))))
+          child: SizedBox(width: double.infinity, height: 54, child: _CheckoutButton()))))
     ]);
+  }
+}
+
+
+/// v3.6 PRD §4 — "Buyurtma berish" CTA. The cart NO LONGER places orders directly. The full flow per PRD:
+///   Cart  →  Delivery (vehicle, time slot, butcher)  →  Pay (WebView)  →  Orders
+/// This button simply validates we have an address + items, then pushes /delivery.
+class _CheckoutButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+      onPressed: () {
+        HapticFeedback.mediumImpact();
+        // We no longer block on saved-address-only — the effective resolver falls back to GPS, then to
+        // Tashkent center, so the delivery page always has coords to quote against. If the user has
+        // truly nothing (no GPS permission), prompt them to set one before proceeding.
+        final eff = ref.read(effectiveDeliveryLocationProvider);
+        if (eff.unresolved) { showAddressSheet(context); return; }
+        final cart = ref.read(cartProvider);
+        if (cart.items.isEmpty) return;
+        // Off to the delivery page — it owns the vehicle/time/butcher decisions + the actual POST.
+        context.push('/delivery');
+      },
+      child: Text(t.cartCheckout, style: tt.titleMedium?.copyWith(
+              color: cs.onPrimary, fontWeight: FontWeight.w600)));
   }
 }
 
@@ -203,8 +222,19 @@ class _DeliveryAddressRow extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final address = ref.watch(selectedAddressProvider);
-    final hasAddress = address != null;
+    // Unified resolver: saved address → GPS → fallback. Matches the home pill so the cart never says
+    // "no address" when the user has already granted GPS permission.
+    final eff = ref.watch(effectiveDeliveryLocationProvider);
+    final resolved = !eff.unresolved;
+    // Sentinel label maps to "Mening joylashuvim" — the same string the home pill renders for GPS hits.
+    final displayLabel = resolved
+        ? (eff.label == kCurrentLocationFallbackLabel
+            ? AppLocalizations.of(context).addressMapMyLocation
+            : eff.label)
+        : t.addressesEmpty;
+    final displayBody = resolved && eff.addressLine.isNotEmpty
+        ? eff.addressLine
+        : t.addressesNewCta;
 
     return InkWell(
       onTap: () => showAddressSheet(context),
@@ -213,7 +243,7 @@ class _DeliveryAddressRow extends ConsumerWidget {
         decoration: BoxDecoration(color: cs.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-                color: hasAddress
+                color: resolved
                     ? cs.outlineVariant.withValues(alpha: 0.4)
                     : cs.primary.withValues(alpha: 0.5),
                 width: 0.8)),
@@ -224,12 +254,18 @@ class _DeliveryAddressRow extends ConsumerWidget {
             child: Icon(Icons.location_on_rounded, color: cs.primary, size: 22)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(hasAddress ? address.label : t.addressesEmpty,
-              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            Text(displayLabel, style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
-            Text(hasAddress ? address.address : t.addressesNewCta,
+            Text(displayBody,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               maxLines: 2, overflow: TextOverflow.ellipsis),
+            // PRD §3 service-area constraint: when the user's coord is outside Tashkent, we still produce
+            // a Tashkent-centered quote so the rest of the flow renders — but we tell them why.
+            if (eff.snappedToTashkent) ...[
+              const SizedBox(height: 4),
+              Text(t.deliveryTashkentOnlyShort,
+                style: tt.labelSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
+            ],
           ])),
           const SizedBox(width: 8),
           Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
@@ -281,23 +317,40 @@ class _CartRow extends ConsumerWidget {
         ])),
         const SizedBox(width: 8),
 
-        // Qty stepper — minus / readout / plus, capsule-shaped. Tapping below 1 removes the row.
+        // Qty stepper — minus / readout / plus, capsule-shaped. PRD §1: +/- bumps by the listing's stepKg
+        // (5kg raw meat, 1 head live), and the readout shows the unit so "10" doesn't look ambiguous.
+        // Tap the readout to open the typeable editor.
         _QtyStepper(
           qty: item.qty,
-          onDec: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty - 1),
-          onInc: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty + 1)),
+          unitLabel: l.isByHead ? 'bosh' : 'kg',
+          onDec: () => ref.read(cartProvider.notifier).decByStep(l.id),
+          onInc: () => ref.read(cartProvider.notifier).incByStep(l.id),
+          onTapQty: () async {
+            final picked = await showQtyEditorSheet(context,
+                currentQty: item.qty,
+                maxKg: l.quantityKg.toInt(),
+                minKg: l.minOrderKg,
+                unitLabel: l.isByHead ? 'bosh' : 'kg',
+                allowZero: true,                                                  // typing 0 removes the row
+                listingName: l.displayName(lang));
+            if (picked != null) ref.read(cartProvider.notifier).setQty(l.id, picked);
+          }),
       ]));
   }
 }
 
 
 /// Capsule qty stepper — used on the cart row AND in the peek sheet. Two icon buttons flanking a fixed-width readout
-/// keeps the layout stable across qty digits (1 vs. 99).
+/// keeps the layout stable across qty digits (1 vs. 99). The readout is tappable when `onTapQty` is provided —
+/// opens the typeable kg editor sheet for bulk entry (avoids 100 taps to reach qty=100).
 class _QtyStepper extends StatelessWidget {
   final int qty;
   final VoidCallback onDec;
   final VoidCallback onInc;
-  const _QtyStepper({required this.qty, required this.onDec, required this.onInc});
+  final VoidCallback? onTapQty;
+  final String unitLabel;
+  const _QtyStepper({required this.qty, required this.onDec, required this.onInc,
+                     this.onTapQty, this.unitLabel = 'kg'});
 
   @override
   Widget build(BuildContext context) {
@@ -309,8 +362,10 @@ class _QtyStepper extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6), width: 1)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         _StepperButton(icon: Icons.remove, onTap: () { HapticFeedback.selectionClick(); onDec(); }),
-        SizedBox(width: 28, child: Center(
-          child: Text('$qty', style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)))),
+        InkResponse(onTap: onTapQty == null ? null : () { HapticFeedback.selectionClick(); onTapQty!(); },
+          radius: 22,
+          child: SizedBox(width: 56, child: Center(
+            child: Text('$qty $unitLabel', style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700))))),
         _StepperButton(icon: Icons.add, onTap: () { HapticFeedback.selectionClick(); onInc(); }),
       ]));
   }

@@ -63,30 +63,39 @@ class TestPlaceOrder:
         assert l.quantity_kg == Decimal("90.00") and l.status == Listing.Status.ACTIVE
 
     def test_exact_stock_order_flips_listing_to_sold_out(self, buyer_client, verified_supplier, _ctx):
-        l = _listing(verified_supplier, _ctx, qty="5.00")
-        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "5.00",
+        # PRD v2 §1: min order is 10kg for wholesale BY_WEIGHT listings; this test sizes the listing to
+        # exactly 10kg so the order drains it completely.
+        l = _listing(verified_supplier, _ctx, qty="10.00")
+        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                    "delivery_address": "addr"}, format="json")
         assert r.status_code == 201
         l.refresh_from_db()
         assert l.quantity_kg == Decimal("0.00") and l.status == Listing.Status.OUT_OF_STOCK
 
     def test_oversell_blocked_with_field_error(self, buyer_client, verified_supplier, _ctx):
-        l = _listing(verified_supplier, _ctx, qty="5.00")
-        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
+        l = _listing(verified_supplier, _ctx, qty="10.00")
+        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "20.00",
                                                    "delivery_address": "addr"}, format="json")
         assert r.status_code == 400 and "quantity_kg" in r.data
 
     def test_order_on_sold_out_listing_blocked(self, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx, qty="0.00", status=Listing.Status.OUT_OF_STOCK)
-        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                    "delivery_address": "addr"}, format="json")
         assert r.status_code == 400
+
+    def test_below_10kg_rejected_per_prd(self, buyer_client, verified_supplier, _ctx):
+        # PRD v2 §1 wholesale minimum: anything < 10kg on a BY_WEIGHT listing must be rejected.
+        l = _listing(verified_supplier, _ctx, qty="100.00")
+        r = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "5.00",
+                                                   "delivery_address": "addr"}, format="json")
+        assert r.status_code == 400 and "quantity_kg" in r.data
 
     def test_supplier_can_also_place_orders_v2_unified_user(self, verified_supplier_client, verified_supplier, _ctx):
         # v2 unified user model: a supplier can also buy from OTHER suppliers' listings (or technically their own — we don't
         # forbid that at the API level; UI can hide the order button when supplier == self). Used to be 403 in v1.
         l = _listing(verified_supplier, _ctx)
-        r = verified_supplier_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        r = verified_supplier_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                                "delivery_address": "addr"}, format="json")
         assert r.status_code == 201
 
@@ -97,7 +106,7 @@ class TestCancelOrder:
 
     def test_buyer_cancels_pending_restores_stock(self, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx, qty="10.00")
-        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "5.00",
+        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                           "delivery_address": "addr"}, format="json").data["id"]
         r = buyer_client.post(f"/api/v1/orders/{order_id}/cancel/")
         assert r.status_code == 200 and r.data["status"] == "CANCELLED"
@@ -105,8 +114,10 @@ class TestCancelOrder:
         assert l.quantity_kg == Decimal("10.00")  # stock restored
 
     def test_cancel_reactivates_sold_out_listing(self, buyer_client, verified_supplier, _ctx):
-        l = _listing(verified_supplier, _ctx, qty="5.00")
-        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "5.00",
+        # Listing sized at exactly 10kg so a single qty=10 order drains the stock → flip to OUT_OF_STOCK,
+        # then cancel restores it back to ACTIVE.
+        l = _listing(verified_supplier, _ctx, qty="10.00")
+        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                           "delivery_address": "addr"}, format="json").data["id"]
         l.refresh_from_db(); assert l.status == Listing.Status.OUT_OF_STOCK
         buyer_client.post(f"/api/v1/orders/{order_id}/cancel/")
@@ -115,7 +126,7 @@ class TestCancelOrder:
 
     def test_buyer_cannot_cancel_confirmed(self, buyer_client, verified_supplier_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
-        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                           "delivery_address": "addr"}, format="json").data["id"]
         verified_supplier_client.post(f"/api/v1/orders/supplier/{order_id}/status/",
                                       {"status": "CONFIRMED"}, format="json")
@@ -130,7 +141,7 @@ class TestSupplierStateMachine:
     @pytest.fixture
     def order_id(self, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
-        return buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        return buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                       "delivery_address": "addr"}, format="json").data["id"]
 
     def test_full_forward_walk(self, verified_supplier_client, order_id):
@@ -150,7 +161,7 @@ class TestSupplierStateMachine:
 
     def test_supplier_cancel_restores_stock(self, verified_supplier_client, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx, qty="20.00")
-        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "5.00",
+        order_id = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                           "delivery_address": "addr"}, format="json").data["id"]
         verified_supplier_client.post(f"/api/v1/orders/supplier/{order_id}/status/",
                                       {"status": "CONFIRMED"}, format="json")
@@ -166,13 +177,13 @@ class TestOrderOwnership:
 
     def test_buyer_sees_own_order(self, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
-        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         assert buyer_client.get(f"/api/v1/orders/{oid}/").status_code == 200
 
     def test_supplier_sees_orders_on_own_listing(self, verified_supplier_client, buyer_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
-        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         assert verified_supplier_client.get(f"/api/v1/orders/{oid}/").status_code == 200
 
@@ -185,7 +196,7 @@ class TestOrderOwnership:
         other_client = APIClient()
         other_client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(other).access_token}")
         l = _listing(verified_supplier, _ctx)
-        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "1.00",
+        oid = buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                      "delivery_address": "addr"}, format="json").data["id"]
         # Unrelated buyer gets 404 (not 403) — backend returns NotFound to avoid leaking that the order exists
         assert other_client.get(f"/api/v1/orders/{oid}/").status_code == 404

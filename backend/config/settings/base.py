@@ -22,7 +22,11 @@ LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               # v2 Milestone C — social + trust features
               "apps.favorites", "apps.reviews", "apps.chats",
               # v3.1 catalog overhaul — vendor entity sitting above Listing
-              "apps.markets"]
+              "apps.markets",
+              # v3.5 payment provider abstraction (Mock for dev + tester builds, Payme for production)
+              "apps.payments",
+              # v3.6 PRD §3 — delivery quote endpoint. Pure compute (no models); persistence lives on apps.orders.
+              "apps.delivery"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF

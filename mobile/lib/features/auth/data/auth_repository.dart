@@ -1,5 +1,6 @@
 // AuthRepository — owns all /api/v1/auth/* calls and the post-login token persistence flow.
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/auth/token_storage.dart';
 import '../../../core/network/api_client.dart';
@@ -109,6 +110,41 @@ class AuthRepository {
   Future<void> deleteAccount() async {
     final r = await _api.dio.delete('/auth/me/');
     if (r.statusCode != 204) throw _toAuthException(r);
+  }
+
+
+  // ---------- Firebase Phone Auth (v3.4) ----------
+
+  /// Result of the Firebase-bridge endpoint. Two shapes the backend can return:
+  ///   • Existing user → tokens persisted; user fetched + returned; `isNew` is false.
+  ///   • New user → tokens NOT persisted yet; phone returned for the caller to push to /auth/details.
+  ///                The follow-up phoneRegister() call completes the signup.
+  Future<({User? user, bool isNew, String phone})> firebasePhoneLogin(String firebaseIdToken) async {
+    final r = await _api.dio.post('/auth/firebase-phone-login/',
+        data: {'firebase_id_token': firebaseIdToken});
+    // Tag every line so `flutter logs | grep firebasePhoneLogin` shows the whole flow on one filter.
+    debugPrint('[firebasePhoneLogin] backend responded HTTP ${r.statusCode}, keys=${(r.data is Map ? (r.data as Map).keys.toList() : "non-map")}');
+    if (r.statusCode != 200) throw _toAuthException(r);
+    final data = r.data as Map<String, dynamic>;
+    if (data['new_user'] == true) {
+      // New user → no tokens yet; OtpEntryScreen pushes /auth/details next.
+      final phone = data['phone'] as String;
+      debugPrint('[firebasePhoneLogin] new_user=true phone=$phone — pushing /auth/details next');
+      return (user: null, isNew: true, phone: phone);
+    }
+    // Existing user — persist tokens BEFORE fetchMe so even if fetchMe fails the session can recover on
+    // next launch via _resume(). If fetchMe throws here, the outer notifier catches AuthException and
+    // restores AuthAnonymous; tokens stay on disk and the user gets logged in next time they open the app.
+    final access = data['access'] as String?;
+    final refresh = data['refresh'] as String?;
+    if (access == null || refresh == null) {
+      debugPrint('[firebasePhoneLogin] FATAL: backend returned new_user=false but no access/refresh tokens — body=$data');
+      throw const AuthException('Backend returned an invalid response (missing tokens).');
+    }
+    await _tokens.writeBoth(access: access, refresh: refresh);
+    final user = await fetchMe();
+    debugPrint('[firebasePhoneLogin] existing user logged in: id=${user.id} phone=${user.phone}');
+    return (user: user, isNew: false, phone: user.phone);
   }
 
   /// Translate Dio responses + DRF error shapes into a uniform AuthException with per-field validation messages.

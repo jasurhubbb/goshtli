@@ -34,11 +34,23 @@ class OrderCreateView(APIView):
 
     def post(self, request):
         s = OrderCreateSerializer(data=request.data); s.is_valid(raise_exception=True)
+        d = s.validated_data
         try:
-            order = create_order(buyer=request.user, listing_id=s.validated_data["listing"],
-                                 quantity_kg=s.validated_data["quantity_kg"],
-                                 delivery_address=s.validated_data["delivery_address"],
-                                 notes=s.validated_data.get("notes", ""))
+            order = create_order(buyer=request.user, listing_id=d["listing"],
+                                 quantity_kg=d["quantity_kg"],
+                                 delivery_address=d["delivery_address"],
+                                 notes=d.get("notes", ""),
+                                 # v3.6 delivery + butcher params straight from the validated payload. The
+                                 # service defaults each to its empty/zero so legacy clients (cart pre-PRD
+                                 # delivery page) keep working without sending these.
+                                 delivery_vehicle_type=d.get("delivery_vehicle_type", ""),
+                                 delivery_time_slot=d.get("delivery_time_slot", ""),
+                                 delivery_distance_km=d.get("delivery_distance_km", 0),
+                                 delivery_lat=d.get("delivery_lat"),
+                                 delivery_lng=d.get("delivery_lng"),
+                                 delivery_price=d.get("delivery_price", 0),
+                                 butcher_service_requested=d.get("butcher_service_requested", False),
+                                 butcher_service_fee=d.get("butcher_service_fee", 0))
         except (InsufficientStock, ListingNotOrderable, DjangoValidationError) as e:
             _service_errors_to_drf(e)
         return Response(OrderReadSerializer(order).data, status=status.HTTP_201_CREATED)

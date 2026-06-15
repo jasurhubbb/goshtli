@@ -18,6 +18,7 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/format.dart';
 import '../providers/cart_providers.dart';
+import 'qty_editor_sheet.dart';
 
 
 /// Drop-in: place above NavigationBar inside MainShell. `onNavigateToCart` flips to the Savat tab.
@@ -209,8 +210,19 @@ class _PeekRow extends ConsumerWidget {
         // that triggered the original layout exception).
         _PeekStepper(
           qty: item.qty,
-          onDec: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty - 1),
-          onInc: () => ref.read(cartProvider.notifier).setQty(l.id, item.qty + 1)),
+          unitLabel: l.isByHead ? 'bosh' : 'kg',
+          onDec: () => ref.read(cartProvider.notifier).decByStep(l.id),
+          onInc: () => ref.read(cartProvider.notifier).incByStep(l.id),
+          onTapQty: () async {
+            final picked = await showQtyEditorSheet(context,
+                currentQty: item.qty,
+                maxKg: l.quantityKg.toInt(),
+                minKg: l.minOrderKg,
+                unitLabel: l.isByHead ? 'bosh' : 'kg',
+                allowZero: true,
+                listingName: l.displayName(lang));
+            if (picked != null) ref.read(cartProvider.notifier).setQty(l.id, picked);
+          }),
       ]));
   }
 }
@@ -219,7 +231,10 @@ class _PeekRow extends ConsumerWidget {
 class _PeekStepper extends StatelessWidget {
   final int qty;
   final VoidCallback onDec, onInc;
-  const _PeekStepper({required this.qty, required this.onDec, required this.onInc});
+  final VoidCallback? onTapQty;
+  final String unitLabel;
+  const _PeekStepper({required this.qty, required this.onDec, required this.onInc,
+                      this.onTapQty, this.unitLabel = 'kg'});
 
   @override
   Widget build(BuildContext context) {
@@ -228,8 +243,10 @@ class _PeekStepper extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       _StepIcon(icon: Icons.remove_circle_outline, color: cs.primary,
         onTap: () { HapticFeedback.selectionClick(); onDec(); }),
-      SizedBox(width: 24, child: Center(child: Text('$qty',
-        style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)))),
+      InkResponse(onTap: onTapQty == null ? null : () { HapticFeedback.selectionClick(); onTapQty!(); },
+        radius: 18,
+        child: SizedBox(width: 50, child: Center(child: Text('$qty $unitLabel',
+          style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700))))),
       _StepIcon(icon: Icons.add_circle_outline, color: cs.primary,
         onTap: () { HapticFeedback.selectionClick(); onInc(); }),
     ]);

@@ -881,4 +881,276 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addressAutoDetectedHint => 'Detected location · tap to refine';
+
+  @override
+  String get otpTitle => 'Verification code';
+
+  @override
+  String otpSentTo(String phone) {
+    return 'Code sent to $phone';
+  }
+
+  @override
+  String get otpResend => 'Resend code';
+
+  @override
+  String otpResendIn(int seconds) {
+    return 'Resend in ${seconds}s';
+  }
+
+  @override
+  String get otpInvalidCode => 'Invalid code';
+
+  @override
+  String get otpExpired => 'Code expired — request a new one';
+
+  @override
+  String get qtyEditorTitle => 'Quantity (kg)';
+
+  @override
+  String get qtyEditorEnterAmount => 'Enter an amount';
+
+  @override
+  String get qtyEditorOnlyDigits => 'Digits only';
+
+  @override
+  String get qtyEditorMustBePositive => 'Must be greater than zero';
+
+  @override
+  String qtyEditorMaxExceeded(int max) {
+    return 'Max: $max kg';
+  }
+
+  @override
+  String qtyEditorAvailable(int max) {
+    return 'Available: $max kg';
+  }
+
+  @override
+  String get qtyEditorMax => 'All';
+
+  @override
+  String get qtyEditorConfirm => 'Confirm';
+
+  @override
+  String get payTitle => 'Payment';
+
+  @override
+  String get payProcessing => 'Processing payment…';
+
+  @override
+  String get payCheckingStatus => 'Checking status…';
+
+  @override
+  String get paySuccessTitle => 'Payment successful';
+
+  @override
+  String get paySuccessBody => 'Your order has been accepted';
+
+  @override
+  String get payFailedTitle => 'Payment failed';
+
+  @override
+  String get payRetry => 'Try again';
+
+  @override
+  String get payToOrders => 'Go to orders';
+
+  @override
+  String get payCancel => 'Cancel';
+
+  @override
+  String qtyEditorBelowMinimum(int min) {
+    return 'Minimum: $min';
+  }
+
+  @override
+  String get liveAnimalBadgeByHead => '1 HEAD';
+
+  @override
+  String get liveAnimalBadgeByWeight => 'LIVE WEIGHT';
+
+  @override
+  String get deliveryTitle => 'Delivery';
+
+  @override
+  String get deliveryAddressSection => 'Address';
+
+  @override
+  String get deliveryAddressChange => 'Change';
+
+  @override
+  String deliveryDistanceLabel(String km) {
+    return 'Distance: $km km';
+  }
+
+  @override
+  String get deliveryVehicleSection => 'Vehicle type';
+
+  @override
+  String get deliveryVehicleRefrigerator => 'Refrigerator';
+
+  @override
+  String get deliveryVehicleRefrigeratorHint => 'Cold chain • 0°C to +4°C';
+
+  @override
+  String get deliveryVehicleChorvaTaxi => 'Chorva-Taxi';
+
+  @override
+  String get deliveryVehicleChorvaTaxiHint =>
+      'Special transport for live animals';
+
+  @override
+  String get deliveryVehicleUnavailable => 'Unavailable';
+
+  @override
+  String get deliveryTimeSlotSection => 'Time slot';
+
+  @override
+  String get deliveryTimeSlot0609 => '06:00 – 09:00';
+
+  @override
+  String get deliveryTimeSlot0913 => '09:00 – 13:00';
+
+  @override
+  String get deliveryTimeSlot1318 => '13:00 – 18:00';
+
+  @override
+  String get deliveryButcherSection => 'Butcher service';
+
+  @override
+  String get deliveryButcherTitle =>
+      'Need slaughter and butchering for the live animal?';
+
+  @override
+  String get deliveryButcherSubtitle =>
+      'Professional butcher service: slaughter, cleaning and packaging.';
+
+  @override
+  String deliveryButcherFeeLabel(String fee) {
+    return 'Service fee: $fee';
+  }
+
+  @override
+  String get deliveryButcherAccept => 'Add butcher service';
+
+  @override
+  String get deliveryBreakdownSection => 'Breakdown';
+
+  @override
+  String get deliveryBreakdownProducts => 'Products';
+
+  @override
+  String get deliveryBreakdownDelivery => 'Delivery';
+
+  @override
+  String get deliveryBreakdownButcher => 'Butcher service';
+
+  @override
+  String get deliveryBreakdownTotal => 'TOTAL';
+
+  @override
+  String get deliveryProceedCta => 'Proceed to payment';
+
+  @override
+  String get deliveryNeedAddress => 'Please set an address first';
+
+  @override
+  String get deliveryLoadingQuote => 'Loading quote…';
+
+  @override
+  String get deliveryQuoteError => 'Couldn\'t load the quote. Try again.';
+
+  @override
+  String get deliveryPickMapHint => 'Pick the address on the map';
+
+  @override
+  String get deliveryFloorMin => 'Minimum order is 10 kg (wholesale).';
+
+  @override
+  String get deliveryTashkentOnlyBanner =>
+      'We currently deliver only within Tashkent city. The quote is calculated from the city centre.';
+
+  @override
+  String get deliveryTashkentOnlyShort => 'Tashkent only for now';
+
+  @override
+  String get testUseYunusobod => 'TEST: use Yunusobod (Tashkent) location';
+
+  @override
+  String get testYunusobodApplied => 'Location set to Yunusobod';
+
+  @override
+  String get cardsTitle => 'My cards';
+
+  @override
+  String get cardsAddTitle => 'Add card';
+
+  @override
+  String get cardsAddCta => 'Add card';
+
+  @override
+  String get cardsAddError => 'Couldn\'t add the card. Try again.';
+
+  @override
+  String get cardsPan => 'Card number';
+
+  @override
+  String get cardsExpiry => 'Expiry';
+
+  @override
+  String get cardsHolder => 'Cardholder name';
+
+  @override
+  String get cardsPhone => 'Phone for SMS';
+
+  @override
+  String get cardsMakeDefault => 'Make this the default card';
+
+  @override
+  String get cardsPciNote =>
+      'Card data is sent over an encrypted channel. We never store the full card number.';
+
+  @override
+  String get cardsEmptyTitle => 'No cards yet';
+
+  @override
+  String get cardsEmptyHint => 'Add a card to pay for your orders.';
+
+  @override
+  String get cardsLoadError => 'Couldn\'t load cards.';
+
+  @override
+  String get cardsDefaultBadge => 'DEFAULT';
+
+  @override
+  String get cardsExpiredLabel => 'Card expired';
+
+  @override
+  String get cardsActionMakeDefault => 'Set as default';
+
+  @override
+  String get cardsActionDelete => 'Delete';
+
+  @override
+  String get cardsDeletedSnack => 'Card deleted';
+
+  @override
+  String get paymentAmountLabel => 'Amount to pay';
+
+  @override
+  String get paymentMethodSection => 'Payment method';
+
+  @override
+  String paymentPayCta(String amount) {
+    return 'Pay · $amount';
+  }
+
+  @override
+  String get paymentPayCtaShort => 'Pay';
+
+  @override
+  String paymentSuccessCardLine(String brand, String last4) {
+    return 'Paid with $brand •••• $last4';
+  }
 }

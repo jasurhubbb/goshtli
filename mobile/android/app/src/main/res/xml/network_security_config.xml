@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security policy.
+
+  Why this file exists: Android API 28+ blocks cleartext HTTP by default. Production traffic goes
+  over HTTPS (Railway), but local dev hits http://<Mac LAN IP>:8000 directly, and the WebView
+  checkout (Payme mock page) refuses to load without an explicit opt-in.
+
+  Strategy: cleartext is enabled here for the WHOLE app. Combined with the AndroidManifest's
+  `android:usesCleartextTraffic="true"`, this lets dev + production builds both work — production
+  URLs are HTTPS already, so this flag is a permission, not a downgrade. If we ever need to lock
+  release builds down, swap this for a debug-only network config via build flavors.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

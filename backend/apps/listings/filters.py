@@ -31,6 +31,11 @@ class ListingFilter(filters.FilterSet):
     # when catalog size or latency demand it.
     q = filters.CharFilter(method="filter_text_search", label="Search query")
 
+    # v3.6 live-animal facets per PRD §2: lets the buyer toggle between raw-meat and live-animal sub-catalogs,
+    # then narrow by breed. The home grid surfaces this as a top-of-screen segmented control.
+    is_live_animal = filters.BooleanFilter(field_name="is_live_animal")
+    breed = filters.CharFilter(field_name="breed_type", lookup_expr="iexact")
+
     def filter_text_search(self, queryset, name, value):
         """Match query against both name_uz and name_ru — buyers searching in either language hit results."""
         if not value:
@@ -39,4 +44,5 @@ class ListingFilter(filters.FilterSet):
 
     class Meta:
         model = Listing
-        fields = ("category", "market", "region", "status", "price_min", "price_max", "q")
+        fields = ("category", "market", "region", "status", "price_min", "price_max", "q",
+                  "is_live_animal", "breed")

@@ -22,6 +22,38 @@ class OrdersRepository {
     throw _toApiException(r);
   }
 
+  /// POST /orders/ with full v3.6 delivery + butcher params. Called from the Delivery page after the
+  /// buyer's chosen a vehicle + time slot + butcher option. Backend wraps stock decrement + delivery/
+  /// butcher persistence in a single atomic transaction (see apps/orders/services.create_order).
+  Future<model.Order> placeOrderWithDelivery({
+    required int listingId,
+    required double quantityKg,
+    required String deliveryAddress,
+    String notes = '',
+    required String deliveryVehicleType,           // "REFRIGERATOR" / "CHORVA_TAXI"
+    required String deliveryTimeSlot,              // "SLOT_0609" / "SLOT_0913" / "SLOT_1318"
+    required double deliveryDistanceKm,
+    double? deliveryLat, double? deliveryLng,
+    required double deliveryPrice,
+    required bool butcherServiceRequested,
+    required double butcherServiceFee,
+  }) async {
+    final r = await _api.dio.post('/orders/', data: {
+      'listing': listingId, 'quantity_kg': quantityKg.toStringAsFixed(2),
+      'delivery_address': deliveryAddress, 'notes': notes,
+      'delivery_vehicle_type': deliveryVehicleType,
+      'delivery_time_slot': deliveryTimeSlot,
+      'delivery_distance_km': deliveryDistanceKm.toStringAsFixed(2),
+      if (deliveryLat != null) 'delivery_lat': deliveryLat.toStringAsFixed(6),
+      if (deliveryLng != null) 'delivery_lng': deliveryLng.toStringAsFixed(6),
+      'delivery_price': deliveryPrice.toStringAsFixed(2),
+      'butcher_service_requested': butcherServiceRequested,
+      'butcher_service_fee': butcherServiceFee.toStringAsFixed(2),
+    });
+    if (r.statusCode == 201) return model.Order.fromJson(r.data as Map<String, dynamic>);
+    throw _toApiException(r);
+  }
+
   /// GET /orders/my/ — buyer-facing list of their own orders. Server enforces ownership.
   Future<Paginated<model.Order>> myOrders({int page = 1, model.OrderStatus? status}) async {
     final r = await _api.dio.get('/orders/my/', queryParameters: {
@@ -59,6 +91,25 @@ class OrdersRepository {
   Future<model.Order> setSupplierStatus(int id, model.OrderStatus status) async {
     final r = await _api.dio.post('/orders/supplier/$id/status/', data: {'status': _statusToWire(status)});
     if (r.statusCode == 200) return model.Order.fromJson(r.data as Map<String, dynamic>);
+    throw _toApiException(r);
+  }
+
+  // ---------- v3.5 Payments ----------
+
+  /// POST /payments/orders/<id>/pay/ — ask the backend to mint a fresh pay-link for this order.
+  /// Returns the URL the WebView should open + the current payment_status (UNPAID|PENDING|PAID|FAILED).
+  /// We hit this every time the user taps "Buyurtma berish" or "Qaytadan urinish" — the URL is one-shot
+  /// so we always want a new one, not a cached value.
+  Future<({String paymentUrl, String paymentStatus, String provider})> generatePayLink(int orderId) async {
+    final r = await _api.dio.post('/payments/orders/$orderId/pay/');
+    if (r.statusCode == 200) {
+      final d = r.data as Map<String, dynamic>;
+      return (
+        paymentUrl: d['payment_url'] as String,
+        paymentStatus: d['payment_status'] as String,
+        provider: d['provider'] as String,
+      );
+    }
     throw _toApiException(r);
   }
 

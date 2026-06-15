@@ -17,6 +17,7 @@ import '../../../shared/models/listing.dart';
 import '../../../shared/utils/format.dart';
 import '../../addresses/presentation/address_sheet.dart';
 import '../../addresses/providers/addresses_providers.dart';
+import '../../cart/presentation/qty_editor_sheet.dart';
 import '../../cart/providers/cart_providers.dart';
 import '../../listings/providers/listings_providers.dart';
 
@@ -173,7 +174,11 @@ class _LocationPill extends ConsumerWidget {
     } else {
       final loc = currentLocAsync.asData?.value;
       if (loc != null && loc.cityOrArea.isNotEmpty) {
-        label = loc.cityOrArea;
+        // Reverse-geocode-failed sentinel → render the localized "Mening joylashuvim" so the pill still
+        // signals "location set" even when Nominatim couldn't pretty-name the city.
+        label = loc.cityOrArea == kCurrentLocationFallbackLabel
+            ? AppLocalizations.of(context).addressMapMyLocation
+            : loc.cityOrArea;
         street = null;
       } else {
         label = 'Manzil tanlang';
@@ -292,11 +297,18 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
 /// Catalog facet data hardcoded here for now. Slugs match what migration 0004_seed_meat_categories inserts.
 /// When the backend gets a /api/v1/categories/ endpoint, replace this list with a FutureProvider that pulls
 /// from there — the rest of the widget is shape-agnostic.
+///
+/// v3.4: icons are now PNG assets (per-meat-type illustrations in assets/categories/). Hammasi is the only
+/// tile that keeps a Material icon — it's the all-clear filter, not a meat. The `iconAsset` field is null
+/// for it; the tile widget falls back to `iconData` in that case.
 class _Cat {
   final String slug, name;
-  final IconData icon;
+  final IconData? iconData;
+  final String? iconAsset;
   final int colorArgb;
-  const _Cat(this.slug, this.name, this.icon, this.colorArgb);
+  const _Cat(this.slug, this.name, this.colorArgb, {this.iconData, this.iconAsset})
+      : assert((iconData == null) != (iconAsset == null),
+            'Provide either iconData OR iconAsset — never both, never neither');
 }
 
 // First entry is the "Hammasi" all-clear filter — slug == '' means "no category filter active". The rest are
@@ -304,14 +316,14 @@ class _Cat {
 // "Boshqa" (the catch-all) was dropped from the grid to keep it a clean 4×2 = 8 tiles; it's still available
 // in the sticky chip bar on scroll for completeness.
 const _categories = <_Cat>[
-  _Cat('',             'Hammasi',        Icons.apps_rounded,           0xFFFFF3E0),
-  _Cat('mol-goshti',   "Mol go'shti",    Icons.kebab_dining_outlined,  0xFFFCE4E4),
-  _Cat('qoy-goshti',   "Qo'y go'shti",   Icons.outdoor_grill_outlined, 0xFFFFE8D0),
-  _Cat('tovuq-goshti', "Tovuq go'shti",  Icons.egg_alt_outlined,       0xFFFFF5D0),
-  _Cat('echki-goshti', "Echki go'shti",  Icons.pets_outlined,          0xFFE3F2FD),
-  _Cat('ot-goshti',    "Ot go'shti",     Icons.sports_score_outlined,  0xFFEEEEFF),
-  _Cat('qiyma',        'Qiyma',          Icons.lunch_dining_outlined,  0xFFFFEFD5),
-  _Cat('jigar',        'Jigar',          Icons.local_dining_outlined,  0xFFFCE4EC),
+  _Cat('',             'Hammasi',        0xFFFFF3E0, iconData: Icons.apps_rounded),
+  _Cat('mol-goshti',   "Mol go'shti",    0xFFFCE4E4, iconAsset: 'assets/categories/cow.png'),
+  _Cat('qoy-goshti',   "Qo'y go'shti",   0xFFFFE8D0, iconAsset: 'assets/categories/sheep.png'),
+  _Cat('tovuq-goshti', "Tovuq go'shti",  0xFFFFF5D0, iconAsset: 'assets/categories/chicken.png'),
+  _Cat('echki-goshti', "Echki go'shti",  0xFFE3F2FD, iconAsset: 'assets/categories/goat.png'),
+  _Cat('ot-goshti',    "Ot go'shti",     0xFFEEEEFF, iconAsset: 'assets/categories/horse.png'),
+  _Cat('qiyma',        'Qiyma',          0xFFFFEFD5, iconAsset: 'assets/categories/qiyma.png'),
+  _Cat('jigar',        'Jigar',          0xFFFCE4EC, iconAsset: 'assets/categories/jigar.png'),
 ];
 
 
@@ -444,11 +456,16 @@ class _CategoryTile extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: SizedBox.expand(child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
           // Coloured square holds the icon. Brand-ring border appears when this is the active filter.
+          // Meat categories use a PNG asset (Image.asset); Hammasi keeps the Material icon as a fallback.
           Container(width: 56, height: 56,
             decoration: BoxDecoration(color: Color(category.colorArgb),
                 borderRadius: BorderRadius.circular(16),
                 border: selected ? Border.all(color: cs.primary, width: 2.5) : null),
-            child: Icon(category.icon, size: 28, color: Colors.brown.shade700)),
+            padding: const EdgeInsets.all(8),
+            child: category.iconAsset != null
+                ? Image.asset(category.iconAsset!, fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium)
+                : Icon(category.iconData, size: 28, color: Colors.brown.shade700)),
           const SizedBox(height: 6),
           // labelSmall (~11pt) + maxLines:1 fits the longest names ("Tovuq go'shti", "Echki go'shti") on one
           // line at the tight 4-column width. Letter-spacing tightening gains a few extra pixels.
@@ -492,11 +509,19 @@ class _ProductCard extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           // Image region — Image.network if the listing has a photo, else a category-coloured icon fallback.
-          Expanded(child: Container(color: cs.surfaceContainerHighest,
-            child: listing.primaryPhotoUrl != null
-                ? Image.network(listing.primaryPhotoUrl!, fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Center(child: Icon(Icons.image_outlined, size: 56, color: cs.onSurfaceVariant)))
-                : Center(child: Icon(Icons.restaurant_outlined, size: 56, color: cs.onSurfaceVariant)))),
+          // For live animals we overlay a "Tirik vazn" or "1 Bosh" badge per PRD §2 so the buyer can
+          // distinguish live-from-raw at a glance (the carcass photo + amber badge changes the visual gestalt).
+          Expanded(child: Stack(fit: StackFit.expand, children: [
+            Container(color: cs.surfaceContainerHighest,
+              child: listing.primaryPhotoUrl != null
+                  ? Image.network(listing.primaryPhotoUrl!, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Center(child: Icon(Icons.image_outlined, size: 56, color: cs.onSurfaceVariant)))
+                  : Center(child: Icon(
+                      listing.isLiveAnimal ? Icons.pets_rounded : Icons.restaurant_outlined,
+                      size: 56, color: cs.onSurfaceVariant))),
+            if (listing.isLiveAnimal)
+              Positioned(top: 8, left: 8, child: _LiveAnimalBadge(byHead: listing.isByHead)),
+          ])),
 
           // Info region — name + price + add CTA
           Padding(padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -516,8 +541,26 @@ class _ProductCard extends ConsumerWidget {
                 qty == 0
                     ? _AddPill(onTap: () { HapticFeedback.lightImpact(); ref.read(cartProvider.notifier).add(listing); })
                     : _CardStepper(qty: qty,
-                        onDec: () => ref.read(cartProvider.notifier).setQty(listing.id, qty - 1),
-                        onInc: () => ref.read(cartProvider.notifier).setQty(listing.id, qty + 1)),
+                        // PRD §1 step rule: stepper +/- bumps by 5kg (raw meat) or 1 head (live-by-head).
+                        // The notifier knows the right amount from the listing's saleType; we just trigger.
+                        onDec: () => ref.read(cartProvider.notifier).decByStep(listing.id),
+                        onInc: () => ref.read(cartProvider.notifier).incByStep(listing.id),
+                        // Display the unit suffix on the readout so the buyer doesn't confuse "10" with 10kg vs 10 heads.
+                        unitLabel: listing.isByHead ? null : 'kg',
+                        // Tap the number → typeable sheet. Max = current listing stock; allowZero=false
+                        // here so accidentally typing 0 doesn't remove the row from inside the editor.
+                        // PRD §1: minKg + unitLabel come from the listing — raw meat = 10kg min; live by
+                        // head = 1 head.
+                        onTapQty: () async {
+                          final picked = await showQtyEditorSheet(context,
+                              currentQty: qty,
+                              maxKg: listing.quantityKg.toInt(),
+                              minKg: listing.minOrderKg,
+                              unitLabel: listing.isByHead ? 'bosh' : 'kg',
+                              allowZero: false,
+                              listingName: listing.nameUz);
+                          if (picked != null) ref.read(cartProvider.notifier).setQty(listing.id, picked);
+                        }),
               ]),
             ])),
         ])),
@@ -543,18 +586,59 @@ class _AddPill extends StatelessWidget {
 class _CardStepper extends StatelessWidget {
   final int qty;
   final VoidCallback onDec, onInc;
-  const _CardStepper({required this.qty, required this.onDec, required this.onInc});
+  // Optional — when set, tapping the number opens the typeable qty editor. Card stepper, cart row, and
+  // peek bar all pass this callback so the bulk-entry path is uniform across surfaces.
+  final VoidCallback? onTapQty;
+  // Suffix shown after the number on the readout ("kg" / null for headcount). PRD §2: live-by-head listings
+  // suppress the unit since the badge already says "1 Bosh".
+  final String? unitLabel;
+  const _CardStepper({required this.qty, required this.onDec, required this.onInc, this.onTapQty,
+                      this.unitLabel});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final label = unitLabel == null ? '$qty' : '$qty${unitLabel!}';
+    // Width widens slightly to accommodate the "kg" suffix without truncation. 22pt fit "99"; we need ~44pt
+    // for "100kg" without crowding the +/- buttons.
+    final readoutWidth = unitLabel == null ? 22.0 : 44.0;
     return Container(decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(999)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         _Step(icon: Icons.remove, onTap: () { HapticFeedback.selectionClick(); onDec(); }, fg: cs.onPrimary),
-        SizedBox(width: 22, child: Center(child: Text('$qty',
-          style: tt.bodyMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w800)))),
+        // Tappable number — InkResponse so the tap target is the same size as the visible text + a bit more.
+        InkResponse(onTap: onTapQty == null ? null : () { HapticFeedback.selectionClick(); onTapQty!(); },
+          radius: 18,
+          child: SizedBox(width: readoutWidth, child: Center(child: Text(label,
+            style: tt.bodyMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w800))))),
         _Step(icon: Icons.add, onTap: () { HapticFeedback.selectionClick(); onInc(); }, fg: cs.onPrimary),
+      ]));
+  }
+}
+
+
+/// Small amber badge overlaid on live-animal product photos. PRD §2 specifies "Tirik vazn" (live weight) or
+/// "1 Bosh" (1 head) — choice depends on the listing's sale type so the buyer instantly knows which math
+/// applies in the cart (kg vs heads).
+class _LiveAnimalBadge extends StatelessWidget {
+  final bool byHead;
+  const _LiveAnimalBadge({required this.byHead});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final label = byHead ? t.liveAnimalBadgeByHead : t.liveAnimalBadgeByWeight;
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE0B2),                                  // PRD-matched soft amber
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.pets_rounded, size: 12, color: Color(0xFF5D3A00)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF5D3A00), letterSpacing: 0.2)),
       ]));
   }
 }

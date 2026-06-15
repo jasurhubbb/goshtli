@@ -8,11 +8,13 @@
 // distraction-free name field that doesn't compete with the phone capture.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/language_picker.dart';
 import '../providers/auth_providers.dart';
 import '../providers/auth_state.dart';
+import '../providers/pending_redirect_provider.dart';
 
 
 class PhoneDetailsScreen extends ConsumerStatefulWidget {
@@ -44,12 +46,24 @@ class _PhoneDetailsScreenState extends ConsumerState<PhoneDetailsScreen> {
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
+    debugPrint('[PhoneDetailsScreen._submit] registering ${widget.phone}…');
+    // Capture the GoRouter instance BEFORE the await — see OtpEntryScreen._submit for the full rationale.
+    // Short version: phoneRegister flips auth state mid-flow, which can leave this screen's context briefly
+    // deactivated. Calling router.go directly avoids the inherited-widget lookup that would throw.
+    final router = GoRouter.of(context);
     await ref.read(authNotifierProvider.notifier).phoneRegister(
       phone: widget.phone,
       fullName: _name.text.trim(),
       businessName: _business.text.trim(),
     );
-    // No manual navigation — router redirect flips to '/' once AuthAuthenticated lands.
+    final auth = ref.read(authNotifierProvider);
+    debugPrint('[PhoneDetailsScreen._submit] register returned; state=${auth.runtimeType}');
+    if (auth is AuthAuthenticated) {
+      // Honor any pending redirect set by a gate (e.g. the delivery page) before login. Otherwise land on /.
+      final next = ref.read(pendingRedirectProvider.notifier).take() ?? '/';
+      debugPrint('[PhoneDetailsScreen._submit] navigating to $next');
+      router.go(next);
+    }
   }
 
   @override

@@ -21,6 +21,14 @@ enum ListingStatus {
 }
 
 
+/// v3.6 PRD §2 — sold per kilo (raw meat OR live by weight) vs. per head (live by head). The buyer-side
+/// quantity stepper math differs by this: BY_HEAD increments by 1 (one animal), BY_WEIGHT increments by 5/10kg.
+enum ListingSaleType {
+  @JsonValue('BY_WEIGHT') byWeight,
+  @JsonValue('BY_HEAD') byHead,
+}
+
+
 /// DRF DecimalField serialization helpers — Decimal arrives as "100.00", not 100.0.
 double _decimalFromString(Object? v) => v == null ? 0 : double.parse(v.toString());
 String _decimalToString(double v) => v.toStringAsFixed(2);
@@ -105,13 +113,29 @@ class Listing {
   @JsonKey(name: 'supplier_id', defaultValue: 0) final int supplierId;
   @JsonKey(name: 'supplier_email', defaultValue: '') final String supplierEmail;
 
+  // ---- v3.6 PRD §2 live-animal fields ----
+  // is_live_animal: when true, the buyer card swaps the meat slab thumbnail for the live animal photo
+  // and shows a "Tirik vazn" or "1 Bosh" badge. Cart adds a butcher service prompt when any item has
+  // this flag set.
+  @JsonKey(name: 'is_live_animal', defaultValue: false) final bool isLiveAnimal;
+  @JsonKey(name: 'sale_type', defaultValue: ListingSaleType.byWeight) final ListingSaleType saleType;
+  @JsonKey(name: 'estimated_meat_yield_pct', defaultValue: 0) final int estimatedMeatYieldPct;
+  @JsonKey(name: 'breed_type', defaultValue: '') final String breedType;
+  @JsonKey(name: 'head_count', defaultValue: 0) final int headCount;
+  @JsonKey(name: 'live_weight_per_head_kg', fromJson: _decimalFromString, toJson: _decimalToString,
+           defaultValue: 0.0) final double liveWeightPerHeadKg;
+
   @JsonKey(defaultValue: <ListingPhoto>[]) final List<ListingPhoto> photos;
 
   const Listing({required this.id, required this.slug, required this.market, required this.category,
                  required this.nameUz, required this.nameRu, required this.descriptionUz, required this.descriptionRu,
                  required this.quantityKg, required this.pricePerKg, required this.location,
                  required this.availableFrom, required this.status,
-                 required this.supplierId, required this.supplierEmail, required this.photos});
+                 required this.supplierId, required this.supplierEmail,
+                 this.isLiveAnimal = false, this.saleType = ListingSaleType.byWeight,
+                 this.estimatedMeatYieldPct = 0, this.breedType = '', this.headCount = 0,
+                 this.liveWeightPerHeadKg = 0.0,
+                 required this.photos});
 
   factory Listing.fromJson(Map<String, dynamic> json) => _$ListingFromJson(json);
   Map<String, dynamic> toJson() => _$ListingToJson(this);
@@ -123,4 +147,17 @@ class Listing {
   /// Display name for the active locale. Falls back to Uzbek for any non-RU language.
   String displayName(String languageCode) =>
       languageCode == 'ru' && nameRu.isNotEmpty ? nameRu : nameUz;
+
+  /// True when the product is sold per-animal (one head at a time). UI uses this to switch the qty
+  /// stepper from kg increments to head increments.
+  bool get isByHead => isLiveAnimal && saleType == ListingSaleType.byHead;
+
+  /// PRD §1 wholesale rule: 10kg minimum on BY_WEIGHT raw-meat listings; live-by-head has no minimum
+  /// (you can buy 1 head). Used by the qty stepper + qty editor sheet so the rules live in ONE place.
+  int get minOrderKg => isByHead ? 1 : 10;
+
+  /// Step size for the qty stepper +/- buttons. For BY_HEAD it's 1 (one animal); for BY_WEIGHT we use 5
+  /// per the PRD ("+5 or +10 kg increments"). Tap-and-hold or the typeable editor sheet is how a buyer
+  /// jumps in larger chunks.
+  int get stepKg => isByHead ? 1 : 5;
 }

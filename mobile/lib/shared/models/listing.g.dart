@@ -76,6 +76,17 @@ Listing _$ListingFromJson(Map<String, dynamic> json) => Listing(
   status: $enumDecode(_$ListingStatusEnumMap, json['status']),
   supplierId: (json['supplier_id'] as num?)?.toInt() ?? 0,
   supplierEmail: json['supplier_email'] as String? ?? '',
+  isLiveAnimal: json['is_live_animal'] as bool? ?? false,
+  saleType:
+      $enumDecodeNullable(_$ListingSaleTypeEnumMap, json['sale_type']) ??
+      ListingSaleType.byWeight,
+  estimatedMeatYieldPct:
+      (json['estimated_meat_yield_pct'] as num?)?.toInt() ?? 0,
+  breedType: json['breed_type'] as String? ?? '',
+  headCount: (json['head_count'] as num?)?.toInt() ?? 0,
+  liveWeightPerHeadKg: json['live_weight_per_head_kg'] == null
+      ? 0.0
+      : _decimalFromString(json['live_weight_per_head_kg']),
   photos:
       (json['photos'] as List<dynamic>?)
           ?.map((e) => ListingPhoto.fromJson(e as Map<String, dynamic>))
@@ -99,6 +110,12 @@ Map<String, dynamic> _$ListingToJson(Listing instance) => <String, dynamic>{
   'status': _$ListingStatusEnumMap[instance.status]!,
   'supplier_id': instance.supplierId,
   'supplier_email': instance.supplierEmail,
+  'is_live_animal': instance.isLiveAnimal,
+  'sale_type': _$ListingSaleTypeEnumMap[instance.saleType]!,
+  'estimated_meat_yield_pct': instance.estimatedMeatYieldPct,
+  'breed_type': instance.breedType,
+  'head_count': instance.headCount,
+  'live_weight_per_head_kg': _decimalToString(instance.liveWeightPerHeadKg),
   'photos': instance.photos,
 };
 
@@ -106,4 +123,9 @@ const _$ListingStatusEnumMap = {
   ListingStatus.active: 'ACTIVE',
   ListingStatus.outOfStock: 'OUT_OF_STOCK',
   ListingStatus.archived: 'ARCHIVED',
+};
+
+const _$ListingSaleTypeEnumMap = {
+  ListingSaleType.byWeight: 'BY_WEIGHT',
+  ListingSaleType.byHead: 'BY_HEAD',
 };

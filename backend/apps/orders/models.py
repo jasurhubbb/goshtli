@@ -11,13 +11,42 @@ from apps.listings.models import Listing
 
 class Order(TimeStampedModel):
     class Status(models.TextChoices):
-        # State machine: PENDING is the only entry state; DELIVERED & CANCELLED are terminal
+        # State machine per PRD v2 §4: PENDING is the only entry state; DELIVERED & CANCELLED are terminal.
+        # PROCESSING_BUTCHER is a new sub-state inserted between CONFIRMED and IN_TRANSIT, ONLY entered when
+        # the buyer ordered a live animal + accepted the Qassob (butcher) service. For raw meat or
+        # butcher-declined live animal orders, the flow skips straight from CONFIRMED → PROCESSING → IN_TRANSIT.
         PENDING = "PENDING", _("Pending")
         CONFIRMED = "CONFIRMED", _("Confirmed")
         PROCESSING = "PROCESSING", _("Processing")
+        PROCESSING_BUTCHER = "PROCESSING_BUTCHER", _("At butcher (slaughter & cut)")
         IN_TRANSIT = "IN_TRANSIT", _("In transit")
         DELIVERED = "DELIVERED", _("Delivered")
         CANCELLED = "CANCELLED", _("Cancelled")
+
+    # ---- v3.6 Delivery (Yetkazib berish) — per PRD v2 §3 -----------------------------------------
+    # Delivery is its own page in the buyer flow (Cart → Delivery → Checkout/Pay → Orders). The two
+    # vehicle types are dictated by the cart contents:
+    #   REFRIGERATOR  — raw meat OR (live + butcher requested) → cold-chain 0°C..+4°C
+    #   CHORVA_TAXI   — live + butcher declined → open/bortli truck for live animal transport
+    class VehicleType(models.TextChoices):
+        REFRIGERATOR = "REFRIGERATOR", _("Refrigerator (cold-chain)")
+        CHORVA_TAXI = "CHORVA_TAXI", _("Chorva-Taksi (live animal)")
+
+    # Three fixed delivery windows per PRD: 06:00-09:00 (early-morning to'y oshlari slot), 09:00-13:00, 13:00-18:00
+    class TimeSlot(models.TextChoices):
+        SLOT_0609 = "SLOT_0609", _("06:00 – 09:00")
+        SLOT_0913 = "SLOT_0913", _("09:00 – 13:00")
+        SLOT_1318 = "SLOT_1318", _("13:00 – 18:00")
+
+    # v3.5 — payment state is a SEPARATE axis from the order-fulfilment status (above) because Payme's
+    # webhook fires before the supplier acknowledges. Order is CONFIRMED by the supplier; PaymentStatus
+    # moves through PENDING → PAID (or FAILED/REFUNDED) driven by the payment provider's webhook.
+    class PaymentStatus(models.TextChoices):
+        UNPAID = "UNPAID", _("Unpaid")                  # order placed, no payment attempt yet
+        PENDING = "PENDING", _("Pending")               # pay-link generated; buyer is on the provider's page
+        PAID = "PAID", _("Paid")                         # webhook confirmed funds settled
+        FAILED = "FAILED", _("Failed")                   # provider rejected (insufficient funds, 3DS fail, expired)
+        REFUNDED = "REFUNDED", _("Refunded")             # full or partial refund issued via provider
 
     # Unified user model — any authenticated user can place an order. PROTECT on listing so deleting a listing with
     # attached orders fails loudly instead of orphaning history.
@@ -31,7 +60,42 @@ class Order(TimeStampedModel):
                                       validators=[MinValueValidator(Decimal("0.00"))])
     delivery_address = models.TextField(_("delivery address"))
     notes = models.TextField(_("notes"), blank=True)
-    status = models.CharField(_("status"), max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
+    status = models.CharField(_("status"), max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+
+    # ---- v3.5 payment fields ----
+    payment_status = models.CharField(_("payment status"), max_length=10,
+                                      choices=PaymentStatus.choices,
+                                      default=PaymentStatus.UNPAID, db_index=True)
+    # Identifier of which provider/adapter we used (e.g. "payme", "click", "mock"). Lets us scale to
+    # multiple providers later without backfilling rows. Set on first /pay/ call.
+    payment_provider = models.CharField(_("payment provider"), max_length=20, blank=True)
+    # The provider's transaction id (Payme's _id, Click's transaction_id). Stored so the webhook can
+    # look up which Order a callback belongs to without trusting the order_id in the callback body.
+    payment_provider_tx_id = models.CharField(_("payment provider tx id"), max_length=128, blank=True,
+                                              db_index=True)
+    # Cached pay URL the mobile app opens in the WebView. Regenerated on retry — providers' URLs expire.
+    payment_url = models.URLField(_("payment URL"), max_length=2048, blank=True)
+
+    # ---- v3.6 delivery + butcher service fields ----
+    # All optional at the DB layer (blank/0 defaults) so legacy orders pre-PRD-v2 still load. Validated as
+    # required by OrderCreateSerializer for new orders going through the delivery page.
+    delivery_vehicle_type = models.CharField(_("delivery vehicle type"), max_length=16,
+                                             choices=VehicleType.choices, blank=True)
+    delivery_time_slot = models.CharField(_("delivery time slot"), max_length=12,
+                                          choices=TimeSlot.choices, blank=True)
+    delivery_distance_km = models.DecimalField(_("delivery distance (km)"), max_digits=8, decimal_places=2,
+                                                default=Decimal("0.00"))
+    delivery_lat = models.DecimalField(_("delivery latitude"), max_digits=9, decimal_places=6,
+                                       null=True, blank=True)
+    delivery_lng = models.DecimalField(_("delivery longitude"), max_digits=9, decimal_places=6,
+                                       null=True, blank=True)
+    delivery_price = models.DecimalField(_("delivery price"), max_digits=12, decimal_places=2,
+                                          default=Decimal("0.00"))
+    # Butcher (Qassob / Service Hub) — buyer ticks "yes" on the cart when at least one live-animal item.
+    # The fee is fixed per the active service-hub rate card (no per-order pricing for v1).
+    butcher_service_requested = models.BooleanField(_("butcher service requested"), default=False)
+    butcher_service_fee = models.DecimalField(_("butcher service fee"), max_digits=12, decimal_places=2,
+                                              default=Decimal("0.00"))
 
     class Meta:
         verbose_name = _("order")

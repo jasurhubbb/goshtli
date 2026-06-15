@@ -2,8 +2,8 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import (AdminUnlockView, MeView, PhoneCheckView, PhoneLoginView,
-                    PhoneRegisterView, RegisterView)
+from .views import (AdminUnlockView, FirebasePhoneLoginView, MeView, PhoneCheckView,
+                    PhoneLoginView, PhoneRegisterView, RegisterView)
 
 # Two coexisting auth families:
 #   • Email + password (legacy v2)  — /register, /login, /refresh — kept for Django Admin staff + backwards compat
@@ -22,4 +22,8 @@ urlpatterns = [
 
     # v3.3 admin gate — password → admin JWT pair (auto-bootstraps bootstrap admin user on first hit)
     path("admin-unlock/", AdminUnlockView.as_view(), name="auth-admin-unlock"),
+
+    # v3.4 Firebase Phone Auth — client does the OTP via Firebase, posts the resulting ID token here;
+    # backend verifies + bridges into our JWT system. Replaces the OTP-less phone-login as the primary path.
+    path("firebase-phone-login/", FirebasePhoneLoginView.as_view(), name="auth-firebase-phone-login"),
 ]

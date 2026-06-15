@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/location/location_providers.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../addresses/providers/addresses_providers.dart';
 
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -26,6 +27,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await svc.markOnboardingDone();
     // Re-evaluate the router redirect by invalidating the onboarding flag provider
     ref.invalidate(onboardingDoneProvider);
+    // Drop the home pill's cached "no location" answer so it re-runs against the freshly-cached coords
+    // (or freshly-granted permission) instead of stuck-rendering "Manzil tanlang".
+    ref.invalidate(currentLocationProvider);
     if (mounted) context.go('/');
   }
 

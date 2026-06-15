@@ -35,8 +35,12 @@ class CancellationNotAllowed(ValidationError):
 # Per workflow.md §7: buyer can only cancel from PENDING; supplier drives the rest of the lifecycle.
 SUPPLIER_TRANSITIONS = {
     Order.Status.PENDING: {Order.Status.CONFIRMED, Order.Status.CANCELLED},
-    Order.Status.CONFIRMED: {Order.Status.PROCESSING, Order.Status.CANCELLED},
+    # PRD v2 §4: CONFIRMED can branch into PROCESSING (raw meat OR live-no-butcher) or PROCESSING_BUTCHER
+    # (live + butcher service requested) before continuing into IN_TRANSIT. The view layer only allows the
+    # butcher branch when order.butcher_service_requested is True — enforced in transition_order_status().
+    Order.Status.CONFIRMED: {Order.Status.PROCESSING, Order.Status.PROCESSING_BUTCHER, Order.Status.CANCELLED},
     Order.Status.PROCESSING: {Order.Status.IN_TRANSIT, Order.Status.CANCELLED},
+    Order.Status.PROCESSING_BUTCHER: {Order.Status.IN_TRANSIT, Order.Status.CANCELLED},
     Order.Status.IN_TRANSIT: {Order.Status.DELIVERED},
     # DELIVERED + CANCELLED are terminal — no key here
 }
@@ -46,8 +50,21 @@ BUYER_CANCELLABLE_FROM = {Order.Status.PENDING}  # buyer's only allowed transiti
 # ---------- Public service functions ----------
 
 @transaction.atomic
-def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_address: str, notes: str = "") -> Order:
-    """Place an order: lock the listing row, validate stock, decrement quantity, flip to OUT_OF_STOCK if zero, snapshot price."""
+def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_address: str, notes: str = "",
+                 # ---- v3.6 delivery + butcher params (all optional for back-compat with legacy clients) ----
+                 delivery_vehicle_type: str = "", delivery_time_slot: str = "",
+                 delivery_distance_km: Decimal = Decimal("0.00"),
+                 delivery_lat=None, delivery_lng=None,
+                 delivery_price: Decimal = Decimal("0.00"),
+                 butcher_service_requested: bool = False,
+                 butcher_service_fee: Decimal = Decimal("0.00")) -> Order:
+    """Place an order: lock the listing row, validate stock, decrement quantity, flip to OUT_OF_STOCK if zero, snapshot price.
+
+    v3.6: delivery fields (vehicle, slot, distance, price, lat/lng) and butcher_service_* are now persisted on
+    the Order so the supplier/admin can see the full fulfilment plan. They're keyword-only and default to
+    empty/zero so legacy callers (tests, the cart's pre-delivery-page POST during the rollout window) keep
+    working without changes.
+    """
     # select_for_update locks the listing row until commit — concurrent buyers can't both succeed when only 1kg remains
     try: listing = Listing.objects.select_for_update().get(pk=listing_id)
     except Listing.DoesNotExist: raise ValidationError({"listing": "Listing does not exist."})
@@ -57,10 +74,28 @@ def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_addre
     if quantity_kg > listing.quantity_kg:
         raise InsufficientStock({"quantity_kg": f"Only {listing.quantity_kg}kg available."})
 
-    # Snapshot total_price NOW so future price changes on the listing never affect this order's amount
+    # PRD v2 §1: minimum order is 10kg for wholesale — but ONLY for BY_WEIGHT listings (raw meat OR live by
+    # weight). BY_HEAD live animals are sold per-head so this rule doesn't apply. We intentionally enforce
+    # this in the service layer (not just the serializer) so any future internal caller also gets the check.
+    if listing.sale_type == Listing.SaleType.BY_WEIGHT and quantity_kg < Decimal("10.00"):
+        raise ValidationError({"quantity_kg": "Minimum order is 10 kg for wholesale listings."})
+
+    # Snapshot total_price NOW so future price changes on the listing never affect this order's amount.
+    # For BY_HEAD live animals, `quantity_kg` carries the requested head count from the client (the
+    # mobile app multiplies up to total live weight separately for display).
     total_price = (listing.price_per_kg * quantity_kg).quantize(Decimal("0.01"))
+    # Grand total includes delivery + butcher service fees — stored on total_price so the payments app's
+    # webhook + the buyer's invoice line both reference one canonical number.
+    grand_total = (total_price + delivery_price + butcher_service_fee).quantize(Decimal("0.01"))
     order = Order.objects.create(buyer=buyer, listing=listing, quantity_kg=quantity_kg,
-                                 total_price=total_price, delivery_address=delivery_address, notes=notes)
+                                 total_price=grand_total, delivery_address=delivery_address, notes=notes,
+                                 delivery_vehicle_type=delivery_vehicle_type,
+                                 delivery_time_slot=delivery_time_slot,
+                                 delivery_distance_km=delivery_distance_km,
+                                 delivery_lat=delivery_lat, delivery_lng=delivery_lng,
+                                 delivery_price=delivery_price,
+                                 butcher_service_requested=butcher_service_requested,
+                                 butcher_service_fee=butcher_service_fee)
 
     # Decrement stock and auto-flip to OUT_OF_STOCK when fully drained — single save() to keep DB writes minimal
     listing.quantity_kg -= quantity_kg

@@ -1761,6 +1761,504 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Detected location · tap to refine'**
   String get addressAutoDetectedHint;
+
+  /// No description provided for @otpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code'**
+  String get otpTitle;
+
+  /// No description provided for @otpSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sent to {phone}'**
+  String otpSentTo(String phone);
+
+  /// No description provided for @otpResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get otpResend;
+
+  /// No description provided for @otpResendIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String otpResendIn(int seconds);
+
+  /// No description provided for @otpInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid code'**
+  String get otpInvalidCode;
+
+  /// No description provided for @otpExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Code expired — request a new one'**
+  String get otpExpired;
+
+  /// No description provided for @qtyEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity (kg)'**
+  String get qtyEditorTitle;
+
+  /// No description provided for @qtyEditorEnterAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount'**
+  String get qtyEditorEnterAmount;
+
+  /// No description provided for @qtyEditorOnlyDigits.
+  ///
+  /// In en, this message translates to:
+  /// **'Digits only'**
+  String get qtyEditorOnlyDigits;
+
+  /// No description provided for @qtyEditorMustBePositive.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be greater than zero'**
+  String get qtyEditorMustBePositive;
+
+  /// No description provided for @qtyEditorMaxExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Max: {max} kg'**
+  String qtyEditorMaxExceeded(int max);
+
+  /// No description provided for @qtyEditorAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available: {max} kg'**
+  String qtyEditorAvailable(int max);
+
+  /// No description provided for @qtyEditorMax.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get qtyEditorMax;
+
+  /// No description provided for @qtyEditorConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get qtyEditorConfirm;
+
+  /// No description provided for @payTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment'**
+  String get payTitle;
+
+  /// No description provided for @payProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing payment…'**
+  String get payProcessing;
+
+  /// No description provided for @payCheckingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking status…'**
+  String get payCheckingStatus;
+
+  /// No description provided for @paySuccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment successful'**
+  String get paySuccessTitle;
+
+  /// No description provided for @paySuccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order has been accepted'**
+  String get paySuccessBody;
+
+  /// No description provided for @payFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment failed'**
+  String get payFailedTitle;
+
+  /// No description provided for @payRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get payRetry;
+
+  /// No description provided for @payToOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to orders'**
+  String get payToOrders;
+
+  /// No description provided for @payCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get payCancel;
+
+  /// No description provided for @qtyEditorBelowMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum: {min}'**
+  String qtyEditorBelowMinimum(int min);
+
+  /// No description provided for @liveAnimalBadgeByHead.
+  ///
+  /// In en, this message translates to:
+  /// **'1 HEAD'**
+  String get liveAnimalBadgeByHead;
+
+  /// No description provided for @liveAnimalBadgeByWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE WEIGHT'**
+  String get liveAnimalBadgeByWeight;
+
+  /// No description provided for @deliveryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery'**
+  String get deliveryTitle;
+
+  /// No description provided for @deliveryAddressSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get deliveryAddressSection;
+
+  /// No description provided for @deliveryAddressChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get deliveryAddressChange;
+
+  /// No description provided for @deliveryDistanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance: {km} km'**
+  String deliveryDistanceLabel(String km);
+
+  /// No description provided for @deliveryVehicleSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle type'**
+  String get deliveryVehicleSection;
+
+  /// No description provided for @deliveryVehicleRefrigerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Refrigerator'**
+  String get deliveryVehicleRefrigerator;
+
+  /// No description provided for @deliveryVehicleRefrigeratorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cold chain • 0°C to +4°C'**
+  String get deliveryVehicleRefrigeratorHint;
+
+  /// No description provided for @deliveryVehicleChorvaTaxi.
+  ///
+  /// In en, this message translates to:
+  /// **'Chorva-Taxi'**
+  String get deliveryVehicleChorvaTaxi;
+
+  /// No description provided for @deliveryVehicleChorvaTaxiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Special transport for live animals'**
+  String get deliveryVehicleChorvaTaxiHint;
+
+  /// No description provided for @deliveryVehicleUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get deliveryVehicleUnavailable;
+
+  /// No description provided for @deliveryTimeSlotSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Time slot'**
+  String get deliveryTimeSlotSection;
+
+  /// No description provided for @deliveryTimeSlot0609.
+  ///
+  /// In en, this message translates to:
+  /// **'06:00 – 09:00'**
+  String get deliveryTimeSlot0609;
+
+  /// No description provided for @deliveryTimeSlot0913.
+  ///
+  /// In en, this message translates to:
+  /// **'09:00 – 13:00'**
+  String get deliveryTimeSlot0913;
+
+  /// No description provided for @deliveryTimeSlot1318.
+  ///
+  /// In en, this message translates to:
+  /// **'13:00 – 18:00'**
+  String get deliveryTimeSlot1318;
+
+  /// No description provided for @deliveryButcherSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Butcher service'**
+  String get deliveryButcherSection;
+
+  /// No description provided for @deliveryButcherTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Need slaughter and butchering for the live animal?'**
+  String get deliveryButcherTitle;
+
+  /// No description provided for @deliveryButcherSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Professional butcher service: slaughter, cleaning and packaging.'**
+  String get deliveryButcherSubtitle;
+
+  /// No description provided for @deliveryButcherFeeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Service fee: {fee}'**
+  String deliveryButcherFeeLabel(String fee);
+
+  /// No description provided for @deliveryButcherAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Add butcher service'**
+  String get deliveryButcherAccept;
+
+  /// No description provided for @deliveryBreakdownSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakdown'**
+  String get deliveryBreakdownSection;
+
+  /// No description provided for @deliveryBreakdownProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Products'**
+  String get deliveryBreakdownProducts;
+
+  /// No description provided for @deliveryBreakdownDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery'**
+  String get deliveryBreakdownDelivery;
+
+  /// No description provided for @deliveryBreakdownButcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Butcher service'**
+  String get deliveryBreakdownButcher;
+
+  /// No description provided for @deliveryBreakdownTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL'**
+  String get deliveryBreakdownTotal;
+
+  /// No description provided for @deliveryProceedCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Proceed to payment'**
+  String get deliveryProceedCta;
+
+  /// No description provided for @deliveryNeedAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Please set an address first'**
+  String get deliveryNeedAddress;
+
+  /// No description provided for @deliveryLoadingQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading quote…'**
+  String get deliveryLoadingQuote;
+
+  /// No description provided for @deliveryQuoteError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the quote. Try again.'**
+  String get deliveryQuoteError;
+
+  /// No description provided for @deliveryPickMapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the address on the map'**
+  String get deliveryPickMapHint;
+
+  /// No description provided for @deliveryFloorMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum order is 10 kg (wholesale).'**
+  String get deliveryFloorMin;
+
+  /// No description provided for @deliveryTashkentOnlyBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'We currently deliver only within Tashkent city. The quote is calculated from the city centre.'**
+  String get deliveryTashkentOnlyBanner;
+
+  /// No description provided for @deliveryTashkentOnlyShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Tashkent only for now'**
+  String get deliveryTashkentOnlyShort;
+
+  /// No description provided for @testUseYunusobod.
+  ///
+  /// In en, this message translates to:
+  /// **'TEST: use Yunusobod (Tashkent) location'**
+  String get testUseYunusobod;
+
+  /// No description provided for @testYunusobodApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location set to Yunusobod'**
+  String get testYunusobodApplied;
+
+  /// No description provided for @cardsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My cards'**
+  String get cardsTitle;
+
+  /// No description provided for @cardsAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add card'**
+  String get cardsAddTitle;
+
+  /// No description provided for @cardsAddCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add card'**
+  String get cardsAddCta;
+
+  /// No description provided for @cardsAddError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t add the card. Try again.'**
+  String get cardsAddError;
+
+  /// No description provided for @cardsPan.
+  ///
+  /// In en, this message translates to:
+  /// **'Card number'**
+  String get cardsPan;
+
+  /// No description provided for @cardsExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry'**
+  String get cardsExpiry;
+
+  /// No description provided for @cardsHolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cardholder name'**
+  String get cardsHolder;
+
+  /// No description provided for @cardsPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone for SMS'**
+  String get cardsPhone;
+
+  /// No description provided for @cardsMakeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Make this the default card'**
+  String get cardsMakeDefault;
+
+  /// No description provided for @cardsPciNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Card data is sent over an encrypted channel. We never store the full card number.'**
+  String get cardsPciNote;
+
+  /// No description provided for @cardsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No cards yet'**
+  String get cardsEmptyTitle;
+
+  /// No description provided for @cardsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a card to pay for your orders.'**
+  String get cardsEmptyHint;
+
+  /// No description provided for @cardsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load cards.'**
+  String get cardsLoadError;
+
+  /// No description provided for @cardsDefaultBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'DEFAULT'**
+  String get cardsDefaultBadge;
+
+  /// No description provided for @cardsExpiredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Card expired'**
+  String get cardsExpiredLabel;
+
+  /// No description provided for @cardsActionMakeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get cardsActionMakeDefault;
+
+  /// No description provided for @cardsActionDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get cardsActionDelete;
+
+  /// No description provided for @cardsDeletedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Card deleted'**
+  String get cardsDeletedSnack;
+
+  /// No description provided for @paymentAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount to pay'**
+  String get paymentAmountLabel;
+
+  /// No description provided for @paymentMethodSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment method'**
+  String get paymentMethodSection;
+
+  /// No description provided for @paymentPayCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay · {amount}'**
+  String paymentPayCta(String amount);
+
+  /// No description provided for @paymentPayCtaShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay'**
+  String get paymentPayCtaShort;
+
+  /// No description provided for @paymentSuccessCardLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid with {brand} •••• {last4}'**
+  String paymentSuccessCardLine(String brand, String last4);
 }
 
 class _AppLocalizationsDelegate

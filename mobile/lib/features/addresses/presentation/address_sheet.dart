@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../data/address_model.dart';
@@ -111,6 +112,39 @@ class _AddressSheet extends ConsumerWidget {
           },
           child: Text(t.addressesNewCta,
             style: tt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w700))),
+
+        // ---- TEST HELPER (dev only) — drop a Yunusobod-area location into the cached GPS coords ----
+        // The Android Studio emulator's default Pixel 7 location is in the US, which makes the cart
+        // and delivery quote unusable until the buyer sets a real address. This button writes a
+        // Yunusobod fix to SharedPreferences (the same keys the GPS resolver caches) + invalidates
+        // currentLocationProvider so the home pill, cart, and delivery page all snap to Tashkent.
+        // Remove once a real "set on map" flow is wired in for testers.
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              foregroundColor: cs.primary),
+          icon: const Icon(Icons.bug_report_outlined, size: 18),
+          label: Text(t.testUseYunusobod),
+          onPressed: () async {
+            HapticFeedback.selectionClick();
+            final messenger = ScaffoldMessenger.of(context);
+            final prefs = await SharedPreferences.getInstance();
+            // Yunusobod district center — close to Bunyodkor / Yunus Rajabiy. The resolver's Tashkent
+            // bbox covers this comfortably (lat 41.36, lng 69.29).
+            await prefs.setDouble('loc.lat', 41.3680);
+            await prefs.setDouble('loc.lng', 69.2873);
+            // CRITICAL: also clear any saved address selection. effectiveDeliveryLocationProvider
+            // checks selectedAddressProvider FIRST and short-circuits — without this clear, the test
+            // button updates GPS but the cart/delivery still render the old "Uy" address.
+            await ref.read(selectedAddressIdProvider.notifier).set(null);
+            // Invalidate so the FutureProvider re-runs and reverse-geocodes the new coord. Every
+            // consumer (home pill, cart row, delivery resolver) updates automatically.
+            ref.invalidate(currentLocationProvider);
+            if (!context.mounted) return;
+            Navigator.pop(context);
+            messenger.showSnackBar(SnackBar(content: Text(t.testYunusobodApplied)));
+          }),
       ])));
   }
 
@@ -136,9 +170,12 @@ class _AutoDetectedRow extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    // Sentinel (reverse-geocode failed) → show localized "Mening joylashuvim" instead of the raw sentinel.
+    final cityLabel = location.cityOrArea == kCurrentLocationFallbackLabel
+        ? t.addressMapMyLocation : location.cityOrArea;
     final detail = location.regionOrCountry.isNotEmpty
-        ? '${location.cityOrArea} · ${location.regionOrCountry}'
-        : location.cityOrArea;
+        ? '$cityLabel · ${location.regionOrCountry}'
+        : cityLabel;
     return Material(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(16),
       child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16),
         child: Padding(padding: const EdgeInsets.all(14),

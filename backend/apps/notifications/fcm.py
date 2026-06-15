@@ -1,15 +1,23 @@
-"""Thin Firebase Cloud Messaging wrapper — lazy-initialized, never raises into business logic.
+"""Thin Firebase wrapper — lazy-initialized, shared between FCM push (this app) and v3.4 Firebase Phone Auth
+token verification (apps.accounts.views.FirebasePhoneLoginView). Never raises into business logic.
 
-The credentials JSON is provided via the FIREBASE_CREDENTIALS_JSON env var (the full JSON contents pasted in). If
-unset, push is silently disabled — useful for local dev + tests. Failures during send are logged but don't propagate;
-notification flow continues even if FCM is unreachable.
+Credentials are loaded from one of two env vars, in priority order:
+  1. FIREBASE_CREDENTIALS_JSON — the full service-account JSON pasted as a single-line env value. Used by
+     Railway / Render / Docker prod, where setting one fat env var beats committing/mounting a file.
+  2. FIREBASE_CREDENTIALS_FILE — path (absolute, or relative to backend/) to a downloaded JSON file. Used
+     in local dev — easier to drop a Firebase-generated file into the repo (gitignored) than to wrestle a
+     multi-line JSON into .env preserving the literal `\\n` chars inside `private_key`.
+
+If neither is set, push is silently disabled and the Firebase-phone-login endpoint returns 503.
 """
 import json
 import logging
-import os
+from pathlib import Path
 from typing import Iterable
 
 import firebase_admin
+from decouple import config
+from django.conf import settings
 from firebase_admin import credentials, messaging
 
 from .models import DeviceToken
@@ -21,17 +29,43 @@ _app: firebase_admin.App | None = None
 
 
 def _ensure_initialized() -> bool:
-    """Idempotent init from FIREBASE_CREDENTIALS_JSON env var. Returns False if FCM is not configured (no creds)."""
+    """Idempotent init from FIREBASE_CREDENTIALS_JSON or FIREBASE_CREDENTIALS_FILE.
+    Returns False if Firebase Admin is not configured (no creds) so the caller can degrade gracefully.
+
+    IMPORTANT: we use python-decouple's `config()` (not `os.environ.get()`) so the values are read from the
+    backend/.env file in local dev. Railway/production set env vars at the OS level — `config()` falls back
+    to os.environ when the .env file doesn't list the key, so both paths work."""
     global _app
     if _app is not None: return True
-    raw = os.environ.get("FIREBASE_CREDENTIALS_JSON")
-    if not raw: return False
+    # Priority 1: inline JSON (production path — Railway sets the var at OS-level)
+    raw = config("FIREBASE_CREDENTIALS_JSON", default="")
+    cred = None
+    if raw:
+        try:
+            cred = credentials.Certificate(json.loads(raw))
+        except Exception as e:
+            log.warning("Firebase init from FIREBASE_CREDENTIALS_JSON failed: %s", e)
+    # Priority 2: file path (dev path) — resolved relative to backend/ when not absolute
+    if cred is None:
+        path = config("FIREBASE_CREDENTIALS_FILE", default="")
+        if path:
+            p = Path(path)
+            if not p.is_absolute():
+                p = Path(settings.BASE_DIR) / p
+            if p.exists():
+                try:
+                    cred = credentials.Certificate(str(p))
+                except Exception as e:
+                    log.warning("Firebase init from FIREBASE_CREDENTIALS_FILE=%s failed: %s", p, e)
+            else:
+                log.warning("FIREBASE_CREDENTIALS_FILE points to nonexistent path: %s (resolved from %s)", p, path)
+    if cred is None:
+        return False
     try:
-        cred = credentials.Certificate(json.loads(raw))
         _app = firebase_admin.initialize_app(cred)
         return True
     except Exception as e:
-        log.warning("FCM init failed: %s", e)
+        log.warning("Firebase initialize_app failed: %s", e)
         return False
 
 

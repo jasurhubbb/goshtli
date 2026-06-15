@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.buyers.models import BuyerProfile
+from apps.notifications.fcm import _ensure_initialized as _ensure_firebase_initialized
 from .models import User
 from .serializers import (PhoneCheckSerializer, PhoneRegisterSerializer,
                           RegisterSerializer, UserSerializer)
@@ -121,6 +122,99 @@ class PhoneLoginView(APIView):
             return Response({"detail": "Account is disabled. Contact support."},
                             status=status.HTTP_403_FORBIDDEN)
         return Response(_jwt_for(user))
+
+
+# ---------- Firebase Phone Auth (v3.4) ----------
+
+@extend_schema(
+    request={"type": "object", "properties": {"firebase_id_token": {"type": "string"}},
+             "required": ["firebase_id_token"]},
+    responses={
+        200: {"type": "object", "properties": {
+            "access": {"type": "string"}, "refresh": {"type": "string"},
+            "new_user": {"type": "boolean"}, "phone": {"type": "string"}}},
+        400: None, 401: None, 503: None},
+    description="POST {firebase_id_token}. Verifies the token via firebase-admin, extracts the phone_number "
+                "claim, and either returns a JWT pair (existing user → new_user=false) or a {phone, new_user=true} "
+                "signal so the client can push the user to /auth/details for name entry. Firebase has already "
+                "proven the user controls this phone via SMS challenge, so we don't need a separate OTP step.")
+class FirebasePhoneLoginView(APIView):
+    """POST /api/v1/auth/firebase-phone-login/ — token-trade endpoint backing the v3.4 Firebase OTP flow.
+
+    Why: Firebase Phone Auth handles the SMS challenge entirely client-side; the proof that arrives at our
+    backend is a signed Firebase ID token containing a `phone_number` claim. We verify the signature against
+    Google's public keys (firebase-admin handles this), then bridge into our own JWT-based session model
+    so the rest of the app (cart, addresses, orders) keeps using the same Authorization header.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        token = request.data.get("firebase_id_token")
+        if not token:
+            return Response({"detail": "firebase_id_token is required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        # firebase-admin must have been initialized at boot — it shares one App with the FCM push side.
+        # If FIREBASE_CREDENTIALS_JSON is missing in the env (local dev without the service account),
+        # we surface a 503 so the client can show a "service unavailable" message instead of a generic 500.
+        if not _ensure_firebase_initialized():
+            return Response({"detail": "Firebase Admin SDK not configured on the server."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        # Lazy import — firebase_admin is imported eagerly by notifications.fcm, but the auth submodule
+        # is only needed here. Keeps the boot path simpler if a future deploy drops the FCM side.
+        from firebase_admin import auth as fb_auth
+        # Verbose error mapping so the client sees the SPECIFIC failure cause. The previous catch-all
+        # returned "Invalid or expired" for everything from "wrong signature" to "clock skew" to "malformed
+        # base64" — useless for debugging. Each branch now identifies the exact firebase-admin exception.
+        import logging as _log
+        log = _log.getLogger(__name__)
+        try:
+            # clock_skew_seconds=30 tolerates small drift between the issuer (Google) and our server's
+            # clock. Docker Desktop on macOS notoriously drifts the container's clock by a few seconds
+            # when the Mac sleeps; without this tolerance Firebase rejects freshly-minted tokens as
+            # "used too early" (iat slightly in our future). 30s is the spec-recommended max for JWT
+            # `nbf`/`iat` skew and the value Google's own client libs use as default.
+            decoded = fb_auth.verify_id_token(token, clock_skew_seconds=30)
+        except fb_auth.ExpiredIdTokenError as e:
+            log.warning("Firebase token EXPIRED: %s", e)
+            return Response({"detail": "Firebase token expired — sign in again."},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        except fb_auth.RevokedIdTokenError as e:
+            log.warning("Firebase token REVOKED: %s", e)
+            return Response({"detail": "Firebase token revoked — sign in again."},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        except fb_auth.InvalidIdTokenError as e:
+            # Most common: project mismatch (aud claim doesn't match service account's project_id), wrong
+            # signature, malformed JWT. The error message is detailed; surface it so we know which one.
+            log.warning("Firebase token INVALID: %s", e)
+            return Response({"detail": f"Firebase token invalid: {e}"},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        except ValueError as e:
+            log.warning("Firebase token MALFORMED: %s", e)
+            return Response({"detail": f"Firebase token malformed: {e}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Unexpected — surfacing it instead of swallowing helps catch firebase-admin bugs / network
+            # issues (verify_id_token fetches Google's public keys on first call; that can fail).
+            log.exception("Firebase verify_id_token unexpected error")
+            return Response({"detail": f"Firebase verification failed: {type(e).__name__}: {e}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        phone = decoded.get("phone_number")
+        if not phone:
+            return Response({"detail": "Firebase token has no phone_number claim — was the user signed in "
+                                       "via a non-phone provider?"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        # Existing user → log them in and return JWT pair. No new_user flag needed — caller knows by absence
+        # of `phone` in the response.
+        try:
+            user = User.objects.get(phone=phone)
+            if not user.is_active:
+                return Response({"detail": "Account is disabled. Contact support."},
+                                status=status.HTTP_403_FORBIDDEN)
+            return Response({**_jwt_for(user), "new_user": False})
+        except User.DoesNotExist:
+            # New user — bounce the client to /auth/details to collect name + optional business. The phone
+            # is now Firebase-verified, so when the client calls /auth/phone-register/ next we can trust it.
+            return Response({"phone": phone, "new_user": True})
 
 
 @extend_schema(request=PhoneRegisterSerializer,

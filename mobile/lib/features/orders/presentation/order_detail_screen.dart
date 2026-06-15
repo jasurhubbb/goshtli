@@ -5,6 +5,7 @@
 //   PENDING/CONFIRMED/PROCESSING → CANCELLED                    (supplier or, for PENDING-only, buyer)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/l10n/enum_labels.dart';
@@ -25,7 +26,18 @@ class OrderDetailScreen extends ConsumerWidget {
     final t = AppLocalizations.of(context);
     final async = ref.watch(orderByIdProvider(orderId));
     return Scaffold(
-      appBar: AppBar(title: Text(t.orderDetailTitle(orderId))),
+      appBar: AppBar(
+        // Explicit back button. The buyer often lands here via context.go() from the payment success
+        // screen, which clears the nav stack — so the AppBar's auto-leading wouldn't render. Route to
+        // /orders (their list) which is the natural home for a just-placed order.
+        leading: Padding(padding: const EdgeInsets.only(left: 12),
+          child: IconButton.filledTonal(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: () {
+              if (context.canPop()) { context.pop(); } else { context.go('/orders'); }
+            })),
+        leadingWidth: 56,
+        title: Text(t.orderDetailTitle(orderId))),
       body: async.when(
         data: (order) => _Body(order: order),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -77,13 +89,17 @@ class _Body extends ConsumerWidget {
               ])),
             const SizedBox(height: 20),
 
-        // Grouped facts — From / To / Address / Notes
-        _GroupedList(items: [
-          (t.orderFromLabel(''), order.supplierEmail),
-          (t.orderToLabel(''), order.buyerEmail),
-          (t.orderFieldDeliveryAddress, order.deliveryAddress),
-          if (order.notes.isNotEmpty) (t.orderFieldNotes, order.notes),
-        ]),
+        // Grouped facts — From / To / Address / Notes. Kimdan = market display name (not the
+        // back-office admin email). Kimga = buyer's full name + phone (not the synthetic phone-email).
+        Builder(builder: (context) {
+          final lang = Localizations.localeOf(context).languageCode;
+          return _GroupedList(items: [
+            (t.orderFromLabel(''), order.sellerDisplayName(lang)),
+            (t.orderToLabel(''), order.buyerDisplay()),
+            (t.orderFieldDeliveryAddress, order.deliveryAddress),
+            if (order.notes.isNotEmpty) (t.orderFieldNotes, order.notes),
+          ]);
+        }),
         const SizedBox(height: 28),
 
             // Buyer-side action — Cancel only on PENDING
@@ -137,11 +153,40 @@ class _Body extends ConsumerWidget {
 
   Future<void> _confirmAndCancel(BuildContext context, WidgetRef ref, {required bool asBuyer}) async {
     final t = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: Text(t.orderCancelTitle),
-      content: Text(t.orderCancelBody),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.no)),
-                FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(t.orderCancelButton))]));
+    final ok = await showDialog<bool>(context: context, builder: (dctx) {
+      final cs = Theme.of(dctx).colorScheme;
+      final tt = Theme.of(dctx).textTheme;
+      // Side-by-side actions row matching Uzum / Wolt / Yandex Eda: an outlined "No" on the left and a
+      // filled destructive "Yes, cancel" on the right. Both equal width so the dialog never feels
+      // top-heavy with a tiny text button floating above a hero CTA (which was the old layout).
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+        title: Text(t.orderCancelTitle,
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+        content: Text(t.orderCancelBody,
+            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        actions: [
+          Row(children: [
+            Expanded(child: OutlinedButton(
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(color: cs.outlineVariant)),
+              onPressed: () => Navigator.pop(dctx, false),
+              child: Text(t.no, style: tt.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700, color: cs.onSurface)))),
+            const SizedBox(width: 12),
+            Expanded(child: FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48),
+                  backgroundColor: cs.error, foregroundColor: cs.onError,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: () => Navigator.pop(dctx, true),
+              child: Text(t.orderCancelButton,
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)))),
+          ]),
+        ]);
+    });
     if (ok != true) return;
     try {
       if (asBuyer) {

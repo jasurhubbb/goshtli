@@ -888,4 +888,280 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get addressAutoDetectedHint =>
       'Aniqlangan joylashuv · aniqlashtirish uchun bosing';
+
+  @override
+  String get otpTitle => 'Tasdiqlash kodi';
+
+  @override
+  String otpSentTo(String phone) {
+    return 'Kod $phone raqamiga yuborildi';
+  }
+
+  @override
+  String get otpResend => 'Qaytadan yuborish';
+
+  @override
+  String otpResendIn(int seconds) {
+    return 'Qaytadan yuborish (${seconds}s)';
+  }
+
+  @override
+  String get otpInvalidCode => 'Kod noto\'g\'ri';
+
+  @override
+  String get otpExpired => 'Kod muddati tugadi — qaytadan yuboring';
+
+  @override
+  String get qtyEditorTitle => 'Miqdor (kg)';
+
+  @override
+  String get qtyEditorEnterAmount => 'Miqdorni kiriting';
+
+  @override
+  String get qtyEditorOnlyDigits => 'Faqat raqam';
+
+  @override
+  String get qtyEditorMustBePositive => 'Noldan katta bo\'lishi kerak';
+
+  @override
+  String qtyEditorMaxExceeded(int max) {
+    return 'Maksimum: $max kg';
+  }
+
+  @override
+  String qtyEditorAvailable(int max) {
+    return 'Mavjud: $max kg';
+  }
+
+  @override
+  String get qtyEditorMax => 'Hammasi';
+
+  @override
+  String get qtyEditorConfirm => 'Tasdiqlash';
+
+  @override
+  String get payTitle => 'To\'lov';
+
+  @override
+  String get payProcessing => 'To\'lov amalga oshirilmoqda…';
+
+  @override
+  String get payCheckingStatus => 'Status tekshirilmoqda…';
+
+  @override
+  String get paySuccessTitle => 'To\'lov muvaffaqiyatli';
+
+  @override
+  String get paySuccessBody => 'Buyurtmangiz qabul qilindi';
+
+  @override
+  String get payFailedTitle => 'To\'lov amalga oshmadi';
+
+  @override
+  String get payRetry => 'Qaytadan urinish';
+
+  @override
+  String get payToOrders => 'Buyurtmalarga o\'tish';
+
+  @override
+  String get payCancel => 'Bekor qilish';
+
+  @override
+  String qtyEditorBelowMinimum(int min) {
+    return 'Minimal miqdor: $min';
+  }
+
+  @override
+  String get liveAnimalBadgeByHead => '1 BOSH';
+
+  @override
+  String get liveAnimalBadgeByWeight => 'TIRIK VAZN';
+
+  @override
+  String get deliveryTitle => 'Yetkazib berish';
+
+  @override
+  String get deliveryAddressSection => 'Manzil';
+
+  @override
+  String get deliveryAddressChange => 'O\'zgartirish';
+
+  @override
+  String deliveryDistanceLabel(String km) {
+    return 'Masofa: $km km';
+  }
+
+  @override
+  String get deliveryVehicleSection => 'Transport turi';
+
+  @override
+  String get deliveryVehicleRefrigerator => 'Refrijerator';
+
+  @override
+  String get deliveryVehicleRefrigeratorHint =>
+      'Sovuqlik zanjiri • 0°C dan +4°C';
+
+  @override
+  String get deliveryVehicleChorvaTaxi => 'Chorva-Taksi';
+
+  @override
+  String get deliveryVehicleChorvaTaxiHint =>
+      'Tirik chorva uchun maxsus transport';
+
+  @override
+  String get deliveryVehicleUnavailable => 'Mavjud emas';
+
+  @override
+  String get deliveryTimeSlotSection => 'Vaqt oralig\'i';
+
+  @override
+  String get deliveryTimeSlot0609 => '06:00 – 09:00';
+
+  @override
+  String get deliveryTimeSlot0913 => '09:00 – 13:00';
+
+  @override
+  String get deliveryTimeSlot1318 => '13:00 – 18:00';
+
+  @override
+  String get deliveryButcherSection => 'Qassob xizmati';
+
+  @override
+  String get deliveryButcherTitle =>
+      'Tirik chorvani so\'yish va bo\'laklash kerakmi?';
+
+  @override
+  String get deliveryButcherSubtitle =>
+      'Professional qassob xizmati. So\'yish, tozalash va bo\'laklab paketlash.';
+
+  @override
+  String deliveryButcherFeeLabel(String fee) {
+    return 'Xizmat narxi: $fee';
+  }
+
+  @override
+  String get deliveryButcherAccept => 'Qassob xizmatini qo\'shish';
+
+  @override
+  String get deliveryBreakdownSection => 'Hisob-kitob';
+
+  @override
+  String get deliveryBreakdownProducts => 'Mahsulotlar';
+
+  @override
+  String get deliveryBreakdownDelivery => 'Yetkazib berish';
+
+  @override
+  String get deliveryBreakdownButcher => 'Qassob xizmati';
+
+  @override
+  String get deliveryBreakdownTotal => 'JAMI';
+
+  @override
+  String get deliveryProceedCta => 'To\'lovga o\'tish';
+
+  @override
+  String get deliveryNeedAddress => 'Avval manzilni belgilang';
+
+  @override
+  String get deliveryLoadingQuote => 'Hisob-kitob yuklanmoqda…';
+
+  @override
+  String get deliveryQuoteError =>
+      'Hisob-kitobni olib bo\'lmadi. Qayta urinib ko\'ring.';
+
+  @override
+  String get deliveryPickMapHint => 'Xaritadan manzilni tanlash';
+
+  @override
+  String get deliveryFloorMin =>
+      'Minimal buyurtma 10 kg dan boshlanadi (ulgurji shartlari).';
+
+  @override
+  String get deliveryTashkentOnlyBanner =>
+      'Hozircha faqat Toshkent shahri ichida yetkazib beramiz. Hisob-kitob shahar markaziga nisbatan tuziladi.';
+
+  @override
+  String get deliveryTashkentOnlyShort => 'Hozircha faqat Toshkent shahrida';
+
+  @override
+  String get testUseYunusobod =>
+      'TEST: Yunusobod (Toshkent) joylashuvini qo\'llash';
+
+  @override
+  String get testYunusobodApplied => 'Joylashuv Yunusobodga o\'rnatildi';
+
+  @override
+  String get cardsTitle => 'Mening kartalarim';
+
+  @override
+  String get cardsAddTitle => 'Yangi karta qo\'shish';
+
+  @override
+  String get cardsAddCta => 'Yangi karta qo\'shish';
+
+  @override
+  String get cardsAddError => 'Karta qo\'shilmadi. Qayta urinib ko\'ring.';
+
+  @override
+  String get cardsPan => 'Karta raqami';
+
+  @override
+  String get cardsExpiry => 'Amal qilish muddati';
+
+  @override
+  String get cardsHolder => 'Karta egasi (ism)';
+
+  @override
+  String get cardsPhone => 'SMS uchun telefon';
+
+  @override
+  String get cardsMakeDefault => 'Ushbu kartani asosiy qilish';
+
+  @override
+  String get cardsPciNote =>
+      'Karta ma\'lumotlari shifrlangan kanal orqali yuboriladi. Biz to\'liq karta raqamini saqlamaymiz.';
+
+  @override
+  String get cardsEmptyTitle => 'Hali kartalar yo\'q';
+
+  @override
+  String get cardsEmptyHint => 'Buyurtmalarni to\'lash uchun karta qo\'shing.';
+
+  @override
+  String get cardsLoadError => 'Kartalarni yuklab bo\'lmadi.';
+
+  @override
+  String get cardsDefaultBadge => 'ASOSIY';
+
+  @override
+  String get cardsExpiredLabel => 'Karta muddati tugagan';
+
+  @override
+  String get cardsActionMakeDefault => 'Asosiy qilish';
+
+  @override
+  String get cardsActionDelete => 'O\'chirish';
+
+  @override
+  String get cardsDeletedSnack => 'Karta o\'chirildi';
+
+  @override
+  String get paymentAmountLabel => 'To\'lov summasi';
+
+  @override
+  String get paymentMethodSection => 'To\'lov usuli';
+
+  @override
+  String paymentPayCta(String amount) {
+    return 'To\'lash · $amount';
+  }
+
+  @override
+  String get paymentPayCtaShort => 'To\'lash';
+
+  @override
+  String paymentSuccessCardLine(String brand, String last4) {
+    return '$brand •••• $last4 dan to\'landi';
+  }
 }

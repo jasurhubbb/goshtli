@@ -23,6 +23,10 @@ urlpatterns = [
     path("api/v1/categories/", include("apps.listings.category_urls")),
     path("api/v1/markets/", include("apps.markets.urls")),
     path("api/v1/orders/", include("apps.orders.urls")),            # order create / cancel / status / list
+    # v3.5 — payments app: generate pay link, webhook receiver, sandbox checkout page
+    path("api/v1/payments/", include("apps.payments.urls")),
+    # v3.6 PRD §3 — delivery quote endpoint (cart -> eligible vehicles + per-km pricing + time slots)
+    path("api/v1/delivery/", include("apps.delivery.urls")),
     path("api/v1/notifications/", include("apps.notifications.urls")),  # in-app notifications + unread count
 
     # v2 Milestone C — social + trust

@@ -73,7 +73,7 @@ class _AuthedProfile extends ConsumerWidget {
           // showLanguageSheet returns Future<void> — wrap in a block-body to match the VoidCallback signature
           (Icons.language, t.appLanguage, () { showLanguageSheet(context, ref); }, localeLabel),
           (Icons.credit_card_outlined, t.profileMyCards,
-              () => _showCardsComingSoon(context, t.profileCardsEmpty), null),
+              () => context.push('/profile/cards'), null),
         ])),
         const SizedBox(height: 16),
         // ---------- Contact us (own panel) ----------
@@ -153,10 +153,6 @@ class _AuthedProfile extends ConsumerWidget {
       });
     }
   }
-
-  // Stop-gap until Kartalarim has its own screen — keeps the row tap responsive without dead-ending the user.
-  void _showCardsComingSoon(BuildContext context, String label) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label)));
 
   /// Contact-Us bottom sheet — single Telegram tile per spec (image 3). Opens `tg://resolve?domain=<handle>`,
   /// fallback to `https://t.me/<handle>` if Telegram isn't installed (url_launcher handles the OS-level fallback).

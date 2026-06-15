@@ -883,4 +883,277 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get addressAutoDetectedHint =>
       'Определённое местоположение · нажмите, чтобы уточнить';
+
+  @override
+  String get otpTitle => 'Код подтверждения';
+
+  @override
+  String otpSentTo(String phone) {
+    return 'Код отправлен на $phone';
+  }
+
+  @override
+  String get otpResend => 'Отправить код повторно';
+
+  @override
+  String otpResendIn(int seconds) {
+    return 'Повторно через $secondsс';
+  }
+
+  @override
+  String get otpInvalidCode => 'Неверный код';
+
+  @override
+  String get otpExpired => 'Срок действия кода истёк — отправьте новый';
+
+  @override
+  String get qtyEditorTitle => 'Количество (кг)';
+
+  @override
+  String get qtyEditorEnterAmount => 'Введите количество';
+
+  @override
+  String get qtyEditorOnlyDigits => 'Только цифры';
+
+  @override
+  String get qtyEditorMustBePositive => 'Больше нуля';
+
+  @override
+  String qtyEditorMaxExceeded(int max) {
+    return 'Максимум: $max кг';
+  }
+
+  @override
+  String qtyEditorAvailable(int max) {
+    return 'Доступно: $max кг';
+  }
+
+  @override
+  String get qtyEditorMax => 'Всё';
+
+  @override
+  String get qtyEditorConfirm => 'Подтвердить';
+
+  @override
+  String get payTitle => 'Оплата';
+
+  @override
+  String get payProcessing => 'Обработка платежа…';
+
+  @override
+  String get payCheckingStatus => 'Проверка статуса…';
+
+  @override
+  String get paySuccessTitle => 'Оплата прошла успешно';
+
+  @override
+  String get paySuccessBody => 'Заказ принят';
+
+  @override
+  String get payFailedTitle => 'Оплата не прошла';
+
+  @override
+  String get payRetry => 'Попробовать снова';
+
+  @override
+  String get payToOrders => 'К заказам';
+
+  @override
+  String get payCancel => 'Отмена';
+
+  @override
+  String qtyEditorBelowMinimum(int min) {
+    return 'Минимум: $min';
+  }
+
+  @override
+  String get liveAnimalBadgeByHead => '1 ГОЛОВА';
+
+  @override
+  String get liveAnimalBadgeByWeight => 'ЖИВОЙ ВЕС';
+
+  @override
+  String get deliveryTitle => 'Доставка';
+
+  @override
+  String get deliveryAddressSection => 'Адрес';
+
+  @override
+  String get deliveryAddressChange => 'Изменить';
+
+  @override
+  String deliveryDistanceLabel(String km) {
+    return 'Расстояние: $km км';
+  }
+
+  @override
+  String get deliveryVehicleSection => 'Тип транспорта';
+
+  @override
+  String get deliveryVehicleRefrigerator => 'Рефрижератор';
+
+  @override
+  String get deliveryVehicleRefrigeratorHint => 'Холодовая цепь • 0°C до +4°C';
+
+  @override
+  String get deliveryVehicleChorvaTaxi => 'Чорва-Такси';
+
+  @override
+  String get deliveryVehicleChorvaTaxiHint =>
+      'Специальный транспорт для живого скота';
+
+  @override
+  String get deliveryVehicleUnavailable => 'Недоступно';
+
+  @override
+  String get deliveryTimeSlotSection => 'Время доставки';
+
+  @override
+  String get deliveryTimeSlot0609 => '06:00 – 09:00';
+
+  @override
+  String get deliveryTimeSlot0913 => '09:00 – 13:00';
+
+  @override
+  String get deliveryTimeSlot1318 => '13:00 – 18:00';
+
+  @override
+  String get deliveryButcherSection => 'Услуга мясника';
+
+  @override
+  String get deliveryButcherTitle => 'Нужен забой и разделка живого скота?';
+
+  @override
+  String get deliveryButcherSubtitle =>
+      'Профессиональная услуга мясника: забой, разделка и упаковка.';
+
+  @override
+  String deliveryButcherFeeLabel(String fee) {
+    return 'Стоимость услуги: $fee';
+  }
+
+  @override
+  String get deliveryButcherAccept => 'Добавить услугу мясника';
+
+  @override
+  String get deliveryBreakdownSection => 'Расчёт';
+
+  @override
+  String get deliveryBreakdownProducts => 'Товары';
+
+  @override
+  String get deliveryBreakdownDelivery => 'Доставка';
+
+  @override
+  String get deliveryBreakdownButcher => 'Услуга мясника';
+
+  @override
+  String get deliveryBreakdownTotal => 'ИТОГО';
+
+  @override
+  String get deliveryProceedCta => 'К оплате';
+
+  @override
+  String get deliveryNeedAddress => 'Сначала укажите адрес';
+
+  @override
+  String get deliveryLoadingQuote => 'Загрузка расчёта…';
+
+  @override
+  String get deliveryQuoteError =>
+      'Не удалось получить расчёт. Попробуйте снова.';
+
+  @override
+  String get deliveryPickMapHint => 'Выбрать адрес на карте';
+
+  @override
+  String get deliveryFloorMin => 'Минимальный заказ — 10 кг (оптовые условия).';
+
+  @override
+  String get deliveryTashkentOnlyBanner =>
+      'Пока доставляем только в пределах Ташкента. Расчёт от центра города.';
+
+  @override
+  String get deliveryTashkentOnlyShort => 'Пока только в Ташкенте';
+
+  @override
+  String get testUseYunusobod =>
+      'ТЕСТ: установить локацию в Юнусабаде (Ташкент)';
+
+  @override
+  String get testYunusobodApplied => 'Локация установлена на Юнусабад';
+
+  @override
+  String get cardsTitle => 'Мои карты';
+
+  @override
+  String get cardsAddTitle => 'Добавить карту';
+
+  @override
+  String get cardsAddCta => 'Добавить карту';
+
+  @override
+  String get cardsAddError => 'Не удалось добавить карту. Попробуйте снова.';
+
+  @override
+  String get cardsPan => 'Номер карты';
+
+  @override
+  String get cardsExpiry => 'Срок действия';
+
+  @override
+  String get cardsHolder => 'Имя владельца';
+
+  @override
+  String get cardsPhone => 'Телефон для SMS';
+
+  @override
+  String get cardsMakeDefault => 'Сделать основной картой';
+
+  @override
+  String get cardsPciNote =>
+      'Данные карты передаются по защищённому каналу. Полный номер карты не сохраняется.';
+
+  @override
+  String get cardsEmptyTitle => 'Карт ещё нет';
+
+  @override
+  String get cardsEmptyHint => 'Добавьте карту для оплаты заказов.';
+
+  @override
+  String get cardsLoadError => 'Не удалось загрузить карты.';
+
+  @override
+  String get cardsDefaultBadge => 'ОСНОВНАЯ';
+
+  @override
+  String get cardsExpiredLabel => 'Карта истекла';
+
+  @override
+  String get cardsActionMakeDefault => 'Сделать основной';
+
+  @override
+  String get cardsActionDelete => 'Удалить';
+
+  @override
+  String get cardsDeletedSnack => 'Карта удалена';
+
+  @override
+  String get paymentAmountLabel => 'Сумма платежа';
+
+  @override
+  String get paymentMethodSection => 'Способ оплаты';
+
+  @override
+  String paymentPayCta(String amount) {
+    return 'Оплатить · $amount';
+  }
+
+  @override
+  String get paymentPayCtaShort => 'Оплатить';
+
+  @override
+  String paymentSuccessCardLine(String brand, String last4) {
+    return 'Оплачено картой $brand •••• $last4';
+  }
 }
