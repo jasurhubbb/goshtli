@@ -42,7 +42,14 @@ RUN chmod +x /app/entrypoint.sh && chown -R app:app /app
 # collectstatic + migrate run at container start (in entrypoint.sh), NOT here — production.py reads ALLOWED_HOSTS via
 # decouple.config() at import, and Railway/Render don't inject runtime env vars during the Docker build phase.
 
-USER app
+# Install gosu so the entrypoint can run a chown step as root (Railway mounts persistent volumes as
+# root-owned by default — the runtime user can't write into /app/media without this fix-up step) and
+# then drop privileges back to `app` before exec'ing gunicorn.
+RUN apt-get update && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+
+# NOTE: deliberately NOT switching to `USER app` here — entrypoint.sh starts as root so it can chown
+# the volume mount, then uses gosu to drop to `app` for gunicorn. Same end-state, working volumes.
 # EXPOSE is informational; real port is whatever $PORT resolves to at runtime (Railway sets dynamically, default 8000)
 EXPOSE 8000
 

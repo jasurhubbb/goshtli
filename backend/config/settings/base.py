@@ -31,11 +31,18 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF
 MIDDLEWARE = ["corsheaders.middleware.CorsMiddleware", "django.middleware.security.SecurityMiddleware",
+              # WhiteNoise — serves STATIC_ROOT directly in production where DEBUG=False disables Django's
+              # built-in static handler. MUST sit immediately after SecurityMiddleware per its README so the
+              # static files are wrapped in security headers but ahead of everything that would do redirects.
+              "whitenoise.middleware.WhiteNoiseMiddleware",
               "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware",
               "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware",
               "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware",
               # Captures request.user on the HistoricalRecords rows for Listing/Market — must come AFTER AuthenticationMiddleware
               "simple_history.middleware.HistoryRequestMiddleware"]
+
+
+STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic writes here; whitenoise serves from this path
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -154,7 +161,16 @@ if USE_R2:
                 "url_protocol": "https:",
             },
         },
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        # WhiteNoise's manifest storage: compresses static files at collectstatic-time + serves them
+        # with long-cache hashed names. Required when DEBUG=False; without it /static/admin/* 404s.
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
+else:
+    # Local dev (no R2) — keep `default` on the filesystem (Django default) and still serve staticfiles
+    # via whitenoise so behavior matches production. Avoids "works locally but breaks in prod" surprises.
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
     }
 
 # 10MB upload cap — keeps gunicorn workers from being held hostage by an attacker uploading huge files

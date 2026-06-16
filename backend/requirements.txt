@@ -14,6 +14,12 @@ celery>=5.4                 # async task queue — image resize, cache warming, 
 redis>=5.0                  # broker + result backend for Celery + (later) cache-aside layer
 gunicorn>=22.0
 
+# WhiteNoise — serves STATIC_ROOT directly from gunicorn without needing nginx in front. Required when
+# DEBUG=False (Django's built-in /static/ handler is disabled), which is why all /static/admin/* requests
+# returned 404 on Railway. Brotli adds the brotli-encoded static-file variant; gunicorn streams it when
+# the browser supports it. Tiny dependency (~50KB).
+whitenoise[brotli]>=6.7
+
 # Test-only — kept here for simplicity; can be moved to a separate requirements-dev.txt later if image size matters
 pytest>=8.3
 pytest-django>=4.9
