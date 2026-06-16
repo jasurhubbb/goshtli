@@ -188,7 +188,10 @@ SPECTACULAR_SETTINGS = {
 # JWT token lifetimes pulled from .env so we can tune without code changes; rotate refresh tokens for security
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=config("ACCESS_TOKEN_LIFETIME_MINUTES", default=60, cast=int)),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=config("REFRESH_TOKEN_LIFETIME_DAYS", default=7, cast=int)),
+    # Bumped 7d → 30d so a tester who opens the app once a week doesn't get bounced through Firebase OTP
+    # on every session. Refresh tokens stay signed-stateless; cost of the longer window is acceptable for
+    # a B2B buyer app (every refresh rotates and `BLACKLIST_AFTER_ROTATION=False` doesn't accumulate DB rows).
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=config("REFRESH_TOKEN_LIFETIME_DAYS", default=30, cast=int)),
     "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": False, "AUTH_HEADER_TYPES": ("Bearer",)}
 
 # ----- Celery (async tasks: image resize, future cache warming + daily reports) -----
