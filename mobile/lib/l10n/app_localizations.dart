@@ -2259,6 +2259,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paid with {brand} •••• {last4}'**
   String paymentSuccessCardLine(String brand, String last4);
+
+  /// No description provided for @authServerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Server is temporarily unavailable. Please try again in a moment.'**
+  String get authServerUnavailable;
+
+  /// No description provided for @authNetworkError.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Check your connection and try again.'**
+  String get authNetworkError;
+
+  /// No description provided for @authNetworkTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The request timed out. Please try again.'**
+  String get authNetworkTimeout;
+
+  /// No description provided for @authUnexpectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again later.'**
+  String get authUnexpectedError;
 }
 
 class _AppLocalizationsDelegate

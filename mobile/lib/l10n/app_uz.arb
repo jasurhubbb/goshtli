@@ -464,5 +464,9 @@
       "brand": { "type": "String" },
       "last4": { "type": "String" }
     }
-  }
+  },
+  "authServerUnavailable": "Server vaqtinchalik ishlamayapti. Iltimos, bir oz vaqtdan so'ng qayta urinib ko'ring.",
+  "authNetworkError": "Internetga ulanmadi. Aloqani tekshiring va qaytadan urinib ko'ring.",
+  "authNetworkTimeout": "So'rov vaqti tugadi. Iltimos, qaytadan urinib ko'ring.",
+  "authUnexpectedError": "Kutilmagan xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring."
 }

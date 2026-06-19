@@ -465,5 +465,9 @@
       "brand": { "type": "String" },
       "last4": { "type": "String" }
     }
-  }
+  },
+  "authServerUnavailable": "Server is temporarily unavailable. Please try again in a moment.",
+  "authNetworkError": "No internet connection. Check your connection and try again.",
+  "authNetworkTimeout": "The request timed out. Please try again.",
+  "authUnexpectedError": "Something went wrong. Please try again later."
 }

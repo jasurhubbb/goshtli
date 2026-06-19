@@ -2,7 +2,7 @@ name: meat_marketplace
 description: "B2B meat marketplace mobile app — buyers, suppliers, admin oversight."
 publish_to: 'none'  # private package — never publish to pub.dev
 # version is X.Y.Z+BUILD — Play Console requires versionCode (BUILD here) to strictly increase per upload
-version: 1.0.0+1
+version: 3.7.0+7
 
 environment:
   sdk: ^3.11.5  # Dart SDK shipped with Flutter 3.41

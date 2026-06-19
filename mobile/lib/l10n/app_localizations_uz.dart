@@ -1164,4 +1164,20 @@ class AppLocalizationsUz extends AppLocalizations {
   String paymentSuccessCardLine(String brand, String last4) {
     return '$brand •••• $last4 dan to\'landi';
   }
+
+  @override
+  String get authServerUnavailable =>
+      'Server vaqtinchalik ishlamayapti. Iltimos, bir oz vaqtdan so\'ng qayta urinib ko\'ring.';
+
+  @override
+  String get authNetworkError =>
+      'Internetga ulanmadi. Aloqani tekshiring va qaytadan urinib ko\'ring.';
+
+  @override
+  String get authNetworkTimeout =>
+      'So\'rov vaqti tugadi. Iltimos, qaytadan urinib ko\'ring.';
+
+  @override
+  String get authUnexpectedError =>
+      'Kutilmagan xatolik yuz berdi. Iltimos, keyinroq urinib ko\'ring.';
 }

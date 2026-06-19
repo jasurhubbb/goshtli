@@ -116,8 +116,12 @@ class _OtpEntryScreenState extends ConsumerState<OtpEntryScreen> {
       debugPrint('[OtpEntryScreen._submit] AuthException (from backend): ${e.message}');
       _safeSetState(() => _error = e.message);
     } catch (e, st) {
+      // Generic catch for DioException (5xx, network down) + any other unexpected error. Dumping raw
+      // `e.toString()` to the UI surfaces stack-trace-shaped errors to end users ("DioException [bad
+      // response]: This exception was thrown because the response has a status code of 503..."). Map to
+      // a friendly localized string instead; the full diagnostic stays in debugPrint for our logs.
       debugPrint('[OtpEntryScreen._submit] UNEXPECTED $e\n$st');
-      _safeSetState(() => _error = e.toString());
+      _safeSetState(() => _error = _humanUnexpectedError(e, t));
     } finally {
       if (!navigated) _safeSetState(() => _submitting = false);
     }
@@ -173,6 +177,26 @@ class _OtpEntryScreenState extends ConsumerState<OtpEntryScreen> {
       case 'too-many-requests': return 'Too many attempts — wait a few minutes';
       default: return e.message ?? 'Firebase error: ${e.code}';
     }
+  }
+
+  /// Map an arbitrary thrown error to a user-friendly localized message. We branch on the toString()
+  /// prefix because Dio's exception class isn't statically imported here and we don't want a new
+  /// `package:dio` dependency in the auth UI just for one `is DioException` check.
+  String _humanUnexpectedError(Object e, AppLocalizations t) {
+    final s = e.toString();
+    if (s.contains('5') && s.contains('status code') && s.contains('50')) {
+      // 5xx — server-side. Most common in early prod: Firebase Admin SDK not configured on the backend,
+      // missing env vars, or a deploy that didn't run migrations.
+      return t.authServerUnavailable;
+    }
+    if (s.contains('SocketException') || s.contains('Network is unreachable')
+        || s.contains('Connection refused') || s.contains('Failed host lookup')) {
+      return t.authNetworkError;
+    }
+    if (s.contains('TimeoutException') || s.contains('connection timeout')) {
+      return t.authNetworkTimeout;
+    }
+    return t.authUnexpectedError;
   }
 
   @override

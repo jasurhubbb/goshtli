@@ -61,24 +61,29 @@ class ApiClient {
     if (refresh == null) { onAuthExpired?.call(); return null; }
     try {
       final r = await _refreshDio.post('/auth/refresh/', data: {'refresh': refresh});
-      // Treat anything other than 200 + a body containing both tokens as a refresh failure. This covers
-      // 401 (revoked), 400 (malformed), and any future schema drift.
+      // Wipe tokens ONLY when the refresh endpoint definitively says "you are not authenticated"
+      // (401 / 403). Other failure modes — 5xx, malformed body, schema drift — leave the tokens on
+      // disk so the next launch can try again. Symptom of the old behavior: any flaky moment kicked
+      // the user out across all their devices, and they blamed multi-device sign-in.
       final body = r.data;
       final access = body is Map ? body['access'] as String? : null;
       final newRefresh = body is Map ? body['refresh'] as String? : null;
-      if (r.statusCode != 200 || access == null || newRefresh == null) {
+      if (r.statusCode == 200 && access != null && newRefresh != null) {
+        // Backend rotates refresh tokens (settings: ROTATE_REFRESH_TOKENS=True), so save both new ones.
+        await _tokens.writeBoth(access: access, refresh: newRefresh);
+        original.headers['Authorization'] = 'Bearer $access';
+        return await dio.fetch(original);
+      }
+      // Definitive auth failure → clear + tell AuthNotifier to flip to anonymous.
+      if (r.statusCode == 401 || r.statusCode == 403) {
         await _tokens.clear();
         onAuthExpired?.call();
-        return null;
       }
-      // Backend rotates refresh tokens (settings: ROTATE_REFRESH_TOKENS=True), so save both new ones.
-      await _tokens.writeBoth(access: access, refresh: newRefresh);
-      original.headers['Authorization'] = 'Bearer $access';
-      return await dio.fetch(original);
+      // 4xx / 5xx that isn't auth-related → keep tokens, let the original 401 propagate.
+      return null;
     } catch (_) {
-      // Network error / unexpected exception during refresh — clear and let the original 401 propagate.
-      await _tokens.clear();
-      onAuthExpired?.call();
+      // Network blip during refresh — do NOT clear tokens. The next user-initiated request will try
+      // refresh again, and a one-off DNS hiccup shouldn't force the user back through Firebase OTP.
       return null;
     }
   }

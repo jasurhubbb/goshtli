@@ -78,3 +78,9 @@ node_modules/
 
 # Docker
 postgres_data/
+
+# Firebase service account JSON (downloaded from Firebase Console). NEVER commit this — it grants full
+# admin access to the project. Use FIREBASE_CREDENTIALS_FILE env var to point local dev at this file.
+firebase-service-account.json
+backend/firebase-service-account.json
+**/firebase-service-account*.json

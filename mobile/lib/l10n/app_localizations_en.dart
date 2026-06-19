@@ -1153,4 +1153,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String paymentSuccessCardLine(String brand, String last4) {
     return 'Paid with $brand •••• $last4';
   }
+
+  @override
+  String get authServerUnavailable =>
+      'Server is temporarily unavailable. Please try again in a moment.';
+
+  @override
+  String get authNetworkError =>
+      'No internet connection. Check your connection and try again.';
+
+  @override
+  String get authNetworkTimeout => 'The request timed out. Please try again.';
+
+  @override
+  String get authUnexpectedError =>
+      'Something went wrong. Please try again later.';
 }

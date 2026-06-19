@@ -1156,4 +1156,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String paymentSuccessCardLine(String brand, String last4) {
     return 'Оплачено картой $brand •••• $last4';
   }
+
+  @override
+  String get authServerUnavailable =>
+      'Сервер временно недоступен. Попробуйте через минуту.';
+
+  @override
+  String get authNetworkError =>
+      'Нет подключения к интернету. Проверьте соединение и попробуйте снова.';
+
+  @override
+  String get authNetworkTimeout => 'Время ожидания истекло. Попробуйте снова.';
+
+  @override
+  String get authUnexpectedError =>
+      'Произошла непредвиденная ошибка. Попробуйте позже.';
 }

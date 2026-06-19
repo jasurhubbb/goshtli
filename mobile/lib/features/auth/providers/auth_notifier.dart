@@ -5,6 +5,7 @@
 //
 // v2 Milestone E.5 hook: on successful login/register/resume we ask the OS for notification permission and
 // register this device's FCM token with the backend so push events reach the right user.
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,8 +46,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       state = AuthAuthenticated(user);
       _registerPushQuietly();
+    } on DioException catch (e) {
+      // Only WIPE tokens on a definitive auth failure (401 / 403 after the api_client's refresh+replay
+      // interceptor already gave up). Transient errors — network unreachable, 5xx server hiccup, DNS
+      // failure during cold-start, request timeout, etc. — must NOT clear tokens, otherwise the user
+      // gets kicked out by any flaky moment. Symptom: Device A appears to log itself out after a
+      // network blip and the user blames Device B's sign-in. Token rotation already keeps refreshes
+      // cheap, so leaving the bytes on disk costs nothing.
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) {
+        await _tokens.clear();
+        state = const AuthAnonymous();
+      } else {
+        // Soft anonymous — keep tokens on disk so the next launch retries the resume. Don't clear.
+        state = const AuthAnonymous();
+      }
     } catch (_) {
-      await _tokens.clear();
+      // Anything else (parse error, unexpected null) — log out the session but keep tokens; if the
+      // failure is on our side a future build fixes it without forcing every existing user to re-login.
       state = const AuthAnonymous();
     }
   }
