@@ -35,10 +35,16 @@ class CancellationNotAllowed(ValidationError):
 # Per workflow.md §7: buyer can only cancel from PENDING; supplier drives the rest of the lifecycle.
 SUPPLIER_TRANSITIONS = {
     Order.Status.PENDING: {Order.Status.CONFIRMED, Order.Status.CANCELLED},
-    # PRD v2 §4: CONFIRMED can branch into PROCESSING (raw meat OR live-no-butcher) or PROCESSING_BUTCHER
-    # (live + butcher service requested) before continuing into IN_TRANSIT. The view layer only allows the
-    # butcher branch when order.butcher_service_requested is True — enforced in transition_order_status().
-    Order.Status.CONFIRMED: {Order.Status.PROCESSING, Order.Status.PROCESSING_BUTCHER, Order.Status.CANCELLED},
+    # PRD v2 §4 + v3.8: CONFIRMED branches into one of three paths:
+    #   PROCESSING            — raw meat OR live-no-butcher; supplier preps directly
+    #   AWAITING_QASSOB       — live + butcher service requested; broadcast to qassobs via partner inbox
+    #   PROCESSING_BUTCHER    — (legacy direct, kept for back-compat with v3.6 orders pre-AWAITING)
+    # The view layer routes butcher-requested orders through AWAITING_QASSOB so a qassob can claim them.
+    Order.Status.CONFIRMED: {Order.Status.PROCESSING, Order.Status.AWAITING_QASSOB,
+                              Order.Status.PROCESSING_BUTCHER, Order.Status.CANCELLED},
+    # AWAITING_QASSOB transitions when a qassob taps Accept in the partner-app inbox. The qassob_orders
+    # service stamps `assigned_qassob` + `qassob_payout` and moves to PROCESSING_BUTCHER atomically.
+    Order.Status.AWAITING_QASSOB: {Order.Status.PROCESSING_BUTCHER, Order.Status.CANCELLED},
     Order.Status.PROCESSING: {Order.Status.IN_TRANSIT, Order.Status.CANCELLED},
     Order.Status.PROCESSING_BUTCHER: {Order.Status.IN_TRANSIT, Order.Status.CANCELLED},
     Order.Status.IN_TRANSIT: {Order.Status.DELIVERED},

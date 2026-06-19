@@ -26,7 +26,10 @@ LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               # v3.5 payment provider abstraction (Mock for dev + tester builds, Payme for production)
               "apps.payments",
               # v3.6 PRD §3 — delivery quote endpoint. Pure compute (no models); persistence lives on apps.orders.
-              "apps.delivery"]
+              "apps.delivery",
+              # v3.8 — Qassob (butcher + slaughterhouse) profile + admin + listing surface. Powers the
+              # partners-app Qassob role and the buyer-app Servislar tab.
+              "apps.qassobs"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF

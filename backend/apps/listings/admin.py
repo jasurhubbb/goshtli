@@ -97,6 +97,20 @@ class ListingAdmin(admin.ModelAdmin):
         (None, {"fields": ("market", "category", "slug")}),
         ("Names + description", {"fields": (("name_uz", "name_ru"), ("description_uz", "description_ru"))}),
         ("Commerce", {"fields": (("quantity_kg", "price_per_kg"), ("status", "available_from"), "location")}),
+        # v3.6 — Live animal (tirik chorva) section per PRD v2 §2. Defaults keep raw-meat behavior so
+        # editors don't have to touch this section for a normal listing. Tick `is_live_animal` to switch
+        # the product into a live-animal one; the mobile app then shows the "TIRIK VAZN" / "1 BOSH"
+        # badge, hides CVC-style controls etc. and offers the qassob service in the cart.
+        ("Live animal (tirik chorva)", {
+            "fields": (
+                "is_live_animal",
+                ("sale_type", "estimated_meat_yield_pct"),
+                ("breed_type", "head_count", "live_weight_per_head_kg"),
+            ),
+            "classes": ("collapse",),
+            "description": ("Faqat tirik chorva (mol/qo'y/ot) listinglarni qo'shganda to'ldiring. "
+                            "Tayyor go'sht uchun bu bo'limga tegmang.")
+        }),
         ("Audit", {"fields": ("supplier", "created_by", "updated_by", "created_at", "updated_at"),
                     "classes": ("collapse",),
                     "description": "Auto-set on save. 'supplier' is a v2 legacy field; the real vendor is the Market above."}),

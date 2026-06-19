@@ -121,6 +121,21 @@ class Listing(TimeStampedModel):
 
     is_live_animal = models.BooleanField(_("is live animal"), default=False, db_index=True,
                                          help_text=_("True = tirik chorva (live cow/sheep/horse); False = raw meat"))
+
+    # v3.8 — orthogonal to `is_live_animal`. `animal_form` captures the physical form the listing ships:
+    #   LIVE     — sold as a live animal only
+    #   RAW_CUT  — sold as fresh ready meat (restaurants prefer this — no slaughtering needed)
+    #   BOTH     — supplier can ship either way; buyer picks at checkout
+    # Backfilled by migration: existing rows with is_live_animal=True become LIVE, others RAW_CUT.
+    # The partners-app catalog UI lets the supplier pick this directly when creating a listing; the
+    # buyer-app Servislar tab uses it as a filter facet.
+    class AnimalForm(models.TextChoices):
+        LIVE = "LIVE", _("Live animal")
+        RAW_CUT = "RAW_CUT", _("Fresh ready meat (cut)")
+        BOTH = "BOTH", _("Both live + cut")
+
+    animal_form = models.CharField(_("animal form"), max_length=8, choices=AnimalForm.choices,
+                                    default=AnimalForm.RAW_CUT, db_index=True)
     sale_type = models.CharField(_("sale type"), max_length=10, choices=SaleType.choices,
                                  default=SaleType.BY_WEIGHT,
                                  help_text=_("BY_HEAD = sold per animal; BY_WEIGHT = sold per kg (raw meat OR live by kg)"))

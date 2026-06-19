@@ -12,12 +12,15 @@ from apps.listings.models import Listing
 class Order(TimeStampedModel):
     class Status(models.TextChoices):
         # State machine per PRD v2 §4: PENDING is the only entry state; DELIVERED & CANCELLED are terminal.
-        # PROCESSING_BUTCHER is a new sub-state inserted between CONFIRMED and IN_TRANSIT, ONLY entered when
-        # the buyer ordered a live animal + accepted the Qassob (butcher) service. For raw meat or
-        # butcher-declined live animal orders, the flow skips straight from CONFIRMED → PROCESSING → IN_TRANSIT.
+        # PROCESSING_BUTCHER is the legacy state (v3.6) for butcher-on-the-spot orders.
+        # v3.8 inserts AWAITING_QASSOB BETWEEN CONFIRMED and PROCESSING_BUTCHER for the dispatch window —
+        # an order with butcher service requested waits in this state for a qassob to claim it via the
+        # partner-app inbox. The supplier confirms (CONFIRMED) → marketplace fans the job out → first
+        # qassob to tap Accept moves it to PROCESSING_BUTCHER and `assigned_qassob` is stamped.
         PENDING = "PENDING", _("Pending")
         CONFIRMED = "CONFIRMED", _("Confirmed")
         PROCESSING = "PROCESSING", _("Processing")
+        AWAITING_QASSOB = "AWAITING_QASSOB", _("Awaiting qassob")
         PROCESSING_BUTCHER = "PROCESSING_BUTCHER", _("At butcher (slaughter & cut)")
         IN_TRANSIT = "IN_TRANSIT", _("In transit")
         DELIVERED = "DELIVERED", _("Delivered")
@@ -60,7 +63,7 @@ class Order(TimeStampedModel):
                                       validators=[MinValueValidator(Decimal("0.00"))])
     delivery_address = models.TextField(_("delivery address"))
     notes = models.TextField(_("notes"), blank=True)
-    status = models.CharField(_("status"), max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+    status = models.CharField(_("status"), max_length=24, choices=Status.choices, default=Status.PENDING, db_index=True)
 
     # ---- v3.5 payment fields ----
     payment_status = models.CharField(_("payment status"), max_length=10,
@@ -96,6 +99,18 @@ class Order(TimeStampedModel):
     butcher_service_requested = models.BooleanField(_("butcher service requested"), default=False)
     butcher_service_fee = models.DecimalField(_("butcher service fee"), max_digits=12, decimal_places=2,
                                               default=Decimal("0.00"))
+
+    # ---- v3.8 qassob assignment (only set when butcher_service_requested=True) -------------------
+    # Set when a qassob taps "Accept" on the partner-app inbox while order.status=AWAITING_QASSOB.
+    # SET_NULL so cancelling a qassob's account doesn't cascade-delete orders. The buyer's order detail
+    # shows "Qassob: <name>" when this is set.
+    assigned_qassob = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                          null=True, blank=True, related_name="qassob_orders",
+                                          db_index=True)
+    # Snapshot payout — what we'll pay the qassob when the order completes. Frozen at assignment time so
+    # later rate-card changes don't retroactively rewrite history. F10 income export reads this.
+    qassob_payout = models.DecimalField(_("qassob payout"), max_digits=12, decimal_places=2,
+                                          default=Decimal("0.00"))
 
     class Meta:
         verbose_name = _("order")
