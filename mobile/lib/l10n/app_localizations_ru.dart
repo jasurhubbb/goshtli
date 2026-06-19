@@ -547,6 +547,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tabOrders => 'Заказы';
 
   @override
+  String get tabServices => 'Сервисы';
+
+  @override
+  String get servicesQassobs => 'Мясники';
+
+  @override
+  String get servicesSlaughterhouses => 'Бойни';
+
+  @override
+  String get servicesFilterAll => 'Все';
+
+  @override
+  String get servicesContact => 'Связаться';
+
+  @override
+  String get servicesProfile => 'Профиль';
+
+  @override
+  String get servicesNoneFound => 'Пока не найдено';
+
+  @override
+  String servicesYearsExp(int n) {
+    return '$n лет опыта';
+  }
+
+  @override
   String get cartTitle => 'Корзина';
 
   @override

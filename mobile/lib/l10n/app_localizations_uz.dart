@@ -549,6 +549,32 @@ class AppLocalizationsUz extends AppLocalizations {
   String get tabOrders => 'Buyurtmalar';
 
   @override
+  String get tabServices => 'Servislar';
+
+  @override
+  String get servicesQassobs => 'Qassoblar';
+
+  @override
+  String get servicesSlaughterhouses => 'Qushxona xizmatlari';
+
+  @override
+  String get servicesFilterAll => 'Hammasi';
+
+  @override
+  String get servicesContact => 'Bog\'lanish';
+
+  @override
+  String get servicesProfile => 'Profil';
+
+  @override
+  String get servicesNoneFound => 'Hozircha topilmadi';
+
+  @override
+  String servicesYearsExp(int n) {
+    return '$n yil tajriba';
+  }
+
+  @override
   String get cartTitle => 'Savat';
 
   @override

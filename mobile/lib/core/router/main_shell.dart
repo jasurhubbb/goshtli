@@ -18,11 +18,13 @@ class MainShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
   const MainShell({super.key, required this.navigationShell});
 
-  // Branch indexes — kept as named constants so the floating-bar visibility logic and tab destinations stay in sync.
+  // Branch indexes — v3.8 added Servislar between Menyu and Savat. Keep these in sync with the
+  // ordering in app_router.dart's StatefulShellRoute branches.
   static const _menuIndex = 0;
-  static const _cartIndex = 1;
-  static const _ordersIndex = 2;
-  static const _profileIndex = 3;
+  static const _servicesIndex = 1;
+  static const _cartIndex = 2;
+  static const _ordersIndex = 3;
+  static const _profileIndex = 4;
 
   /// Switch tabs while preserving each tab's internal navigation state — a second tap on the active tab pops to root.
   void _onTap(int index) => navigationShell.goBranch(index, initialLocation: index == navigationShell.currentIndex);
@@ -37,6 +39,8 @@ class MainShell extends StatelessWidget {
     final destinations = <NavigationDestination>[
       NavigationDestination(icon: const Icon(Icons.menu_book_outlined),
                             selectedIcon: const Icon(Icons.menu_book), label: t.tabMenu),
+      NavigationDestination(icon: const Icon(Icons.handyman_outlined),
+                            selectedIcon: const Icon(Icons.handyman), label: t.tabServices),
       NavigationDestination(icon: const Icon(Icons.shopping_basket_outlined),
                             selectedIcon: const Icon(Icons.shopping_basket), label: t.tabCart),
       NavigationDestination(icon: const Icon(Icons.receipt_long_outlined),
@@ -65,6 +69,7 @@ class MainShell extends StatelessWidget {
 
   // Kept for callers that want symbolic access (e.g. deep-link router → which tab does this URL belong to).
   static int indexForPath(String path) {
+    if (path.startsWith('/servislar')) return _servicesIndex;
     if (path.startsWith('/savat')) return _cartIndex;
     if (path.startsWith('/profile') || path == '/profile') return _profileIndex;
     if (path.startsWith('/orders') || path.contains('/profile/orders')) return _ordersIndex;

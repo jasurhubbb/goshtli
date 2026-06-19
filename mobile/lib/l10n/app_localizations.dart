@@ -1120,6 +1120,54 @@ abstract class AppLocalizations {
   /// **'Orders'**
   String get tabOrders;
 
+  /// No description provided for @tabServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Services'**
+  String get tabServices;
+
+  /// No description provided for @servicesQassobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Butchers'**
+  String get servicesQassobs;
+
+  /// No description provided for @servicesSlaughterhouses.
+  ///
+  /// In en, this message translates to:
+  /// **'Slaughterhouses'**
+  String get servicesSlaughterhouses;
+
+  /// No description provided for @servicesFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get servicesFilterAll;
+
+  /// No description provided for @servicesContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get servicesContact;
+
+  /// No description provided for @servicesProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get servicesProfile;
+
+  /// No description provided for @servicesNoneFound.
+  ///
+  /// In en, this message translates to:
+  /// **'None found yet'**
+  String get servicesNoneFound;
+
+  /// No description provided for @servicesYearsExp.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} yrs exp'**
+  String servicesYearsExp(int n);
+
   /// No description provided for @cartTitle.
   ///
   /// In en, this message translates to:

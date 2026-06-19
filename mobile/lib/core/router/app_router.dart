@@ -43,6 +43,7 @@ import '../../features/payments/presentation/my_cards_screen.dart';
 import '../../features/payments/presentation/order_pay_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/profile_settings_screen.dart';
+import '../../features/services/presentation/services_screen.dart';
 import '../location/location_providers.dart';
 import 'main_shell.dart';
 
@@ -242,7 +243,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 cref.watch(authNotifierProvider) is AuthInitial
                     ? const _SplashScreen() : const HomeScreen())),
           ]),
-          // 1 — Savat (cart)
+          // 1 — Servislar (v3.8 — qassoblar + qushxona xizmatlari)
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/servislar', name: 'services',
+                builder: (_, _) => const ServicesScreen()),
+          ]),
+          // 2 — Savat (cart)
           StatefulShellBranch(routes: [
             GoRoute(path: '/savat', name: 'cart', builder: (_, _) => const CartScreen()),
           ]),

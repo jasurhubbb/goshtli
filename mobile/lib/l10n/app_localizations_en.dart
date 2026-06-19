@@ -548,6 +548,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabOrders => 'Orders';
 
   @override
+  String get tabServices => 'Services';
+
+  @override
+  String get servicesQassobs => 'Butchers';
+
+  @override
+  String get servicesSlaughterhouses => 'Slaughterhouses';
+
+  @override
+  String get servicesFilterAll => 'All';
+
+  @override
+  String get servicesContact => 'Contact';
+
+  @override
+  String get servicesProfile => 'Profile';
+
+  @override
+  String get servicesNoneFound => 'None found yet';
+
+  @override
+  String servicesYearsExp(int n) {
+    return '$n yrs exp';
+  }
+
+  @override
   String get cartTitle => 'Cart';
 
   @override
