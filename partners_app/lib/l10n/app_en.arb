@@ -1,0 +1,122 @@
+{
+  "@@locale": "en",
+  "appTitle": "Go'sht Bozori Partners",
+  "languagePickerTitle": "Choose your language",
+  "languageUz": "O'zbekcha", "languageRu": "Русский", "languageEn": "English",
+  "next": "Next", "back": "Back", "skip": "Skip", "confirm": "Confirm",
+  "cancel": "Cancel", "save": "Save", "yes": "Yes", "no": "No",
+  "loading": "Loading…", "tryAgain": "Try again",
+
+  "rolePickerTitle": "What are you signing up as?",
+  "rolePickerSubtitle": "You can't change this later",
+  "roleQassobTitle": "I am a butcher",
+  "roleQassobBody": "Slaughter and cut live animals",
+  "roleSupplierTitle": "I sell meat",
+  "roleSupplierBody": "Ready meat or live animals",
+
+  "phoneEntryTitle": "Your phone number", "phoneEntryHint": "+998 90 123 45 67",
+  "phoneEntrySendCode": "Send code",
+  "phoneEntryError": "Please enter a valid phone number",
+
+  "otpTitle": "Verification code",
+  "otpSubtitle": "Code sent to {phone}",
+  "@otpSubtitle": { "placeholders": { "phone": { "type": "String" } } },
+  "otpResend": "Resend ({sec}s)",
+  "@otpResend": { "placeholders": { "sec": { "type": "int" } } },
+  "otpInvalid": "Code is invalid or expired",
+
+  "onboardingWelcomeQassob": "Welcome! Quick sign-up",
+  "onboardingWelcomeSupplier": "Welcome!",
+  "onboardingExperience": "How many years of experience?",
+  "onboardingYourName": "Your name",
+  "onboardingAboutYouTitle": "About you and your business",
+  "onboardingFullName": "Full name",
+  "onboardingCompanyName": "Company / service name (optional)",
+  "onboardingAnimalsTitleQassob": "Which animals can you cut?",
+  "onboardingAnimalsTitleSupplier": "Which animals do you sell?",
+  "onboardingAnimalsHint": "Choose one or more",
+  "onboardingFormsTitle": "Choose the form for each",
+  "onboardingFormsHint": "Live — weddings, sacrifice. Ready cut — restaurants, wholesale",
+  "onboardingCapacity": "How many heads per day?",
+  "onboardingSlaughterhouse": "Do you have a slaughterhouse?",
+  "onboardingLocation": "Set your location",
+  "onboardingLocationDetect": "Auto-detect",
+  "onboardingLocationChange": "Choose another location",
+  "onboardingSelfDelivery": "Do you deliver yourself?",
+  "onboardingVehicleType": "What vehicle?",
+  "onboardingVehiclePlate": "License plate",
+  "onboardingPhoto": "Workplace photo (optional)",
+  "onboardingPhotoSupplier": "Business photo (optional)",
+  "onboardingTakePhoto": "Take photo",
+  "onboardingSubmit": "Confirm", "onboardingSubmitting": "Submitting…",
+  "onboardingSubmitFailed": "Submission failed. Check your connection and try again.",
+
+  "animalMol": "Beef", "animalQoy": "Sheep", "animalEchki": "Goat", "animalOt": "Horse", "animalTovuq": "Chicken",
+  "vehicleRefrigerator": "Refrigerator", "vehicleChorvaTaxi": "Chorva-Taxi",
+  "formLive": "Live", "formCut": "Ready meat",
+
+  "tabHome": "Home", "tabOrders": "Orders", "tabJobs": "Jobs",
+  "tabCatalog": "Catalog", "tabSchedule": "Schedule", "tabEarnings": "Earnings", "tabProfile": "Profile",
+
+  "dashboardGreeting": "Hello, {name}!",
+  "@dashboardGreeting": { "placeholders": { "name": { "type": "String" } } },
+  "dashboardOpenNow": "I'm taking orders now",
+  "dashboardKpiTodayRevenue": "Today's revenue",
+  "dashboardKpiOpenOrders": "New orders",
+  "dashboardKpiLowStock": "Low stock",
+  "dashboardKpiReviews": "Reviews",
+  "dashboardSeeAll": "See all",
+  "dashboardSmartTipsTitle": "Upcoming holidays",
+  "dashboardSmartTipDaysUntil": "{n} days left",
+  "@dashboardSmartTipDaysUntil": { "placeholders": { "n": { "type": "int" } } },
+
+  "verificationBannerTitle": "Documents under review",
+  "verificationBannerBody": "Upload your documents — we'll verify within 24 hours",
+  "verificationBannerCta": "Upload documents",
+
+  "ordersTabNew": "New", "ordersTabActive": "Active", "ordersTabDone": "Done",
+  "ordersAccept": "Accept", "ordersReject": "Reject", "ordersAdvance": "Next stage",
+  "ordersEmpty": "No orders yet",
+
+  "jobsTabOffers": "New offers", "jobsTabToday": "Today", "jobsTabHistory": "History",
+  "jobsClaim": "Accept", "jobsEmpty": "No new offers",
+
+  "catalogTitle": "My products", "catalogAddNew": "Add new product",
+  "catalogQuickPriceTitle": "Change price",
+  "catalogStock": "Stock: {kg} kg",
+  "@catalogStock": { "placeholders": { "kg": { "type": "String" } } },
+  "catalogEmpty": "No products yet",
+
+  "scheduleTitle": "Capacity schedule",
+  "scheduleBooked": "{booked}/{cap} booked",
+  "@scheduleBooked": {
+    "placeholders": { "booked": { "type": "int" }, "cap": { "type": "int" } }
+  },
+
+  "earningsTitle": "Earnings",
+  "earningsPeriodDay": "Day", "earningsPeriodWeek": "Week", "earningsPeriodMonth": "Month",
+  "earningsTotalLabel": "Total", "earningsOrdersLabel": "Orders",
+  "earningsAvgTicketLabel": "Average", "earningsTopProductLabel": "Top product",
+  "earningsExportPdf": "Export PDF", "earningsExportRange": "Date range",
+  "earningsExportSent": "Sent — check your email",
+
+  "profileSectionBusiness": "Business info", "profileSectionDocuments": "Documents",
+  "profileSectionLoyalty": "Loyal customers", "profileSectionReviews": "Reviews",
+  "profileSectionNotifications": "Notifications", "profileSectionLanguage": "Language",
+  "profileSectionSupport": "Contact via Telegram", "profileSectionLogout": "Log out",
+  "profileVerifiedBadge": "Verified", "profilePendingBadge": "Under review",
+
+  "kycTitle": "Documents", "kycPassport": "Passport", "kycLicense": "Business license",
+  "kycFacility": "Workplace photo", "kycRequiredNote": "Passport and license are required",
+  "kycUpload": "Upload", "kycApproved": "Approved", "kycPending": "Under review",
+  "kycReplace": "Replace",
+
+  "ratingsTitle": "Reviews", "ratingsReplyHint": "Write a reply…",
+  "ratingsReplyAction": "Reply", "ratingsEmpty": "No reviews yet",
+
+  "loyaltyTitle": "Loyal customers",
+  "loyaltyOrdersCount": "{n} orders",
+  "@loyaltyOrdersCount": { "placeholders": { "n": { "type": "int" } } },
+
+  "supportTelegramHandle": "@sarimov_s"
+}
