@@ -12,6 +12,7 @@ import '../../features/onboarding/presentation/supplier_wizard_screen.dart';
 import '../../features/role_picker/role_picker_screen.dart';
 import '../auth/partner_auth_notifier.dart';
 import '../auth/role_draft_provider.dart';
+import 'partner_shell.dart';
 
 /// Go-router for the partner app. Single root-level router (no shell yet — wizards push, then the
 /// main 5-tab shell takes over after onboarding completes; Phase F adds the shell route).
@@ -52,8 +53,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }),
       // KYC upload — reachable from the verification banner + Profile tab.
       GoRoute(path: '/kyc', builder: (ctx, st) => const KycUploadScreen()),
-      // Main 5-tab shell. Real implementation in Phase F.
-      GoRoute(path: '/home', builder: (ctx, st) => const _HomePlaceholder()),
+      // Main 5-tab shell.
+      GoRoute(path: '/home', builder: (ctx, st) => const PartnerShell()),
     ],
   );
 });
@@ -87,11 +88,3 @@ class _WizardDispatcher extends ConsumerWidget {
 }
 
 
-class _HomePlaceholder extends StatelessWidget {
-  const _HomePlaceholder();
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Partner Home')),
-    body: const Center(child: Text('5-tab shell — Phase F')),
-  );
-}
