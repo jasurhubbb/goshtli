@@ -29,7 +29,10 @@ LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               "apps.delivery",
               # v3.8 — Qassob (butcher + slaughterhouse) profile + admin + listing surface. Powers the
               # partners-app Qassob role and the buyer-app Servislar tab.
-              "apps.qassobs"]
+              "apps.qassobs",
+              # v3.8 — Cross-role partner-app endpoints (inbox, earnings, dashboard, calendar, reviews,
+              # loyalty, smart-tips). Routes data by role internally so the mobile sees one URL set.
+              "apps.partner"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF

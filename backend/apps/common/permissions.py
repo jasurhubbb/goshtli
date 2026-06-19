@@ -59,3 +59,30 @@ class IsOrderBuyer(BasePermission):
 class IsOrderSupplier(BasePermission):
     """Object-level — restricts to the supplier whose listing the order is for (used by supplier status updates)."""
     def has_object_permission(self, request, view, obj): return obj.listing.supplier_id == request.user.id
+
+
+# ---------- v3.8 partner-app role gates ----------
+
+class IsQassob(BasePermission):
+    """role=QASSOB only. Used by /qassobs/me/* endpoints + qassob-only views in /partner/*."""
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and u.is_qassob)
+
+
+class IsVerifiedQassob(BasePermission):
+    """Qassob + admin has flipped QassobProfile.is_verified=True. Required for the qassob to appear on
+    the buyer-app Servislar tab and to receive AWAITING_QASSOB job offers."""
+    def has_permission(self, request, view):
+        u = request.user
+        if not (u and u.is_authenticated): return False
+        if u.is_admin_role: return True
+        return u.is_qassob and hasattr(u, "qassob_profile") and u.qassob_profile.is_verified
+
+
+class IsPartner(BasePermission):
+    """Any partner-app role — SUPPLIER or QASSOB. Used by /partner/* cross-role endpoints (inbox,
+    earnings, dashboard, etc.) where the data is role-routed inside the view."""
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and (u.is_partner or u.is_admin_role))

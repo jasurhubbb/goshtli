@@ -5,6 +5,8 @@ from django.urls import path, include, re_path
 from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+from apps.accounts.kyc import KYCListCreateView
+
 # All API routes are versioned under /api/v1/ so we can ship breaking changes later under /api/v2/
 urlpatterns = [
     path("admin/", admin.site.urls),                                # Django Admin — supplier verification, ops
@@ -27,6 +29,14 @@ urlpatterns = [
     path("api/v1/payments/", include("apps.payments.urls")),
     # v3.6 PRD §3 — delivery quote endpoint (cart -> eligible vehicles + per-km pricing + time slots)
     path("api/v1/delivery/", include("apps.delivery.urls")),
+    # v3.8 — Qassob discovery + owner CRUD. Feeds the buyer-app Servislar tab + partners-app Profil.
+    path("api/v1/qassobs/", include("apps.qassobs.urls")),
+    # v3.8 — KYC document upload + status. Used by both Qassob and Supplier in the partners app.
+    path("api/v1/kyc/", KYCListCreateView.as_view(), name="kyc-upload"),
+    path("api/v1/kyc/me/", KYCListCreateView.as_view(), name="kyc-mine"),
+    # v3.8 — Cross-role partner endpoints (inbox, accept/reject, earnings, dashboard, calendar, reviews,
+    # loyalty, smart-tips, quick-price). Mobile sees one URL set; backend routes by role.
+    path("api/v1/partner/", include("apps.partner.urls")),
     path("api/v1/notifications/", include("apps.notifications.urls")),  # in-app notifications + unread count
 
     # v2 Milestone C — social + trust
