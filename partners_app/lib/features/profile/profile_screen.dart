@@ -1,20 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_core/shared_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/auth/partner_auth_notifier.dart';
+import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/dashboard_providers.dart';
+import 'edit_profile_sheet.dart';
 
 
-/// Profile tab — business info, KYC, sections, language picker, logout.
-class ProfileScreen extends ConsumerWidget {
+/// Partner Profil tab.
+///
+/// v3.8.1 trimmed sections per product decision:
+///   * removed "Biznes ma'lumotlari" — covered by Profilni tahrirlash
+///   * removed "Hujjatlar" — superadmins verify partners directly; no KYC upload UX
+///   * removed "Doimiy mijozlar" — moved out of v1 scope
+/// Kept: Profilni tahrirlash, Sharhlar, Bildirishnomalar, Til, Telegram support, Chiqish.
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  Map<String, dynamic>? _profile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  /// Loads the role-specific profile (qassobs/me or suppliers/me) so we know the current
+  /// phone_visible value to pass to the edit sheet.
+  Future<void> _loadProfile() async {
+    final auth = ref.read(partnerAuthProvider);
+    if (auth is! AuthAuthenticated) return;
+    try {
+      final api = ref.read(apiClientProvider);
+      final path = auth.user.isQassob ? '/qassobs/me/' : '/suppliers/me/';
+      final r = await api.dio.get(path);
+      if (mounted && r.data is Map) {
+        setState(() => _profile = Map<String, dynamic>.from(r.data as Map));
+      }
+    } catch (_) {
+      // Profile not yet created or transient error — UI just falls back to defaults.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -22,11 +59,12 @@ class ProfileScreen extends ConsumerWidget {
     final dashboard = ref.watch(dashboardProvider);
     final user = auth is AuthAuthenticated ? auth.user : null;
     final verified = dashboard.value?['is_verified'] == true;
+
     return ListView(children: [
       Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: Row(children: [
           CircleAvatar(radius: 32, backgroundColor: cs.primary.withValues(alpha: 0.12),
-            child: Icon(Icons.person_rounded, color: cs.primary, size: 32)),
+              child: Icon(Icons.person_rounded, color: cs.primary, size: 32)),
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(user?.fullName ?? '',
@@ -44,12 +82,10 @@ class ProfileScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w800, letterSpacing: 0.4))),
           ])),
         ])),
-      _Section(label: t.profileSectionBusiness,
-        icon: Icons.business_rounded, onTap: () {}),
-      _Section(label: t.profileSectionDocuments,
-        icon: Icons.description_rounded, onTap: () => context.push('/kyc')),
-      _Section(label: t.profileSectionLoyalty,
-        icon: Icons.favorite_rounded, onTap: () {}),
+
+      _Section(label: t.profileSectionEdit,
+        icon: Icons.edit_rounded,
+        onTap: () => _openEdit(context)),
       _Section(label: t.profileSectionReviews,
         icon: Icons.star_rounded, onTap: () {}),
       _Section(label: t.profileSectionNotifications,
@@ -63,6 +99,21 @@ class ProfileScreen extends ConsumerWidget {
         onTap: () => ref.read(partnerAuthProvider.notifier).logout()),
       const SizedBox(height: 24),
     ]);
+  }
+
+  Future<void> _openEdit(BuildContext context) async {
+    final user = (ref.read(partnerAuthProvider) is AuthAuthenticated)
+        ? (ref.read(partnerAuthProvider) as AuthAuthenticated).user
+        : null;
+    final saved = await showEditProfileSheet(context,
+        currentName: user?.fullName ?? '',
+        currentPhoneVisible: (_profile?['phone_visible'] as bool?) ?? true);
+    if (saved) {
+      // Refresh the role-specific profile so the toggle shows the new state next time.
+      _loadProfile();
+      // Re-fetch dashboard so the greeting + verification state are fresh too.
+      ref.read(dashboardProvider.notifier).refresh();
+    }
   }
 
   Future<void> _showLanguageSheet(BuildContext context, WidgetRef ref) async {

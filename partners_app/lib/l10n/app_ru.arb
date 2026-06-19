@@ -73,7 +73,7 @@
   "@dashboardSmartTipDaysUntil": { "placeholders": { "n": { "type": "int" } } },
 
   "verificationBannerTitle": "Документы проверяются",
-  "verificationBannerBody": "Отправьте документы — проверим в течение 24 часов",
+  "verificationBannerBody": "Ожидается подтверждение администратором",
   "verificationBannerCta": "Отправить документы",
 
   "ordersTabNew": "Новые", "ordersTabActive": "В работе", "ordersTabDone": "Выполнены",
@@ -102,11 +102,15 @@
   "earningsExportPdf": "Экспорт PDF", "earningsExportRange": "Период",
   "earningsExportSent": "Отправлено — проверьте email",
 
-  "profileSectionBusiness": "Данные бизнеса", "profileSectionDocuments": "Документы",
-  "profileSectionLoyalty": "Постоянные клиенты", "profileSectionReviews": "Отзывы",
+  "profileSectionEdit": "Редактировать профиль",
+  "profileSectionReviews": "Отзывы",
   "profileSectionNotifications": "Уведомления", "profileSectionLanguage": "Язык",
   "profileSectionSupport": "Связаться через Telegram", "profileSectionLogout": "Выйти",
   "profileVerifiedBadge": "Подтверждено", "profilePendingBadge": "Проверяется",
+  "profileEditTitle": "Редактировать профиль",
+  "profileEditFullName": "Полное имя",
+  "profileEditCallsAvailable": "Доступен для звонков",
+  "profileEditCallsAvailableHint": "Клиенты увидят ваш номер телефона",
 
   "kycTitle": "Документы", "kycPassport": "Паспорт", "kycLicense": "Лицензия / патент",
   "kycFacility": "Фото рабочего места", "kycRequiredNote": "Паспорт и лицензия обязательны",

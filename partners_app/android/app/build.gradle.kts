@@ -1,5 +1,9 @@
 plugins {
     id("com.android.application")
+    // v3.8 — Google services plugin processes google-services.json. Required for Firebase Phone Auth + FCM.
+    // Must be applied AFTER the Android plugin and BEFORE the Flutter plugin so resource generation
+    // lands in the right phase. Plugin version is declared in android/settings.gradle.kts.
+    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }

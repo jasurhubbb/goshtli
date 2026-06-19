@@ -265,7 +265,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get verificationBannerBody =>
-      'Отправьте документы — проверим в течение 24 часов';
+      'Ожидается подтверждение администратором';
 
   @override
   String get verificationBannerCta => 'Отправить документы';
@@ -365,13 +365,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get earningsExportSent => 'Отправлено — проверьте email';
 
   @override
-  String get profileSectionBusiness => 'Данные бизнеса';
-
-  @override
-  String get profileSectionDocuments => 'Документы';
-
-  @override
-  String get profileSectionLoyalty => 'Постоянные клиенты';
+  String get profileSectionEdit => 'Редактировать профиль';
 
   @override
   String get profileSectionReviews => 'Отзывы';
@@ -393,6 +387,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get profilePendingBadge => 'Проверяется';
+
+  @override
+  String get profileEditTitle => 'Редактировать профиль';
+
+  @override
+  String get profileEditFullName => 'Полное имя';
+
+  @override
+  String get profileEditCallsAvailable => 'Доступен для звонков';
+
+  @override
+  String get profileEditCallsAvailableHint =>
+      'Клиенты увидят ваш номер телефона';
 
   @override
   String get kycTitle => 'Документы';

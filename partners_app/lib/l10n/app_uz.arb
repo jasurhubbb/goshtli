@@ -94,7 +94,7 @@
   "@dashboardSmartTipDaysUntil": { "placeholders": { "n": { "type": "int" } } },
 
   "verificationBannerTitle": "Hujjatlar tekshirilmoqda",
-  "verificationBannerBody": "Hujjatlarni yuboring — 24 soat ichida tasdiqlanasiz",
+  "verificationBannerBody": "Administrator tomonidan tasdiqlanish kutilmoqda",
   "verificationBannerCta": "Hujjatlarni yuborish",
 
   "ordersTabNew": "Yangi",
@@ -139,9 +139,7 @@
   "earningsExportRange": "Sana oralig'i",
   "earningsExportSent": "Yuborildi — emailingizni tekshiring",
 
-  "profileSectionBusiness": "Biznes ma'lumotlari",
-  "profileSectionDocuments": "Hujjatlar",
-  "profileSectionLoyalty": "Doimiy mijozlar",
+  "profileSectionEdit": "Profilni tahrirlash",
   "profileSectionReviews": "Sharhlar",
   "profileSectionNotifications": "Bildirishnomalar",
   "profileSectionLanguage": "Til",
@@ -149,6 +147,10 @@
   "profileSectionLogout": "Chiqish",
   "profileVerifiedBadge": "Tasdiqlangan",
   "profilePendingBadge": "Tekshirilmoqda",
+  "profileEditTitle": "Profilni tahrirlash",
+  "profileEditFullName": "To'liq ism",
+  "profileEditCallsAvailable": "Telefon qo'ng'iroqlari uchun ochiqman",
+  "profileEditCallsAvailableHint": "Mijozlar telefon raqamingizni ko'ra oladi",
 
   "kycTitle": "Hujjatlar",
   "kycPassport": "Pasport",

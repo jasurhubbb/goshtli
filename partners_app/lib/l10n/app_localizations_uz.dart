@@ -264,7 +264,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get verificationBannerBody =>
-      'Hujjatlarni yuboring — 24 soat ichida tasdiqlanasiz';
+      'Administrator tomonidan tasdiqlanish kutilmoqda';
 
   @override
   String get verificationBannerCta => 'Hujjatlarni yuborish';
@@ -364,13 +364,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get earningsExportSent => 'Yuborildi — emailingizni tekshiring';
 
   @override
-  String get profileSectionBusiness => 'Biznes ma\'lumotlari';
-
-  @override
-  String get profileSectionDocuments => 'Hujjatlar';
-
-  @override
-  String get profileSectionLoyalty => 'Doimiy mijozlar';
+  String get profileSectionEdit => 'Profilni tahrirlash';
 
   @override
   String get profileSectionReviews => 'Sharhlar';
@@ -392,6 +386,20 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get profilePendingBadge => 'Tekshirilmoqda';
+
+  @override
+  String get profileEditTitle => 'Profilni tahrirlash';
+
+  @override
+  String get profileEditFullName => 'To\'liq ism';
+
+  @override
+  String get profileEditCallsAvailable =>
+      'Telefon qo\'ng\'iroqlari uchun ochiqman';
+
+  @override
+  String get profileEditCallsAvailableHint =>
+      'Mijozlar telefon raqamingizni ko\'ra oladi';
 
   @override
   String get kycTitle => 'Hujjatlar';

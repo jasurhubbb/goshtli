@@ -71,7 +71,7 @@
   "@dashboardSmartTipDaysUntil": { "placeholders": { "n": { "type": "int" } } },
 
   "verificationBannerTitle": "Documents under review",
-  "verificationBannerBody": "Upload your documents — we'll verify within 24 hours",
+  "verificationBannerBody": "Awaiting administrator verification",
   "verificationBannerCta": "Upload documents",
 
   "ordersTabNew": "New", "ordersTabActive": "Active", "ordersTabDone": "Done",
@@ -100,11 +100,15 @@
   "earningsExportPdf": "Export PDF", "earningsExportRange": "Date range",
   "earningsExportSent": "Sent — check your email",
 
-  "profileSectionBusiness": "Business info", "profileSectionDocuments": "Documents",
-  "profileSectionLoyalty": "Loyal customers", "profileSectionReviews": "Reviews",
+  "profileSectionEdit": "Edit profile",
+  "profileSectionReviews": "Reviews",
   "profileSectionNotifications": "Notifications", "profileSectionLanguage": "Language",
   "profileSectionSupport": "Contact via Telegram", "profileSectionLogout": "Log out",
   "profileVerifiedBadge": "Verified", "profilePendingBadge": "Under review",
+  "profileEditTitle": "Edit profile",
+  "profileEditFullName": "Full name",
+  "profileEditCallsAvailable": "Available for calls",
+  "profileEditCallsAvailableHint": "Customers can see your phone number",
 
   "kycTitle": "Documents", "kycPassport": "Passport", "kycLicense": "Business license",
   "kycFacility": "Workplace photo", "kycRequiredNote": "Passport and license are required",

@@ -262,8 +262,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verificationBannerTitle => 'Documents under review';
 
   @override
-  String get verificationBannerBody =>
-      'Upload your documents — we\'ll verify within 24 hours';
+  String get verificationBannerBody => 'Awaiting administrator verification';
 
   @override
   String get verificationBannerCta => 'Upload documents';
@@ -363,13 +362,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get earningsExportSent => 'Sent — check your email';
 
   @override
-  String get profileSectionBusiness => 'Business info';
-
-  @override
-  String get profileSectionDocuments => 'Documents';
-
-  @override
-  String get profileSectionLoyalty => 'Loyal customers';
+  String get profileSectionEdit => 'Edit profile';
 
   @override
   String get profileSectionReviews => 'Reviews';
@@ -391,6 +384,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profilePendingBadge => 'Under review';
+
+  @override
+  String get profileEditTitle => 'Edit profile';
+
+  @override
+  String get profileEditFullName => 'Full name';
+
+  @override
+  String get profileEditCallsAvailable => 'Available for calls';
+
+  @override
+  String get profileEditCallsAvailableHint =>
+      'Customers can see your phone number';
 
   @override
   String get kycTitle => 'Documents';

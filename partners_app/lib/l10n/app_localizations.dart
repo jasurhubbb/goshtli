@@ -589,7 +589,7 @@ abstract class AppLocalizations {
   /// No description provided for @verificationBannerBody.
   ///
   /// In uz, this message translates to:
-  /// **'Hujjatlarni yuboring — 24 soat ichida tasdiqlanasiz'**
+  /// **'Administrator tomonidan tasdiqlanish kutilmoqda'**
   String get verificationBannerBody;
 
   /// No description provided for @verificationBannerCta.
@@ -778,23 +778,11 @@ abstract class AppLocalizations {
   /// **'Yuborildi — emailingizni tekshiring'**
   String get earningsExportSent;
 
-  /// No description provided for @profileSectionBusiness.
+  /// No description provided for @profileSectionEdit.
   ///
   /// In uz, this message translates to:
-  /// **'Biznes ma\'lumotlari'**
-  String get profileSectionBusiness;
-
-  /// No description provided for @profileSectionDocuments.
-  ///
-  /// In uz, this message translates to:
-  /// **'Hujjatlar'**
-  String get profileSectionDocuments;
-
-  /// No description provided for @profileSectionLoyalty.
-  ///
-  /// In uz, this message translates to:
-  /// **'Doimiy mijozlar'**
-  String get profileSectionLoyalty;
+  /// **'Profilni tahrirlash'**
+  String get profileSectionEdit;
 
   /// No description provided for @profileSectionReviews.
   ///
@@ -837,6 +825,30 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Tekshirilmoqda'**
   String get profilePendingBadge;
+
+  /// No description provided for @profileEditTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilni tahrirlash'**
+  String get profileEditTitle;
+
+  /// No description provided for @profileEditFullName.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'liq ism'**
+  String get profileEditFullName;
+
+  /// No description provided for @profileEditCallsAvailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telefon qo\'ng\'iroqlari uchun ochiqman'**
+  String get profileEditCallsAvailable;
+
+  /// No description provided for @profileEditCallsAvailableHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mijozlar telefon raqamingizni ko\'ra oladi'**
+  String get profileEditCallsAvailableHint;
 
   /// No description provided for @kycTitle.
   ///

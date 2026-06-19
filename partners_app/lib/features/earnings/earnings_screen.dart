@@ -66,30 +66,51 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen>
       Expanded(child: _loading
         ? const Center(child: CircularProgressIndicator())
         : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
-            if (_data != null) ...[
-              Text(t.earningsTotalLabel,
-                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-              const SizedBox(height: 4),
-              Text('${_data!['total_revenue']} so\'m',
-                  style: tt.displaySmall?.copyWith(
-                      color: cs.primary, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 18),
-              SizedBox(height: 180, child: _Chart(
-                chartData: ((_data!['chart'] as List?) ?? [])
-                            .cast<Map<String, dynamic>>())),
-              const SizedBox(height: 18),
-              _Row(label: t.earningsOrdersLabel, value: '${_data!['order_count']}'),
-              _Row(label: t.earningsAvgTicketLabel, value: '${_data!['avg_ticket']} so\'m'),
-              if (_data!['top_product'] != null)
-                _Row(label: t.earningsTopProductLabel, value: '${_data!['top_product']}'),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(onPressed: () {},
-                icon: const Icon(Icons.picture_as_pdf_rounded),
-                label: Text(t.earningsExportPdf)),
-            ],
+            // `_fmt*` helpers default null -> "0" so the UI never renders the literal "null". Empty
+            // backend response (newly-onboarded partner with no orders) shows clean zeros.
+            Text(t.earningsTotalLabel,
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text("${_fmtMoney(_data?['total_revenue'])} so'm",
+                style: tt.displaySmall?.copyWith(
+                    color: cs.primary, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 18),
+            SizedBox(height: 180, child: _Chart(
+              chartData: _safeList(_data?['chart']))),
+            const SizedBox(height: 18),
+            _Row(label: t.earningsOrdersLabel,
+                  value: _fmtCount(_data?['order_count'])),
+            _Row(label: t.earningsAvgTicketLabel,
+                  value: "${_fmtMoney(_data?['avg_ticket'])} so'm"),
+            if (_data?['top_product'] != null)
+              _Row(label: t.earningsTopProductLabel,
+                    value: _data!['top_product'].toString()),
           ])),
     ]);
   }
+}
+
+
+/// Defensive helpers identical to the dashboard. Backend can omit keys when there's no data;
+/// we render "0" instead of letting the literal string "null" leak into the UI.
+String _fmtCount(dynamic v) {
+  if (v == null) return '0';
+  return v.toString();
+}
+
+String _fmtMoney(dynamic v) {
+  if (v == null) return '0';
+  final s = v.toString();
+  if (s.contains('.')) {
+    final whole = s.split('.').first;
+    return whole.isEmpty ? '0' : whole;
+  }
+  return s.isEmpty ? '0' : s;
+}
+
+List<Map<String, dynamic>> _safeList(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw.cast<Map<String, dynamic>>();
 }
 
 

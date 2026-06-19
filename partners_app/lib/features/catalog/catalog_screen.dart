@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
+import 'new_listing_sheet.dart';
 
 
 /// Supplier catalog tab. Lists the supplier's own listings + a "+ new" FAB + long-press quick-price (F5).
@@ -34,7 +35,11 @@ class CatalogScreen extends ConsumerWidget {
             );
           })),
       Positioned(right: 16, bottom: 20,
-        child: FloatingActionButton.extended(onPressed: () {},
+        child: FloatingActionButton.extended(
+            onPressed: () async {
+              final id = await showNewListingSheet(context);
+              if (id != null) ref.invalidate(_myListingsProvider);
+            },
             icon: const Icon(Icons.add_rounded),
             label: Text(t.catalogAddNew))),
     ]);
@@ -42,15 +47,18 @@ class CatalogScreen extends ConsumerWidget {
 }
 
 
+/// Defensive parser — `/listings/my/` returns a paginated `{count, next, previous, results: [...]}`
+/// envelope on success, a `{detail: "..."}` map on 403/404, or a bare list in some old code paths.
+/// We collapse all of these to a List so the UI never crashes on shape drift.
 final _myListingsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final r = await ref.read(apiClientProvider).dio.get('/listings/my/');
-  if (r.data is List) {
-    return (r.data as List).cast<Map<String, dynamic>>();
+  final data = r.data;
+  if (data is List) return data.cast<Map<String, dynamic>>();
+  if (data is Map) {
+    final results = data['results'];
+    if (results is List) return results.cast<Map<String, dynamic>>();
   }
-  if (r.data is Map && (r.data as Map).containsKey('results')) {
-    return (((r.data as Map)['results']) as List).cast<Map<String, dynamic>>();
-  }
-  return [];
+  return const [];
 });
 
 

@@ -54,14 +54,16 @@ class DashboardScreen extends ConsumerWidget {
               crossAxisCount: 2, childAspectRatio: 1.6,
               crossAxisSpacing: 12, mainAxisSpacing: 12,
               children: [
+                // Defensive `?? "0"` — backend may omit fields or return null. UI shows "0", not the
+                // literal string "null" which leaked through in v3.8.0.
                 _Kpi(label: t.dashboardKpiTodayRevenue,
-                      value: '${d['today_revenue']}', accent: cs.primary),
+                      value: _fmtMoney(d['today_revenue']), accent: cs.primary),
                 _Kpi(label: t.dashboardKpiOpenOrders,
-                      value: '${d['open_orders']}', accent: const Color(0xFF1B5E20)),
+                      value: _fmtCount(d['open_orders']), accent: const Color(0xFF1B5E20)),
                 _Kpi(label: t.dashboardKpiLowStock,
-                      value: '${d['low_stock_count']}', accent: const Color(0xFFEF6C00)),
+                      value: _fmtCount(d['low_stock_count']), accent: const Color(0xFFEF6C00)),
                 _Kpi(label: t.dashboardKpiReviews,
-                      value: '${d['unread_reviews']}', accent: const Color(0xFF6A1B9A)),
+                      value: _fmtCount(d['unread_reviews']), accent: const Color(0xFF6A1B9A)),
               ]))),
         Padding(padding: const EdgeInsets.fromLTRB(20, 22, 20, 6),
           child: Text(t.dashboardSmartTipsTitle,
@@ -78,6 +80,26 @@ class DashboardScreen extends ConsumerWidget {
       ]),
     );
   }
+}
+
+
+/// Defensive number formatters — backend can omit a key or return null when no data exists. We render
+/// "0" instead of the literal string "null" leaking into the UI.
+String _fmtCount(dynamic v) {
+  if (v == null) return '0';
+  if (v is num) return v.toString();
+  return v.toString();
+}
+
+String _fmtMoney(dynamic v) {
+  if (v == null) return '0';
+  // Backend ships money fields as Decimal-stringified ("12345.00"). Trim trailing decimal noise.
+  final s = v.toString();
+  if (s.contains('.')) {
+    final whole = s.split('.').first;
+    return whole.isEmpty ? '0' : whole;
+  }
+  return s.isEmpty ? '0' : s;
 }
 
 
