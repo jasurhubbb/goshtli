@@ -5,9 +5,13 @@ import 'package:shared_core/shared_core.dart';
 
 import '../../features/auth/otp_entry_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
+import '../../features/kyc/kyc_upload_screen.dart';
 import '../../features/language/language_picker_screen.dart';
+import '../../features/onboarding/presentation/qassob_wizard_screen.dart';
+import '../../features/onboarding/presentation/supplier_wizard_screen.dart';
 import '../../features/role_picker/role_picker_screen.dart';
 import '../auth/partner_auth_notifier.dart';
+import '../auth/role_draft_provider.dart';
 
 /// Go-router for the partner app. Single root-level router (no shell yet — wizards push, then the
 /// main 5-tab shell takes over after onboarding completes; Phase F adds the shell route).
@@ -39,9 +43,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           verificationId: extra['verificationId'] as String? ?? '',
         );
       }),
-      // Onboarding wizards land here. Implementation in Phase E; this placeholder lets the project
-      // compile in the meantime.
-      GoRoute(path: '/onboarding', builder: (ctx, st) => const _OnboardingPlaceholder()),
+      // Onboarding wizards — dispatched by role from roleDraftProvider. Qassob = 8 pages, Supplier = 7.
+      GoRoute(path: '/onboarding', builder: (ctx, gs) {
+        final extra = (gs.extra as Map<String, dynamic>?) ?? const {};
+        final phone = extra['phone'] as String? ?? '';
+        // We can't read providers here cleanly; route to a tiny dispatcher widget.
+        return _WizardDispatcher(phone: phone);
+      }),
+      // KYC upload — reachable from the verification banner + Profile tab.
+      GoRoute(path: '/kyc', builder: (ctx, st) => const KycUploadScreen()),
       // Main 5-tab shell. Real implementation in Phase F.
       GoRoute(path: '/home', builder: (ctx, st) => const _HomePlaceholder()),
     ],
@@ -58,12 +68,22 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 }
 
 
-class _OnboardingPlaceholder extends StatelessWidget {
-  const _OnboardingPlaceholder();
+/// Reads roleDraftProvider and dispatches to the right wizard.
+class _WizardDispatcher extends ConsumerWidget {
+  final String phone;
+  const _WizardDispatcher({required this.phone});
   @override
-  Widget build(BuildContext context) => const Scaffold(
-    body: Center(child: Text('Onboarding wizard — Phase E')),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(roleDraftProvider);
+    if (role == UserRole.qassob) return QassobWizardScreen(phone: phone);
+    if (role == UserRole.supplier) return SupplierWizardScreen(phone: phone);
+    // Fallback — shouldn't happen since role-pick is a hard gate before phone/OTP, but a friendly UX
+    // for ghost states.
+    return Scaffold(
+      appBar: AppBar(),
+      body: const Center(child: Text('No role selected — please restart')),
+    );
+  }
 }
 
 
