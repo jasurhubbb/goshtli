@@ -92,12 +92,36 @@ class _OrderCard extends ConsumerStatefulWidget {
 class _OrderCardState extends ConsumerState<_OrderCard> {
   bool _busy = false;
 
-  Future<void> _act(String path) async {
+  /// Accept / Reject — both go through this helper. v3.8.3: the old `try{}catch(_){}` silently ate
+  /// every backend error (permission denied, invalid transition, stale stock). Supplier saw zero
+  /// feedback when Tasdiqlash failed. Now we read the DRF detail off the response and surface it via
+  /// snackbar, and we show a success snackbar on the happy path so the supplier knows the action
+  /// landed even though the card is about to disappear (bucket re-queries).
+  Future<void> _act(String path, {required String successMsg}) async {
     setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(apiClientProvider).dio.post(path);
+      final r = await ref.read(apiClientProvider).dio.post(path);
+      // ApiClient's validateStatus accepts <500 so a 4xx comes back as a successful Response with a
+      // detail-shaped body — check it explicitly instead of trusting the absence of exceptions.
+      final data = r.data;
+      final ok = (r.statusCode != null && r.statusCode! >= 200 && r.statusCode! < 300);
+      if (!ok) {
+        final detail = data is Map && data['detail'] is String
+            ? data['detail'] as String
+            : 'HTTP ${r.statusCode}';
+        messenger.showSnackBar(SnackBar(content: Text(detail)));
+        return;
+      }
+      messenger.showSnackBar(SnackBar(content: Text(successMsg),
+          duration: const Duration(seconds: 2)));
       ref.invalidate(inboxProvider(widget.bucket));
-    } catch (_) {} finally {
+      // The accepted order leaves "Yangi" and lands in "Jarayonda". Invalidate that bucket too so it
+      // shows the new row without forcing the supplier to pull-to-refresh.
+      ref.invalidate(inboxProvider('active'));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -129,11 +153,13 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
           const SizedBox(height: 10),
           Row(children: [
             Expanded(child: OutlinedButton(
-              onPressed: _busy ? null : () => _act('/partner/orders/${r['id']}/reject/'),
+              onPressed: _busy ? null : () => _act('/partner/orders/${r['id']}/reject/',
+                  successMsg: t.ordersReject),
               child: Text(t.ordersReject))),
             const SizedBox(width: 10),
             Expanded(child: FilledButton(
-              onPressed: _busy ? null : () => _act('/partner/orders/${r['id']}/accept/'),
+              onPressed: _busy ? null : () => _act('/partner/orders/${r['id']}/accept/',
+                  successMsg: widget.isQassob ? t.jobsClaim : t.ordersAccept),
               child: Text(widget.isQassob ? t.jobsClaim : t.ordersAccept))),
           ]),
         ],
