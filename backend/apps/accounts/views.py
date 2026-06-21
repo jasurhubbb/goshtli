@@ -233,15 +233,19 @@ class PhoneRegisterView(APIView):
         phone = ser.validated_data["phone"]
         full_name = ser.validated_data["full_name"]
         business_name = ser.validated_data.get("business_name", "")
+        # v3.8.3: pass role through. create_user_from_phone honors it via **extra_fields (setdefault
+        # only fires if the key is absent, so an explicit SUPPLIER / QASSOB sticks). Without this,
+        # partner-app signups were silently created as BUYER.
+        role = ser.validated_data.get("role", "BUYER")
         try:
-            user = User.objects.create_user_from_phone(phone=phone, full_name=full_name)
+            user = User.objects.create_user_from_phone(phone=phone, full_name=full_name, role=role)
         except IntegrityError:
             return Response({"detail": "An account with this phone already exists. Try logging in instead."},
                             status=status.HTTP_409_CONFLICT)
-        # Persist business_name on the BuyerProfile that was auto-created via signal at User.save().
-        # We refresh from DB in case the signal didn't fire yet, then patch the field. Optional — skip
-        # when empty to avoid an unnecessary write.
-        if business_name:
+        # business_name lives on BuyerProfile only — for SUPPLIER/QASSOB the wizard sets equivalent
+        # fields on their own profile, so we skip the write for non-buyer roles to avoid creating an
+        # orphan BuyerProfile.
+        if business_name and role == "BUYER":
             BuyerProfile.objects.filter(user=user).update(business_name=business_name)
         return Response(_jwt_for(user), status=status.HTTP_201_CREATED)
 

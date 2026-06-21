@@ -9,6 +9,7 @@ import '../../core/auth/role_draft_provider.dart';
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/dashboard_providers.dart';
+import 'animals_supported_sheet.dart';
 import 'edit_profile_sheet.dart';
 
 
@@ -88,6 +89,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _Section(label: t.profileSectionEdit,
         icon: Icons.edit_rounded,
         onTap: () => _openEdit(context)),
+      // Drives the category-chip filter on Yangi tovar qo'shish. Gated on "not a qassob" rather
+      // than "is a supplier" because a v3.8.2-and-earlier backend bug stored partner-app signups
+      // with role=BUYER (PhoneRegisterView dropped the wizard's role field). For those accounts
+      // user.isSupplier is false but they still operate as suppliers, with an auto-created
+      // SupplierProfile under the hood. Once the v3.8.3 backend deploys, new signups land as
+      // SUPPLIER and the gate becomes redundant — kept as `!isQassob` so it stays correct either way.
+      if (user != null && !user.isQassob)
+        _Section(label: _animalsRowLabel(context),
+          icon: Icons.restaurant_rounded,
+          onTap: () => _openAnimals(context)),
       _Section(label: t.profileSectionReviews,
         icon: Icons.star_rounded,
         onTap: () => context.push('/ratings')),
@@ -109,23 +120,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = (ref.read(partnerAuthProvider) is AuthAuthenticated)
         ? (ref.read(partnerAuthProvider) as AuthAuthenticated).user
         : null;
-    // Pass the supplier's current animals_supported list through so the sheet's multi-select chips
-    // start in the right state. For qassobs we pass an empty list and isSupplier=false to hide the
-    // animal section entirely.
-    final isSupplier = user?.isSupplier ?? false;
-    final rawAnimals = _profile?['animals_supported'];
-    final animals = (rawAnimals is List)
-        ? rawAnimals.map((e) => e.toString()).toList()
-        : const <String>[];
     final saved = await showEditProfileSheet(context,
         currentName: user?.fullName ?? '',
-        currentPhoneVisible: (_profile?['phone_visible'] as bool?) ?? true,
-        currentAnimals: animals,
-        isSupplier: isSupplier);
+        currentPhoneVisible: (_profile?['phone_visible'] as bool?) ?? true);
     if (saved) {
       _loadProfile();
       ref.read(dashboardProvider.notifier).refresh();
     }
+  }
+
+  /// Locale-aware row label for the animals row. Inlined per-locale string avoids regenerating l10n
+  /// just for one key; "Sotadigan go'shtlar" reads naturally as a Profile row in UZ.
+  String _animalsRowLabel(BuildContext context) {
+    final lang = Localizations.localeOf(context).languageCode;
+    if (lang == 'ru') return 'Какое мясо я продаю';
+    if (lang == 'en') return 'Meat I sell';
+    return 'Sotadigan go\'shtlar';
+  }
+
+  Future<void> _openAnimals(BuildContext context) async {
+    final saved = await showAnimalsSupportedSheet(context);
+    if (saved) _loadProfile();
   }
 
   Future<void> _showLanguageSheet(BuildContext context, WidgetRef ref) async {

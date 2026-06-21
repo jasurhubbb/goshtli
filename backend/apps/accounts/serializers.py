@@ -64,7 +64,16 @@ class PhoneCheckSerializer(serializers.Serializer):
 
 class PhoneRegisterSerializer(serializers.Serializer):
     """Inbound shape for POST /auth/phone-register/ — phone + name (required) + business_name (optional).
-    business_name lands on BuyerProfile via the post-create signal; no separate write needed here."""
+    business_name lands on BuyerProfile via the post-create signal; no separate write needed here.
+
+    v3.8.3: `role` is now accepted (optional, defaults to BUYER) so the partner-app wizard can register
+    its supplier / qassob accounts with the correct role. Previously this field was silently dropped
+    and every phone-registered user landed as BUYER — including partners — which broke the
+    role-conditional UI in the partner app (e.g. "Sotadigan go'shtlar" row hidden for suppliers).
+    Restricted to the three legitimate self-signup roles; ADMIN is provisioned out-of-band only.
+    """
     phone = serializers.RegexField(regex=r'^\+[0-9]{10,15}$', max_length=20)
     full_name = serializers.CharField(max_length=150, min_length=1)
     business_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    role = serializers.ChoiceField(choices=("BUYER", "SUPPLIER", "QASSOB"),
+                                   default="BUYER", required=False)

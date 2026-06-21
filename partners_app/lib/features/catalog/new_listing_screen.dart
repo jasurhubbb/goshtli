@@ -45,10 +45,12 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
 
   int? _marketId;
   int? _categoryId;
-  List<Map<String, dynamic>> _categories = const [];
-  // Subset of categories matching the supplier's `animals_supported` + the always-on extras (Qiyma,
-  // Jigar, Boshqa). Computed once in _bootstrap so the build method stays cheap.
+  // Categories matching the supplier's `animals_supported` + the always-on extras (Qiyma, Jigar,
+  // Boshqa). Computed once in _bootstrap so the build method stays cheap. STRICT — no full fallback.
   List<Map<String, dynamic>> _visibleCategories = const [];
+  // Tracks whether the supplier has set animals_supported at all. When false we render a CTA telling
+  // them to set it from Profil instead of silently showing every category in the system.
+  bool _animalsSelected = false;
 
   @override
   void initState() {
@@ -118,23 +120,25 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
       }
     } catch (_) {}
 
-    final visible = animals.isEmpty
-        ? cats                                    // unfiltered fallback — better than empty list
-        : cats.where((c) {
-            final name = ((c['name_uz'] as String?) ?? '').toLowerCase();
-            if (_alwaysVisibleNames.any(name.contains)) return true;
-            for (final a in animals) {
-              final kw = _animalKeywords[a];
-              if (kw != null && name.contains(kw)) return true;
-            }
-            return false;
-          }).toList();
+    // STRICT filter: only categories matching the supplier's animals_supported + the always-visible
+    // extras (Qiyma/Jigar/Boshqa). If animals is empty (supplier never set their list, or backend
+    // dropped it before the v3.8.2 serializer change), we show ONLY the extras + a CTA pointing to
+    // Profil tab — the previous "show everything as fallback" was the bug the user reported.
+    final visible = cats.where((c) {
+      final name = ((c['name_uz'] as String?) ?? '').toLowerCase();
+      if (_alwaysVisibleNames.any(name.contains)) return true;
+      for (final a in animals) {
+        final kw = _animalKeywords[a];
+        if (kw != null && name.contains(kw)) return true;
+      }
+      return false;
+    }).toList();
 
     if (!mounted) return;
     setState(() {
       _marketId = marketId;
-      _categories = cats;
       _visibleCategories = visible;
+      _animalsSelected = animals.isNotEmpty;
       _warning = warning;
       _ready = true;
     });
@@ -227,9 +231,10 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    // If category filter wiped everything (e.g. supplier picked an animal that has no matching
-    // category yet), fall back to the full list so the form remains usable.
-    final cats = _visibleCategories.isEmpty ? _categories : _visibleCategories;
+    // STRICT — the chip row renders ONLY the supplier's animals + extras. No silent fallback to
+    // the full list, because that's the bug the user reported: every meat type was selectable
+    // regardless of what they signed up to sell.
+    final cats = _visibleCategories;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
@@ -278,15 +283,33 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
               Text("Go'sht turi *",
                   style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
               const SizedBox(height: 4),
-              Text("Profil tabidan yangi turlarni qo'shishingiz mumkin",
+              Text("Profil → Sotadigan go'shtlar dan tanlang",
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: cats.map((c) {
-                final id = (c['id'] as num).toInt();
-                final label = (c['name_uz'] as String?) ?? (c['name_ru'] as String?) ?? '—';
-                return _FormChip(label: label, selected: _categoryId == id,
-                    onTap: () => setState(() => _categoryId = id));
-              }).toList()),
+              if (cats.isEmpty)
+                // Empty chip row = supplier hasn't set animals_supported AND no extras returned. Tell
+                // them clearly + give them a one-tap shortcut to Profil instead of leaving them stuck.
+                Container(padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: const Color(0xFFFFF4E5),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(_animalsSelected
+                            ? "Sizning go'sht turlaringiz uchun kategoriya topilmadi"
+                            : "Avval Profil → Sotadigan go'shtlar dan tanlang",
+                        style: tt.bodyMedium?.copyWith(
+                            color: const Color(0xFF8A4F00), fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    SizedBox(width: double.infinity, child: FilledButton.tonal(
+                      onPressed: () { context.pop(); /* return to catalog; user taps Profil tab */ },
+                      child: const Text("Profilga o'tish"))),
+                  ]))
+              else
+                Wrap(spacing: 8, runSpacing: 8, children: cats.map((c) {
+                  final id = (c['id'] as num).toInt();
+                  final label = (c['name_uz'] as String?) ?? (c['name_ru'] as String?) ?? '—';
+                  return _FormChip(label: label, selected: _categoryId == id,
+                      onTap: () => setState(() => _categoryId = id));
+                }).toList()),
               const SizedBox(height: 18),
               Text("Mahsulot shakli *",
                   style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
