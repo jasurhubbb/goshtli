@@ -280,18 +280,18 @@ class DashboardView(APIView):
             today_revenue = today_qs.aggregate(s=Sum("qassob_payout"))["s"] or Decimal("0")
         else:
             today_revenue = today_qs.aggregate(s=Sum("total_price"))["s"] or Decimal("0")
-        # Open orders count — pending action items
+        # "Yangi buyurtmalar" KPI — must match the Inbox "Yangi" tab's definition or the supplier sees
+        # a count on the dashboard with nothing in the corresponding tab. PENDING only (= orders that
+        # still need accept/reject). CONFIRMED + PROCESSING moved to a separate "active" semantic
+        # already counted via the Jarayonda tab when needed. v3.8.6 fix.
         if u.is_supplier:
             open_orders = Order.objects.filter(listing__supplier=u,
-                                                  status__in=(Order.Status.PENDING,
-                                                              Order.Status.CONFIRMED,
-                                                              Order.Status.PROCESSING)).count()
+                                                  status=Order.Status.PENDING).count()
             low_stock = Listing.objects.filter(supplier=u, quantity_kg__lt=20).count()
         else:
-            open_orders = Order.objects.filter(assigned_qassob=u,
-                                                  status__in=(Order.Status.PROCESSING_BUTCHER,)).count()
-            # Add available offers count (matching qassob's animals)
-            open_orders += Order.objects.filter(status=Order.Status.AWAITING_QASSOB).count()
+            # Qassob: "new" = available offers they could claim. Workload (PROCESSING_BUTCHER) is
+            # already in Jadval / Jarayonda, not "new".
+            open_orders = Order.objects.filter(status=Order.Status.AWAITING_QASSOB).count()
             low_stock = 0
         # Verification + open/closed snapshot
         if u.is_supplier and hasattr(u, "supplier_profile"):
