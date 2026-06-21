@@ -113,13 +113,13 @@ class AppLocalizationsUz extends AppLocalizations {
   String get onboardingYourName => 'Ismingizni kiriting';
 
   @override
-  String get onboardingAboutYouTitle => 'O\'zingiz va kompaniyangiz haqida';
+  String get onboardingAboutYouTitle => 'O\'zingiz va servisingiz haqida';
 
   @override
   String get onboardingFullName => 'To\'liq ism';
 
   @override
-  String get onboardingCompanyName => 'Kompaniya / xizmat nomi (ixtiyoriy)';
+  String get onboardingCompanyName => 'Servis nomi (ixtiyoriy)';
 
   @override
   String get onboardingAnimalsTitleQassob => 'Qaysi hayvonlarni so\'ya olasiz?';

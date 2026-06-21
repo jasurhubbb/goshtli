@@ -112,13 +112,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingYourName => 'Your name';
 
   @override
-  String get onboardingAboutYouTitle => 'About you and your business';
+  String get onboardingAboutYouTitle => 'About you and your service';
 
   @override
   String get onboardingFullName => 'Full name';
 
   @override
-  String get onboardingCompanyName => 'Company / service name (optional)';
+  String get onboardingCompanyName => 'Service name (optional)';
 
   @override
   String get onboardingAnimalsTitleQassob => 'Which animals can you cut?';

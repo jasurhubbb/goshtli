@@ -24,8 +24,20 @@ class ApiClient {
         _refreshDio = Dio(_baseOptions(baseUrl)) {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final t = await _tokens.readAccess();
-        if (t != null) options.headers['Authorization'] = 'Bearer $t';
+        // Anonymous auth endpoints MUST go out without a Bearer header. The Qassob/Supplier signup
+        // flow had a bug where a stale token from a prior session was being attached to
+        // /auth/firebase-phone-login/ — DRF's JWTAuthentication runs before AllowAny, so it rejected
+        // the request with simplejwt's "Given token not valid for any token type" before the view
+        // even saw it. firebase-phone-login + phone-register identify the user by Firebase / phone,
+        // and refresh carries its own token in the body — none of them want the stored access token.
+        final path = options.path;
+        final isAnonAuth = path.contains('/auth/firebase-phone-login')
+                        || path.contains('/auth/phone-register')
+                        || path.contains('/auth/refresh');
+        if (!isAnonAuth) {
+          final t = await _tokens.readAccess();
+          if (t != null) options.headers['Authorization'] = 'Bearer $t';
+        }
         handler.next(options);
       },
       onResponse: (response, handler) async {

@@ -40,7 +40,9 @@ class QassobMeView(generics.GenericAPIView):
         if self._get_or_none(request) is not None:
             return Response({"detail": "Already exists — use PATCH to edit."}, status=status.HTTP_409_CONFLICT)
         s = self.get_serializer(data=request.data); s.is_valid(raise_exception=True)
-        profile = QassobProfile.objects.create(user=request.user, **s.validated_data)
+        # v3.8.2: auto-verify on creation — see suppliers/signals.py for rationale (KYC review queue
+        # deferred). Keeping IsVerifiedQassob in the permission class for future re-enable.
+        profile = QassobProfile.objects.create(user=request.user, is_verified=True, **s.validated_data)
         return Response(self.get_serializer(profile).data, status=status.HTTP_201_CREATED)
 
     def patch(self, request):

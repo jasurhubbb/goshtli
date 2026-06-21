@@ -4,14 +4,19 @@ from .models import SupplierProfile
 
 
 class SupplierProfileSerializer(serializers.ModelSerializer):
-    """Public-safe profile representation. is_verified is read-only — only admin can change it (via Django Admin)."""
+    """Public-safe profile representation. is_verified is read-only — only admin can change it (via Django Admin).
+
+    v3.8.2: animals_supported is exposed read/write so the partner-app can (a) filter the new-listing
+    category chips down to what this supplier actually sells, and (b) let them edit the list later from
+    the Profile tab without going back through the onboarding wizard.
+    """
     email = serializers.EmailField(source="user.email", read_only=True)
     full_name = serializers.CharField(source="user.full_name", read_only=True)
 
     class Meta:
         model = SupplierProfile
         fields = ("id", "email", "full_name", "business_name", "region", "address",
-                  "is_verified", "created_at", "updated_at")
+                  "animals_supported", "is_verified", "created_at", "updated_at")
         read_only_fields = ("id", "is_verified", "created_at", "updated_at")
 
 

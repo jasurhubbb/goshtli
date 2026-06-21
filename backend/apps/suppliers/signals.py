@@ -15,5 +15,9 @@ from .models import SupplierProfile
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def ensure_supplier_profile(sender, instance, created, **kwargs):
     # Backwards-compat: anyone with role=SUPPLIER still gets a profile auto-created. New flow uses the opt-in endpoint.
+    # v3.8.2: auto-verify on creation so new suppliers can list immediately — admin-gated KYC verification
+    # is deferred until we have a real review queue. Re-enabling is a one-line change here + relaxing the
+    # backfill migration; the IsVerifiedSupplier permission class is left intact for future re-enable.
     if instance.role != "SUPPLIER": return
-    SupplierProfile.objects.get_or_create(user=instance, defaults={"business_name": ""})
+    SupplierProfile.objects.get_or_create(user=instance,
+        defaults={"business_name": "", "is_verified": True})

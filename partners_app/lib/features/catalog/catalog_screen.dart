@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
-import 'new_listing_sheet.dart';
 
 
 /// Supplier catalog tab. Lists the supplier's own listings + a "+ new" FAB + long-press quick-price (F5).
@@ -37,7 +37,7 @@ class CatalogScreen extends ConsumerWidget {
       Positioned(right: 16, bottom: 20,
         child: FloatingActionButton.extended(
             onPressed: () async {
-              final id = await showNewListingSheet(context);
+              final id = await context.push<int>('/catalog/new');
               if (id != null) ref.invalidate(_myListingsProvider);
             },
             icon: const Icon(Icons.add_rounded),

@@ -301,7 +301,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingAboutYouTitle.
   ///
   /// In uz, this message translates to:
-  /// **'O\'zingiz va kompaniyangiz haqida'**
+  /// **'O\'zingiz va servisingiz haqida'**
   String get onboardingAboutYouTitle;
 
   /// No description provided for @onboardingFullName.
@@ -313,7 +313,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingCompanyName.
   ///
   /// In uz, this message translates to:
-  /// **'Kompaniya / xizmat nomi (ixtiyoriy)'**
+  /// **'Servis nomi (ixtiyoriy)'**
   String get onboardingCompanyName;
 
   /// No description provided for @onboardingAnimalsTitleQassob.

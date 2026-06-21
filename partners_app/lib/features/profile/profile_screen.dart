@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_core/shared_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/auth/partner_auth_notifier.dart';
+import '../../core/auth/role_draft_provider.dart';
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/dashboard_providers.dart';
@@ -87,16 +89,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         icon: Icons.edit_rounded,
         onTap: () => _openEdit(context)),
       _Section(label: t.profileSectionReviews,
-        icon: Icons.star_rounded, onTap: () {}),
+        icon: Icons.star_rounded,
+        onTap: () => context.push('/ratings')),
       _Section(label: t.profileSectionNotifications,
-        icon: Icons.notifications_rounded, onTap: () {}),
+        icon: Icons.notifications_rounded,
+        onTap: () => context.push('/notifications')),
       _Section(label: t.profileSectionLanguage,
         icon: Icons.language_rounded, onTap: () => _showLanguageSheet(context, ref)),
       _Section(label: t.profileSectionSupport,
         icon: Icons.telegram, onTap: () => _openTelegram(t.supportTelegramHandle)),
       _Section(label: t.profileSectionLogout,
         icon: Icons.logout_rounded, destructive: true,
-        onTap: () => ref.read(partnerAuthProvider.notifier).logout()),
+        onTap: () => _confirmLogout(context)),
       const SizedBox(height: 24),
     ]);
   }
@@ -105,13 +109,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = (ref.read(partnerAuthProvider) is AuthAuthenticated)
         ? (ref.read(partnerAuthProvider) as AuthAuthenticated).user
         : null;
+    // Pass the supplier's current animals_supported list through so the sheet's multi-select chips
+    // start in the right state. For qassobs we pass an empty list and isSupplier=false to hide the
+    // animal section entirely.
+    final isSupplier = user?.isSupplier ?? false;
+    final rawAnimals = _profile?['animals_supported'];
+    final animals = (rawAnimals is List)
+        ? rawAnimals.map((e) => e.toString()).toList()
+        : const <String>[];
     final saved = await showEditProfileSheet(context,
         currentName: user?.fullName ?? '',
-        currentPhoneVisible: (_profile?['phone_visible'] as bool?) ?? true);
+        currentPhoneVisible: (_profile?['phone_visible'] as bool?) ?? true,
+        currentAnimals: animals,
+        isSupplier: isSupplier);
     if (saved) {
-      // Refresh the role-specific profile so the toggle shows the new state next time.
       _loadProfile();
-      // Re-fetch dashboard so the greeting + verification state are fresh too.
       ref.read(dashboardProvider.notifier).refresh();
     }
   }
@@ -127,6 +139,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ])),
     );
     if (picked != null) await ref.read(localeNotifierProvider.notifier).set(picked);
+  }
+
+  /// Chiqish — two-step (Ha/Yo'q) because logout is destructive (tokens wiped, signin required to
+   /// return). Clears the role draft too so the next signup starts fresh on /role-pick; the router
+   /// redirect rule then bounces the now-anonymous user off /home/profile to /role-pick automatically.
+  Future<void> _confirmLogout(BuildContext context) async {
+    final t = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.profileSectionLogout),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t.profileSectionLogout)),
+        ]));
+    if (ok != true) return;
+    await ref.read(roleDraftProvider.notifier).clear();
+    await ref.read(partnerAuthProvider.notifier).logout();
   }
 
   Future<void> _openTelegram(String handle) async {

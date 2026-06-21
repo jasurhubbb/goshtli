@@ -112,14 +112,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get onboardingYourName => 'Введите ваше имя';
 
   @override
-  String get onboardingAboutYouTitle => 'О вас и вашей компании';
+  String get onboardingAboutYouTitle => 'О вас и вашем сервисе';
 
   @override
   String get onboardingFullName => 'Полное имя';
 
   @override
-  String get onboardingCompanyName =>
-      'Название компании / услуги (необязательно)';
+  String get onboardingCompanyName => 'Название сервиса (необязательно)';
 
   @override
   String get onboardingAnimalsTitleQassob =>

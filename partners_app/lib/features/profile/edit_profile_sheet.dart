@@ -8,16 +8,18 @@ import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 
 
-/// Edit profile sheet — name + phone-call availability (phone_visible).
+/// Edit profile sheet — name + phone-call availability + (supplier only) `animals_supported`.
 ///
 /// Routes to the role-specific endpoint on save:
 ///   QASSOB   -> PATCH /qassobs/me/
-///   SUPPLIER -> PATCH /suppliers/me/
+///   SUPPLIER -> PATCH /suppliers/me/ (+ animals_supported)
 ///
 /// `full_name` also writes back to /auth/me/ so the dashboard greeting updates immediately.
 Future<bool> showEditProfileSheet(BuildContext context, {
   required String currentName,
   required bool currentPhoneVisible,
+  List<String> currentAnimals = const [],
+  bool isSupplier = false,
 }) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
@@ -26,6 +28,8 @@ Future<bool> showEditProfileSheet(BuildContext context, {
     builder: (_) => _EditProfileSheet(
       initialName: currentName,
       initialPhoneVisible: currentPhoneVisible,
+      initialAnimals: currentAnimals,
+      isSupplier: isSupplier,
     ),
   );
   return result ?? false;
@@ -35,7 +39,14 @@ Future<bool> showEditProfileSheet(BuildContext context, {
 class _EditProfileSheet extends ConsumerStatefulWidget {
   final String initialName;
   final bool initialPhoneVisible;
-  const _EditProfileSheet({required this.initialName, required this.initialPhoneVisible});
+  final List<String> initialAnimals;
+  final bool isSupplier;
+  const _EditProfileSheet({
+    required this.initialName,
+    required this.initialPhoneVisible,
+    required this.initialAnimals,
+    required this.isSupplier,
+  });
   @override
   ConsumerState<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
@@ -44,18 +55,35 @@ class _EditProfileSheet extends ConsumerStatefulWidget {
 class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   late final TextEditingController _name;
   late bool _phoneVisible;
+  late Set<String> _animals;
   bool _submitting = false;
   String? _error;
+
+  // Canonical 5 animal codes — same set the wizard offers. UI labels resolve via l10n so RU/EN
+  // users see localized names without us duplicating the string table here.
+  static const _animalCodes = ['MOL', 'QOY', 'ECHKI', 'OT', 'TOVUQ'];
 
   @override
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.initialName);
     _phoneVisible = widget.initialPhoneVisible;
+    _animals = widget.initialAnimals.map((e) => e.toUpperCase()).toSet();
   }
 
   @override
   void dispose() { _name.dispose(); super.dispose(); }
+
+  String _animalLabel(AppLocalizations t, String code) {
+    switch (code) {
+      case 'MOL': return t.animalMol;
+      case 'QOY': return t.animalQoy;
+      case 'ECHKI': return t.animalEchki;
+      case 'OT': return t.animalOt;
+      case 'TOVUQ': return t.animalTovuq;
+      default: return code;
+    }
+  }
 
   Future<void> _save() async {
     setState(() { _submitting = true; _error = null; });
@@ -67,7 +95,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
     try {
       // 1) Update User.full_name via /auth/me/ — drives the dashboard greeting.
       await api.dio.patch('/auth/me/', data: {'full_name': fullName});
-      // 2) Update role-specific profile (name + phone_visible).
+      // 2) Update role-specific profile (name + phone_visible + animals when supplier).
       if (auth.user.isQassob) {
         await api.dio.patch('/qassobs/me/', data: {
           'full_name': fullName,
@@ -77,6 +105,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
         await api.dio.patch('/suppliers/me/', data: {
           'full_name': fullName,
           'phone_visible': _phoneVisible,
+          'animals_supported': _animals.toList(),
         });
       }
       // 3) Refresh the AuthState user so the greeting updates immediately without an app restart.
@@ -122,6 +151,34 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               subtitle: Text(t.profileEditCallsAvailableHint,
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
               contentPadding: EdgeInsets.zero),
+            // Supplier-only: animals_supported multi-select. Drives the category chip filter on the
+            // Yangi tovar qo'shish page — if a supplier adds TOVUQ here, "Tovuq go'shti" shows up
+            // as an option next time they create a listing.
+            if (widget.isSupplier) ...[
+              const SizedBox(height: 12),
+              Text(t.onboardingAnimalsTitleSupplier,
+                  style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(t.onboardingAnimalsHint,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: _animalCodes.map((code) {
+                final on = _animals.contains(code);
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    if (on) { _animals.remove(code); } else { _animals.add(code); }
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: on ? cs.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: on ? cs.primary : cs.outlineVariant)),
+                    child: Text(_animalLabel(t, code),
+                        style: TextStyle(fontWeight: FontWeight.w700,
+                            color: on ? cs.onPrimary : cs.onSurface))));
+              }).toList()),
+            ],
             if (_error != null) Padding(padding: const EdgeInsets.only(top: 8),
                 child: Text(_error!, style: TextStyle(color: cs.error))),
             const SizedBox(height: 18),
