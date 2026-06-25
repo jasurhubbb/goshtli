@@ -63,12 +63,24 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
-      // Collapsing hero — large image at top, back arrow overlay.
+      // Collapsing hero — large image at top, explicit circular-frosted back button so it stays
+      // visible against bright photos. Plain SliverAppBar.leading rendered as a thin black arrow
+      // disappeared on light shopfront shots; the white circle reads at every photo brightness.
       SliverAppBar(
         expandedHeight: 280,
         pinned: true,
         backgroundColor: Colors.white,
         foregroundColor: cs.onSurface,
+        automaticallyImplyLeading: false,
+        leading: Padding(padding: const EdgeInsets.all(8),
+          child: Material(color: Colors.black.withValues(alpha: 0.45),
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: () => Navigator.of(context).maybePop(),
+              customBorder: const CircleBorder(),
+              child: const SizedBox(width: 40, height: 40,
+                child: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white, size: 18))))),
         flexibleSpace: FlexibleSpaceBar(background: _HeroPhoto(q: q)),
       ),
       SliverToBoxAdapter(child: _TitleBlock(q: q)),

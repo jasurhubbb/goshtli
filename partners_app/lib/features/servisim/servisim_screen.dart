@@ -77,12 +77,13 @@ final qassobMeProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
 
 
 class _ServisimScreenState extends ConsumerState<ServisimScreen> {
-  // Editable local copies — seeded from the fetched profile, written back via Save.
+  // Editable local copies — seeded from the fetched profile, written back via Save. v3.9.9
+  // dropped the price-list + certifications sections per product feedback (qassobs don't have a
+  // structured menu to publish; pricing is negotiated per job over chat). Backend fields stay so
+  // existing rows keep their data, but the editor no longer surfaces them.
   final _bioCtrl = TextEditingController();
   final Set<String> _languages = {};
   List<String> _specialties = [];
-  List<_PriceRow> _prices = [];
-  List<_CertRow> _certs = [];
   // Working hours keyed by weekday code (mon..sun). null = closed.
   final Map<String, _HourRange?> _hours = {
     'mon': null, 'tue': null, 'wed': null, 'thu': null, 'fri': null, 'sat': null, 'sun': null,
@@ -108,19 +109,6 @@ class _ServisimScreenState extends ConsumerState<ServisimScreen> {
     _languages.clear();
     _languages.addAll(((m['languages'] as List?) ?? const [])
         .map((e) => e.toString().toLowerCase()));
-    _prices = ((m['price_list'] as List?) ?? const []).map((row) {
-      final map = (row is Map) ? Map<String, dynamic>.from(row) : <String, dynamic>{};
-      return _PriceRow(
-        service: TextEditingController(text: (map['service'] ?? '').toString()),
-        price: TextEditingController(text: (map['price_uzs'] ?? '').toString()),
-        unit: (map['unit'] ?? 'bosh').toString());
-    }).toList();
-    _certs = ((m['certifications'] as List?) ?? const []).map((row) {
-      final map = (row is Map) ? Map<String, dynamic>.from(row) : <String, dynamic>{};
-      return _CertRow(
-        name: TextEditingController(text: (map['name'] ?? '').toString()),
-        year: TextEditingController(text: (map['year']?.toString() ?? '')));
-    }).toList();
     final wh = (m['working_hours'] as Map?) ?? const {};
     for (final day in _hours.keys.toList()) {
       final raw = wh[day];
@@ -138,20 +126,12 @@ class _ServisimScreenState extends ConsumerState<ServisimScreen> {
     HapticFeedback.selectionClick();
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // Reshape local edits into the wire payload that /qassobs/me/ PATCH expects.
+      // Reshape local edits into the wire payload that /qassobs/me/ PATCH expects. price_list +
+      // certifications intentionally omitted — see field declarations above.
       final payload = <String, dynamic>{
         'bio': _bioCtrl.text.trim(),
         'specialties': _specialties.map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
         'languages': _languages.toList(),
-        'price_list': _prices.map((p) {
-          final priceText = p.price.text.trim();
-          final price = int.tryParse(priceText) ?? 0;
-          return {'service': p.service.text.trim(), 'price_uzs': price, 'unit': p.unit};
-        }).where((r) => (r['service'] as String).isNotEmpty).toList(),
-        'certifications': _certs.map((c) {
-          final year = int.tryParse(c.year.text.trim());
-          return {'name': c.name.text.trim(), 'year': year};
-        }).where((r) => (r['name'] as String).isNotEmpty).toList(),
         'working_hours': {
           for (final entry in _hours.entries)
             entry.key: entry.value == null ? null : [entry.value!.open, entry.value!.close],
@@ -276,24 +256,6 @@ class _ServisimScreenState extends ConsumerState<ServisimScreen> {
                 hint: 'Har bir kun uchun ochilish/yopilish vaqti. Yopiq kunlarni "Dam" deb belgilang.',
                 child: _WorkingHoursEditor(hours: _hours, onChanged: () => setState(() {}))),
               _SectionCard(
-                title: 'Narxlar',
-                hint: 'Xizmatlaringiz va narxlari ro\'yxati. Buyer narxlarni ko\'rib darhol qaror qiladi.',
-                child: _PriceListEditor(rows: _prices,
-                    onAdd: () => setState(() => _prices.add(_PriceRow.empty())),
-                    onRemove: (i) => setState(() {
-                      _prices[i].dispose();
-                      _prices.removeAt(i);
-                    }))),
-              _SectionCard(
-                title: 'Sertifikatlar / Yutuqlar',
-                hint: 'Davlat litsenziyasi, Halal sertifikati va boshqalar.',
-                child: _CertListEditor(rows: _certs,
-                    onAdd: () => setState(() => _certs.add(_CertRow.empty())),
-                    onRemove: (i) => setState(() {
-                      _certs[i].dispose();
-                      _certs.removeAt(i);
-                    }))),
-              _SectionCard(
                 title: 'Galereya',
                 hint: 'Ish joyingiz, asboblar, hayvonlar rasmlari. Birinchi rasm asosiy ko\'rinadi.',
                 child: _GalleryEditor(gallery: gallery,
@@ -329,27 +291,6 @@ class _HourRange {
   final int open;
   final int close;
   const _HourRange(this.open, this.close);
-}
-
-
-class _PriceRow {
-  final TextEditingController service;
-  final TextEditingController price;
-  String unit;
-  _PriceRow({required this.service, required this.price, this.unit = 'bosh'});
-  factory _PriceRow.empty() => _PriceRow(
-      service: TextEditingController(), price: TextEditingController(), unit: 'bosh');
-  void dispose() { service.dispose(); price.dispose(); }
-}
-
-
-class _CertRow {
-  final TextEditingController name;
-  final TextEditingController year;
-  _CertRow({required this.name, required this.year});
-  factory _CertRow.empty() => _CertRow(
-      name: TextEditingController(), year: TextEditingController());
-  void dispose() { name.dispose(); year.dispose(); }
 }
 
 
@@ -525,89 +466,6 @@ class _HourCell extends StatelessWidget {
         decoration: BoxDecoration(border: Border.all(color: cs.outlineVariant),
             borderRadius: BorderRadius.circular(8)),
         child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700))));
-  }
-}
-
-
-class _PriceListEditor extends StatelessWidget {
-  final List<_PriceRow> rows;
-  final VoidCallback onAdd;
-  final ValueChanged<int> onRemove;
-  const _PriceListEditor({required this.rows, required this.onAdd, required this.onRemove});
-
-  static const _units = ['bosh', 'kg', 'soat', 'marta', 'kishi'];
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      ...List.generate(rows.length, (i) {
-        final row = rows[i];
-        return Padding(padding: const EdgeInsets.only(bottom: 10),
-          child: Row(children: [
-            Expanded(flex: 3, child: TextField(controller: row.service,
-                decoration: const InputDecoration(
-                    hintText: 'Xizmat', border: OutlineInputBorder(),
-                    isDense: true, contentPadding: EdgeInsets.all(10)))),
-            const SizedBox(width: 6),
-            Expanded(flex: 2, child: TextField(controller: row.price,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                    hintText: 'Narx', border: OutlineInputBorder(),
-                    isDense: true, contentPadding: EdgeInsets.all(10)))),
-            const SizedBox(width: 6),
-            DropdownButton<String>(value: row.unit,
-                items: _units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
-                onChanged: (v) {
-                  if (v == null) return;
-                  // mutate in place; parent rebuilds when Save runs via the central setState chain.
-                  row.unit = v;
-                  (context as Element).markNeedsBuild();
-                }),
-            IconButton(onPressed: () => onRemove(i),
-                icon: Icon(Icons.delete_outline_rounded, color: cs.error)),
-          ]));
-      }),
-      OutlinedButton.icon(onPressed: onAdd,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text("Yangi narx qo'shish")),
-    ]);
-  }
-}
-
-
-class _CertListEditor extends StatelessWidget {
-  final List<_CertRow> rows;
-  final VoidCallback onAdd;
-  final ValueChanged<int> onRemove;
-  const _CertListEditor({required this.rows, required this.onAdd, required this.onRemove});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      ...List.generate(rows.length, (i) {
-        final row = rows[i];
-        return Padding(padding: const EdgeInsets.only(bottom: 10),
-          child: Row(children: [
-            Expanded(flex: 4, child: TextField(controller: row.name,
-                decoration: const InputDecoration(
-                    hintText: 'Sertifikat nomi', border: OutlineInputBorder(),
-                    isDense: true, contentPadding: EdgeInsets.all(10)))),
-            const SizedBox(width: 6),
-            Expanded(flex: 2, child: TextField(controller: row.year,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                    hintText: 'Yil', border: OutlineInputBorder(),
-                    isDense: true, contentPadding: EdgeInsets.all(10)))),
-            IconButton(onPressed: () => onRemove(i),
-                icon: Icon(Icons.delete_outline_rounded, color: cs.error)),
-          ]));
-      }),
-      OutlinedButton.icon(onPressed: onAdd,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text("Yangi sertifikat qo'shish")),
-    ]);
   }
 }
 
