@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/network/providers.dart';
+import '../../shared/widgets/image_source_picker.dart';
 
 
 /// Servisim — qassob-only tab 3. CRUD surface for the v3.9 service-profile fields the buyer-app
@@ -30,12 +30,46 @@ class ServisimScreen extends ConsumerStatefulWidget {
 }
 
 
-/// Loads the qassob's profile shape once on tab open + caches it. Invalidated by the Save button.
+/// Loads the qassob's profile shape on tab open + caches it. Invalidated by the Save button.
+///
+/// v3.9.6: handles the "role flipped to QASSOB via admin but no QassobProfile row" case that bit
+/// users whose accounts were created before the v3.8.3 role-accepting backend deployed. When
+/// `/qassobs/me/` returns 404, we POST a minimal profile (full_name pulled from /auth/me/ via the
+/// JWT claim) and re-fetch so Servisim renders an editable empty profile instead of a dead-end
+/// "Profil topilmadi" message.
 final qassobMeProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  final api = ref.read(apiClientProvider);
   try {
-    final r = await ref.read(apiClientProvider).dio.get('/qassobs/me/');
+    final r = await api.dio.get('/qassobs/me/');
     if (r.statusCode == 200 && r.data is Map) {
       return Map<String, dynamic>.from(r.data as Map);
+    }
+    // 404 → profile doesn't exist yet. Bootstrap it with safe defaults that match the v3.8 wizard's
+    // first-save shape. The POST will 409 if a profile already exists (race) — in which case we
+    // just re-GET and return the existing row.
+    if (r.statusCode == 404) {
+      Map<String, dynamic>? me;
+      try {
+        final meResp = await api.dio.get('/auth/me/');
+        if (meResp.data is Map) me = Map<String, dynamic>.from(meResp.data as Map);
+      } catch (_) {}
+      final fullName = (me?['full_name'] as String?)?.trim();
+      final createPayload = <String, dynamic>{
+        'full_name': (fullName != null && fullName.isNotEmpty) ? fullName : 'Qassob',
+        'years_experience': 0,
+        'region': 'Toshkent',
+        'address': '',
+        'animals_supported': const <String>[],
+        'is_slaughterhouse': false,
+        'daily_capacity_head': 10,
+      };
+      try {
+        await api.dio.post('/qassobs/me/', data: createPayload);
+      } catch (_) {/* swallow — re-GET below will tell the real story */}
+      final r2 = await api.dio.get('/qassobs/me/');
+      if (r2.statusCode == 200 && r2.data is Map) {
+        return Map<String, dynamic>.from(r2.data as Map);
+      }
     }
   } catch (_) {}
   return null;
@@ -147,18 +181,18 @@ class _ServisimScreenState extends ConsumerState<ServisimScreen> {
   // ---- gallery handlers (immediate network calls, no batched save) ----
 
   Future<void> _pickAndUploadPhoto(int qassobMaybeUnused) async {
-    // Capture messenger BEFORE the await so we don't reach into context after an async gap (the
-    // `use_build_context_synchronously` lint protects against the StatefulWidget being unmounted
-    // mid-await; storing the messenger sidesteps it).
+    // Capture messenger BEFORE the await so we don't reach into context after an async gap.
     final messenger = ScaffoldMessenger.of(context);
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 82);
-    if (picked == null) return;
+    // showImageSourcePicker presents the camera-or-gallery sheet so qassobs can either snap a fresh
+    // workplace photo or pick one from their phone — previously the only option was the gallery,
+    // which was a dead-end for qassobs without an existing shot.
+    final pickedPath = await showImageSourcePicker(context, imageQuality: 82);
+    if (pickedPath == null) return;
     setState(() => _saving = true);
     try {
       final form = FormData.fromMap({
-        'image': await MultipartFile.fromFile(picked.path,
-            filename: picked.path.split('/').last),
+        'image': await MultipartFile.fromFile(pickedPath,
+            filename: pickedPath.split('/').last),
       });
       final r = await ref.read(apiClientProvider).dio.post('/qassobs/me/photos/', data: form);
       final ok = (r.statusCode != null && r.statusCode! >= 200 && r.statusCode! < 300);

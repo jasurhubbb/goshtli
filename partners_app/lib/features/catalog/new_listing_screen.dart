@@ -5,10 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/widgets/image_source_picker.dart';
 
 
 /// Full-page "Yangi tovar qo'shish".
@@ -150,13 +149,23 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
     return const [];
   }
 
-  /// Image picker — gallery only for now. 80% quality keeps thumbs readable without blowing up file
-  /// size; camera source needs platform-perm boilerplate we can add in v2.
+  /// Picks a photo via the shared camera-or-gallery sheet. 80% quality keeps thumbnails readable
+  /// without blowing up file size on cellular uploads.
   Future<void> _pickPhoto() async {
-    try {
-      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
-      if (picked != null) setState(() => _photo = File(picked.path));
-    } catch (_) {}
+    final picked = await showImageSourcePicker(context, imageQuality: 80);
+    if (picked != null) setState(() => _photo = File(picked));
+  }
+
+  void _openFullscreen() {
+    if (_photo == null) return;
+    Navigator.of(context).push(MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => Scaffold(backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white, elevation: 0),
+          body: GestureDetector(onTap: () => Navigator.pop(context),
+            child: Center(child: InteractiveViewer(minScale: 0.5, maxScale: 4,
+                child: Image.file(_photo!, fit: BoxFit.contain)))))));
   }
 
   bool get _valid {
@@ -246,7 +255,10 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
             // onChanged on the TextFields rebuilds button state — without this, _valid runs only on
             // chip taps and Saqlash never enables after typing the last field.
             children: [
-              GestureDetector(onTap: _pickPhoto,
+              // Tap empty → pick. Tap filled image → fullscreen preview. Explicit "Boshqa rasm
+              // tanlash" button below the filled image is the re-pick affordance so users don't
+              // have to guess where to tap to swap photos.
+              GestureDetector(onTap: _photo == null ? _pickPhoto : _openFullscreen,
                 child: Container(height: 180,
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerLowest,
@@ -262,6 +274,10 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
                       : ClipRRect(borderRadius: BorderRadius.circular(18),
                           child: Image.file(_photo!, fit: BoxFit.cover,
                               width: double.infinity, height: double.infinity)))),
+              if (_photo != null) Padding(padding: const EdgeInsets.only(top: 10),
+                  child: OutlinedButton.icon(onPressed: _pickPhoto,
+                      icon: const Icon(Icons.image_outlined),
+                      label: const Text("Boshqa rasm tanlash"))),
               const SizedBox(height: 18),
               TextField(controller: _name,
                 onChanged: (_) => setState(() {}),

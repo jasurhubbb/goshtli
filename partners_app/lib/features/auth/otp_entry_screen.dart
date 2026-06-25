@@ -46,7 +46,6 @@ class _OtpEntryScreenState extends ConsumerState<OtpEntryScreen> {
 
   Future<void> _submit() async {
     if (_code.length < 6) return;
-    final t = AppLocalizations.of(context);
     setState(() { _submitting = true; _error = null; });
     HapticFeedback.selectionClick();
     final router = GoRouter.of(context);
@@ -64,9 +63,22 @@ class _OtpEntryScreenState extends ConsumerState<OtpEntryScreen> {
         if (mounted) router.go('/home');
       }
     } on FirebaseAuthException catch (e) {
-      if (mounted) setState(() { _error = e.code == 'invalid-verification-code' ? t.otpInvalid
-                                           : e.message ?? 'Firebase error: ${e.code}';
-                                  _submitting = false; });
+      if (mounted) setState(() {
+        // Distinguish the two common failure modes Firebase rolls up under different codes. The
+        // previous behavior mapped 'invalid-verification-code' to a combined "noto'g'ri yoki
+        // muddati o'tgan" string which confused users — they'd see "muddati o'tgan" (expired)
+        // after entering the wrong digits and assume their code had timed out.
+        switch (e.code) {
+          case 'invalid-verification-code':
+            _error = "Kod noto'g'ri — qaytadan urinib ko'ring";
+          case 'code-expired':
+          case 'session-expired':
+            _error = "Kod muddati o'tgan — qayta kod yuboring";
+          default:
+            _error = e.message ?? 'Firebase error: ${e.code}';
+        }
+        _submitting = false;
+      });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _submitting = false; });
     }

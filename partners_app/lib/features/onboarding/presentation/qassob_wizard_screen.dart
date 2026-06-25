@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-
 import '../../../core/auth/partner_auth_notifier.dart';
 import '../../../core/network/providers.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/image_source_picker.dart';
 import '../providers/onboarding_draft_provider.dart';
 import 'one_question_scaffold.dart';
 
@@ -556,12 +555,21 @@ class _PhotoSubmitPageState extends ConsumerState<_PhotoSubmitPage> {
   }
 
   Future<void> _pick() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.camera, maxWidth: 1280);
-    if (file != null) {
-      setState(() => _path = file.path);
-      ref.read(onboardingDraftProvider.notifier).update((d) => d.copyWith(photoPath: file.path));
+    // showImageSourcePicker gives the user camera-vs-gallery choice, with BoxFit.cover handled by
+    // the preview below. Replaces the hard-coded camera-only path that was a dead-end for users
+    // without a working camera or who already had a good photo in gallery.
+    final picked = await showImageSourcePicker(context);
+    if (picked != null) {
+      setState(() => _path = picked);
+      ref.read(onboardingDraftProvider.notifier).update((d) => d.copyWith(photoPath: picked));
     }
+  }
+
+  void _openFullscreen() {
+    if (_path == null) return;
+    Navigator.of(context).push(MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _FullscreenImageViewer(path: _path!)));
   }
 
   @override
@@ -578,24 +586,48 @@ class _PhotoSubmitPageState extends ConsumerState<_PhotoSubmitPage> {
       onSkip: widget.submitting ? null : widget.onSubmit,
       skipLabel: t.skip,
       child: Column(children: [
-        GestureDetector(onTap: _pick, child: Container(
-          height: 220,
-          decoration: BoxDecoration(color: cs.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: cs.outlineVariant)),
-          alignment: Alignment.center,
-          child: _path != null
-              ? ClipRRect(borderRadius: BorderRadius.circular(20),
-                  child: Image.file(File(_path!), fit: BoxFit.cover, width: double.infinity, height: 220))
-              : Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.camera_alt_rounded, size: 48, color: cs.onSurfaceVariant),
-                  const SizedBox(height: 8),
-                  Text(t.onboardingTakePhoto, style: TextStyle(color: cs.onSurfaceVariant)),
-                ]))),
+        // Tap the empty area → pick. Tap the filled image → fullscreen preview. The "Boshqa rasm
+        // tanlash" button below the picked image is the explicit re-pick affordance.
+        GestureDetector(onTap: _path == null ? _pick : _openFullscreen,
+          child: Container(height: 220,
+            decoration: BoxDecoration(color: cs.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: cs.outlineVariant)),
+            alignment: Alignment.center,
+            child: _path != null
+                ? ClipRRect(borderRadius: BorderRadius.circular(20),
+                    child: Image.file(File(_path!),
+                        fit: BoxFit.cover, width: double.infinity, height: 220))
+                : Column(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.add_a_photo_outlined, size: 48, color: cs.onSurfaceVariant),
+                    const SizedBox(height: 8),
+                    Text(t.onboardingTakePhoto, style: TextStyle(color: cs.onSurfaceVariant)),
+                  ]))),
+        if (_path != null) Padding(padding: const EdgeInsets.only(top: 12),
+            child: OutlinedButton.icon(onPressed: _pick,
+                icon: const Icon(Icons.image_outlined),
+                label: const Text("Boshqa rasm tanlash"))),
         if (widget.error != null) Padding(padding: const EdgeInsets.only(top: 12),
             child: Text(widget.error!, style: TextStyle(color: cs.error))),
       ]),
     );
+  }
+}
+
+
+/// Simple fullscreen viewer with pinch-to-zoom + close-on-tap. Used by every "tap picked photo to
+/// preview" affordance in the partner app (wizard pages, Servisim gallery, listing form).
+class _FullscreenImageViewer extends StatelessWidget {
+  final String path;
+  const _FullscreenImageViewer({required this.path});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(backgroundColor: Colors.black,
+      appBar: AppBar(backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white, elevation: 0),
+      body: GestureDetector(onTap: () => Navigator.pop(context),
+        child: Center(child: InteractiveViewer(minScale: 0.5, maxScale: 4,
+            child: Image.file(File(path), fit: BoxFit.contain)))));
   }
 }
 
