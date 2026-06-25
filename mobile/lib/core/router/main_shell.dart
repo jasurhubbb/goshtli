@@ -55,14 +55,24 @@ class MainShell extends StatelessWidget {
       // own visibility (hides when cart is empty); we additionally hide on the Savat tab itself.
       bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
         if (showFloatingCart) CartFloatingBar(onNavigateToCart: () => _onTap(_cartIndex)),
-        NavigationBar(
-          selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: _onTap,
-          destinations: destinations,
-          elevation: 0,
-          backgroundColor: cs.surface,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        ),
+        // v3.8 — added Servislar = 5 tabs. NavigationBar's default label style (Material 3
+        // labelMedium ≈ 12sp) wrapped long UZ labels like "Buyurtmalar" / "Servislar" onto two
+        // lines on narrower phones. Force a tighter labelTextStyle here so all 5 labels fit on a
+        // single line without truncation. height: 1.0 collapses the line-box so even a forced wrap
+        // (extreme small screens) doesn't push the bar height up.
+        NavigationBarTheme(
+          data: const NavigationBarThemeData(
+            labelTextStyle: WidgetStatePropertyAll(TextStyle(
+              fontSize: 10.5, fontWeight: FontWeight.w600, height: 1.0,
+              letterSpacing: -0.1))),
+          child: NavigationBar(
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: _onTap,
+            destinations: destinations,
+            elevation: 0,
+            backgroundColor: cs.surface,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          )),
       ]),
     );
   }

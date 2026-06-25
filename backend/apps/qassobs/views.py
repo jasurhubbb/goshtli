@@ -1,20 +1,21 @@
 """Qassob endpoints — owner-CRUD (`/qassobs/me/`) + public discovery (`/qassobs/`).
 
 Public list/detail feed the buyer-app Servislar tab. Owner CRUD feeds the partner-app Profil + Bosh
-sahifa toggles.
+sahifa toggles + Servisim CRUD (v3.9).
 """
 import math
 
+from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
-from rest_framework import generics, permissions, status
+from rest_framework import generics, parsers, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsQassob
-from .models import QassobProfile
+from .models import QassobPhoto, QassobProfile
 from .serializers import (AvailabilityToggleSerializer, CapacityUpdateSerializer,
-                          QassobMeSerializer, QassobPublicSerializer)
+                          QassobMeSerializer, QassobPhotoSerializer, QassobPublicSerializer)
 
 
 class QassobMeView(generics.GenericAPIView):
@@ -151,3 +152,76 @@ def _haversine_km(lat1, lng1, lat2, lng2):
     dlng = math.radians(lng2 - lng1)
     a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng/2)**2
     return 2 * r * math.asin(math.sqrt(a))
+
+
+# ============================================================================
+# v3.9 — Gallery CRUD. Multipart uploads can't ride on the existing /qassobs/me/
+# PATCH cleanly (DRF doesn't compose multipart + nested writes well), so the
+# gallery gets its own owner-scoped endpoints. List+create at /me/photos/,
+# delete at /me/photos/<pk>/. Reorder is a single bulk-PATCH at /me/photos/
+# reorder/ that accepts {ids: [...]} so the partner-app's drag-reorder UI can
+# persist a new order in one round-trip.
+# ============================================================================
+
+class QassobGalleryListCreateView(generics.ListCreateAPIView):
+    """GET / POST /api/v1/qassobs/me/photos/ — owner reads + multipart upload.
+
+    Position auto-increments on create so each new photo lands at the end of the strip.
+    """
+    permission_classes = (IsQassob,)
+    serializer_class = QassobPhotoSerializer
+    parser_classes = (parsers.MultiPartParser, parsers.FormParser)
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False): return QassobPhoto.objects.none()
+        return QassobPhoto.objects.filter(qassob__user=self.request.user)
+
+    def perform_create(self, serializer):
+        qassob = get_object_or_404(QassobProfile, user=self.request.user)
+        next_pos = (QassobPhoto.objects.filter(qassob=qassob)
+                    .order_by("-position").values_list("position", flat=True).first() or 0) + 1
+        serializer.save(qassob=qassob, position=next_pos)
+
+
+@extend_schema(parameters=[OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH)])
+class QassobGalleryDeleteView(generics.DestroyAPIView):
+    """DELETE /api/v1/qassobs/me/photos/<pk>/ — owner-only. 404 if pk belongs to another qassob (we
+    refuse to leak cross-account existence)."""
+    permission_classes = (IsQassob,)
+    serializer_class = QassobPhotoSerializer
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False): return QassobPhoto.objects.none()
+        return QassobPhoto.objects.filter(qassob__user=self.request.user)
+
+
+@extend_schema(
+    request={"type": "object", "properties": {"ids": {"type": "array", "items": {"type": "integer"}}},
+             "required": ["ids"]},
+    responses={200: QassobPhotoSerializer(many=True)},
+    description="POST {ids: [photo_id, …]} reorders the caller's gallery to match the array's index. "
+                "Atomic — partial updates leave the gallery in its original order.")
+class QassobGalleryReorderView(APIView):
+    """POST /api/v1/qassobs/me/photos/reorder/ — single-roundtrip reorder for the drag-handle UI.
+
+    `ids` must be a permutation of the caller's full gallery. Any unknown id or missing id raises 400
+    so the client knows to refetch instead of persisting a half-reorder.
+    """
+    permission_classes = (IsQassob,)
+
+    def post(self, request):
+        ids = request.data.get("ids", None)
+        if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+            return Response({"detail": "Body must be {ids: [int, int, ...]}."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        qs = QassobPhoto.objects.filter(qassob__user=request.user)
+        owned_ids = set(qs.values_list("id", flat=True))
+        if set(ids) != owned_ids:
+            return Response({"detail": "ids must be a permutation of your full gallery — refetch and retry."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        from django.db import transaction
+        with transaction.atomic():
+            for pos, pid in enumerate(ids, start=1):
+                QassobPhoto.objects.filter(pk=pid).update(position=pos)
+        fresh = QassobPhoto.objects.filter(qassob__user=request.user).order_by("position")
+        return Response(QassobPhotoSerializer(fresh, many=True, context={"request": request}).data)

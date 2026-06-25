@@ -1,9 +1,19 @@
-"""Django admin for QassobProfile. Workers verify qassobs from the list view after KYC docs land in
-apps.accounts admin. Bulk action 'Verify' flips is_verified=True for selected rows; a post-save signal
-in apps.qassobs.signals fires an FCM push so the partner sees the green banner on next app open."""
+"""Django admin for QassobProfile + QassobPhoto. Workers verify qassobs from the list view after KYC
+docs land in apps.accounts admin. Bulk action 'Verify' flips is_verified=True for selected rows; a
+post-save signal in apps.qassobs.signals fires an FCM push so the partner sees the green banner on
+next app open. v3.9 adds the QassobPhoto inline so admins can preview the gallery + reorder/remove
+shots without the partner having to do it themselves."""
 from django.contrib import admin, messages
 
-from .models import QassobProfile
+from .models import QassobPhoto, QassobProfile
+
+
+class QassobPhotoInline(admin.TabularInline):
+    model = QassobPhoto
+    extra = 0
+    fields = ("image", "caption", "position", "created_at")
+    readonly_fields = ("created_at",)
+    ordering = ("position",)
 
 
 @admin.register(QassobProfile)
@@ -17,12 +27,17 @@ class QassobProfileAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at", "rating_avg", "rating_count")
     autocomplete_fields = ("user",)
     actions = ("mark_verified", "mark_unverified")
+    inlines = (QassobPhotoInline,)
 
     fieldsets = (
         ("Identity", {"fields": ("user", "full_name", "years_experience")}),
         ("Location", {"fields": ("region", "address", ("lat", "lng"), "service_radius_km")}),
         ("Service", {"fields": ("animals_supported", "is_slaughterhouse", "daily_capacity_head",
                                  "photo", "phone_visible", "telegram_username")}),
+        # v3.9 — Service-provider profile sections shown to buyers on the detail page
+        ("Bio + Specialties (v3.9)", {"fields": ("bio", "specialties", "languages")}),
+        ("Pricing + Hours (v3.9)", {"fields": ("price_list", "working_hours")}),
+        ("Certifications (v3.9)", {"fields": ("certifications",), "classes": ("collapse",)}),
         ("Status", {"fields": ("is_verified", "is_open_now")}),
         ("Ratings (denormalised)", {"fields": ("rating_avg", "rating_count"), "classes": ("collapse",)}),
         ("Audit", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),

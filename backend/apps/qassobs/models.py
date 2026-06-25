@@ -98,6 +98,60 @@ class QassobProfile(TimeStampedModel):
     # BUSINESS_LICENSE) reach is_approved=True. Buyers see only verified qassobs.
     is_verified = models.BooleanField(_("verified by admin"), default=False, db_index=True)
 
+    # ============================================================================
+    # v3.9 — Service-provider profile fields (lawyer-app-style detail page on the
+    # buyer-app Servislar tab). Each one is editable from the partner-app Servisim
+    # tab's CRUD UI; all are blank/empty by default so legacy v3.8 qassobs keep
+    # working without a backfill.
+    # ============================================================================
+
+    # 1) Bio — free-form intro the qassob writes about themselves / their family business. Rendered
+    #    on the detail page above the structured sections. blank=True so onboarding stays a 7-page
+    #    wizard; qassob fills this from Servisim later. ~600 chars is enough for 3-5 short paragraphs.
+    bio = models.TextField(_("about / bio"), max_length=2000, blank=True,
+                            help_text=_("Free-form description: who you are, family business history, "
+                                       "what makes you different. Shown above the structured sections."))
+
+    # 2) Specialties — JSON list of free-form Uzbek strings the qassob picks/types ("Qurbonlik",
+    #    "To'y go'shti", "Restoran ulgurji", "Halal sertifikati", "Ekspress so'yish", etc.). Rendered as
+    #    chips on the buyer card + detail. Keep as JSON list of strings (not enum) so the qassob can
+    #    add anything they offer without us shipping a new build to expand a choices list.
+    specialties = models.JSONField(_("specialties"), default=list, blank=True,
+                                    help_text=_("List of short strings — e.g. ['Qurbonlik', 'Halal', "
+                                               "'Ekspress so\\'yish']. Rendered as chips on the buyer card."))
+
+    # 3) Certifications / awards — JSON list of {name, year} dicts. Optional year (some certs are
+    #    perpetual). Buyer detail page renders these as a vertical list with the year on the right.
+    certifications = models.JSONField(_("certifications"), default=list, blank=True,
+                                       help_text=_("List of {name, year} dicts. year is optional."))
+
+    # 4) Working hours — JSON dict keyed by weekday code (mon/tue/.../sun) → [open_h, close_h] (24h
+    #    integers) OR null for closed days. UI shows "Hozir ochiq · 09:00–21:00" if today is a working
+    #    day, or "Bugun yopiq". Stays decoupled from is_open_now (manual override) so the qassob can
+    #    flip Closed for emergencies without losing their normal schedule.
+    working_hours = models.JSONField(_("working hours"), default=dict, blank=True,
+                                      help_text=_("Per-weekday hours: {mon: [9, 21], tue: [9, 21], "
+                                                 "sun: null}. null = closed that day."))
+
+    # 5) Price list — JSON list of {service, price_uzs, unit} rows so the buyer can see "Mol so'yish:
+    #    250000 so'm/bosh" at a glance instead of starting a chat to ask. Stored as integer UZS to
+    #    avoid Decimal precision pain in JSON serialization.
+    price_list = models.JSONField(_("price list"), default=list, blank=True,
+                                   help_text=_("List of {service, price_uzs, unit} dicts. "
+                                              "Example: [{'service': 'Mol so\\'yish', 'price_uzs': 250000, "
+                                              "'unit': 'bosh'}]"))
+
+    # 6) Languages spoken — JSON list of ISO codes (uz / ru / en / tg). Surfaces as flag chips so a
+    #    Russian-speaking buyer in Tashkent can quickly find qassobs they can talk to without picking
+    #    up a translator. Defaults to ['uz'] on profile creation in the serializer so the field is
+    #    never empty in the UI; legacy rows get backfilled by the data migration.
+    languages = models.JSONField(_("languages spoken"), default=list, blank=True,
+                                  help_text=_("List of ISO codes: ['uz', 'ru', 'en', 'tg']."))
+
+    # 7) Gallery photos live in a separate QassobPhoto model (below) — FK + position so the qassob can
+    #    reorder. We keep the single `photo` field above as the primary/avatar shot for the card grid
+    #    and let the gallery hold supplementary shots (shop, equipment, animals).
+
     class Meta:
         verbose_name = _("qassob profile")
         verbose_name_plural = _("qassob profiles")
@@ -109,3 +163,31 @@ class QassobProfile(TimeStampedModel):
         ]
 
     def __str__(self): return f"Qassob {self.full_name} ({self.user.email})"
+
+
+def qassob_gallery_photo_path(instance, filename):
+    """Per-qassob folder so admin/storage cleanup is one-folder-delete on profile removal."""
+    return f"qassobs/{instance.qassob.user_id}/gallery/{filename}"
+
+
+class QassobPhoto(TimeStampedModel):
+    """Gallery photo for a qassob's detail page. Separate model from QassobProfile.photo (which is the
+    single primary/avatar shot) because the gallery is typically 3-8 shots that the qassob can reorder
+    + caption + delete independently of their avatar. Renders as a horizontal-scroll strip on the
+    buyer-app detail page.
+    """
+
+    qassob = models.ForeignKey(QassobProfile, on_delete=models.CASCADE, related_name="gallery",
+                                db_index=True)
+    image = models.ImageField(_("image"), upload_to=qassob_gallery_photo_path)
+    caption = models.CharField(_("caption"), max_length=200, blank=True,
+                                help_text=_("Optional short caption shown under the photo."))
+    position = models.PositiveSmallIntegerField(_("position"), default=0,
+                                                 help_text=_("Display order; lower numbers appear first."))
+
+    class Meta:
+        verbose_name = _("qassob photo")
+        verbose_name_plural = _("qassob photos")
+        ordering = ("position", "created_at")
+
+    def __str__(self): return f"Photo #{self.pk} of {self.qassob.full_name}"
