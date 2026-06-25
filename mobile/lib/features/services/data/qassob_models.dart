@@ -6,6 +6,9 @@
 /// "Halal · Qurbonlik" specialty preview on each card without a per-card detail roundtrip).
 class Qassob {
   final int id;
+  // v3.9 — underlying User.id so the buyer-app Chat button can POST /chats/start/ with this value
+  // as other_user_id without a second roundtrip to resolve qassob → user.
+  final int? userId;
   final String fullName;
   final int yearsExperience;
   final String region;
@@ -32,6 +35,7 @@ class Qassob {
 
   const Qassob({
     required this.id,
+    this.userId,
     required this.fullName,
     required this.yearsExperience,
     required this.region,
@@ -68,6 +72,7 @@ class Qassob {
     });
     return Qassob(
       id: j['id'] as int,
+      userId: j['user_id'] == null ? null : int.tryParse(j['user_id'].toString()),
       fullName: (j['full_name'] ?? '') as String,
       yearsExperience: (j['years_experience'] ?? 0) as int,
       region: (j['region'] ?? '') as String,

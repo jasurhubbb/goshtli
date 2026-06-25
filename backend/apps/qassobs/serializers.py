@@ -213,10 +213,13 @@ class QassobPublicSerializer(serializers.ModelSerializer):
     telegram = serializers.CharField(source="telegram_username", read_only=True)
     distance_km = serializers.SerializerMethodField()
     gallery = QassobPhotoSerializer(many=True, read_only=True)
+    # v3.9: surface the underlying User.id so the buyer-app Chat button can POST /chats/start/ with
+    # other_user_id without a second roundtrip to resolve the qassob → user relationship.
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
 
     class Meta:
         model = QassobProfile
-        fields = ("id", "full_name", "years_experience",
+        fields = ("id", "user_id", "full_name", "years_experience",
                   "region", "address", "lat", "lng", "service_radius_km",
                   "animals_supported", "is_slaughterhouse",
                   "photo_url", "phone", "telegram",

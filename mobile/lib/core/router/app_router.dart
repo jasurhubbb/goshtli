@@ -43,6 +43,7 @@ import '../../features/payments/presentation/my_cards_screen.dart';
 import '../../features/payments/presentation/order_pay_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/profile_settings_screen.dart';
+import '../../features/services/presentation/qassob_detail_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
 import '../location/location_providers.dart';
 import 'main_shell.dart';
@@ -155,6 +156,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/listings/new', name: 'listing-new', builder: (_, _) => const ListingCreateScreen()),
       GoRoute(path: '/listings/:id', name: 'listing-detail',
         builder: (_, gs) => ListingDetailScreen(listingId: int.parse(gs.pathParameters['id']!))),
+      // v3.9 — Qassob (butcher service) detail. Reached from the Servislar tab card tap. Pushes
+      // above the tab bar so the back arrow returns to Servislar without losing scroll state.
+      GoRoute(path: '/servislar/:id', name: 'qassob-detail',
+        builder: (_, gs) => QassobDetailScreen(qassobId: int.parse(gs.pathParameters['id']!))),
       GoRoute(path: '/orders/:id', name: 'order-detail',
         builder: (_, gs) => OrderDetailScreen(orderId: int.parse(gs.pathParameters['id']!))),
       // v3.5 — WebView checkout. Reachable from the cart "Buyurtma berish" CTA right after the order is
