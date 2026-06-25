@@ -33,11 +33,15 @@ exec gosu app sh -c '
       python manage.py seed_demo || echo "[entrypoint] seed_demo failed; continuing anyway"
   fi
 
-  # exec replaces the shell with gunicorn so signals (SIGTERM on container stop) propagate cleanly
-  exec gunicorn config.wsgi:application \
-    --bind "0.0.0.0:${PORT:-8000}" \
-    --workers 3 \
-    --timeout 60 \
-    --access-logfile - \
-    --error-logfile -
+  # v3.9 — swapped gunicorn (WSGI) for uvicorn (ASGI) so the same process serves HTTP + WebSocket
+  # protocols. ProtocolTypeRouter in config/asgi.py dispatches per-protocol; existing DRF views
+  # continue to work unchanged. `--workers 2` keeps memory predictable on Railway free tier; lift
+  # later if HTTP request throughput becomes the bottleneck (chat is the long-lived workload here
+  # and benefits more from event-loop concurrency than from extra processes).
+  exec uvicorn config.asgi:application \
+    --host 0.0.0.0 --port "${PORT:-8000}" \
+    --workers 2 \
+    --proxy-headers --forwarded-allow-ips="*" \
+    --access-log \
+    --log-level info
 '

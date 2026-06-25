@@ -16,7 +16,12 @@ DJANGO_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.co
                "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles"]
 THIRD_PARTY_APPS = ["rest_framework", "rest_framework_simplejwt", "django_filters", "corsheaders", "drf_spectacular",
                     # Row-level audit trail (apps.listings.Listing, apps.markets.Market) — v3.1 catalog overhaul
-                    "simple_history"]
+                    "simple_history",
+                    # v3.9 — Channels powers the WebSocket chat consumer. MUST come before staticfiles in
+                    # INSTALLED_APPS so its `runserver` override (ASGI-aware) wins; if it's listed after,
+                    # plain HTTP `runserver` boots and WebSockets silently 404 in development. Production
+                    # runs uvicorn directly so the ordering doesn't matter there, but local dev does.
+                    "channels"]
 LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               "apps.listings", "apps.orders", "apps.notifications",
               # v2 Milestone C — social + trust features
@@ -236,3 +241,36 @@ CELERY_TASK_TIME_LIMIT = 90
 # Eager mode flag — flipped True in test settings so pytest doesn't need a running broker.
 CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=False, cast=bool)
 CELERY_TASK_EAGER_PROPAGATES = True  # in eager mode, surface exceptions to the caller instead of swallowing
+
+
+# ----- v3.9 Django Channels (WebSocket chat) -----
+#
+# CHANNEL_LAYERS is what lets multiple uvicorn workers / containers broadcast events to each other
+# (when worker A receives "new message" on its WS, worker B's connected client also needs to know).
+# In production this routes through Redis; in tests/dev without Redis we fall back to the in-memory
+# channel layer which works for a single-process runserver.
+#
+# Redis URL pattern reuses the Celery broker URL (same Redis instance, different logical DB index
+# so the channel-layer messages don't collide with Celery queues).
+_REDIS_URL = config("REDIS_URL", default="") or CELERY_BROKER_URL
+if _REDIS_URL.startswith("redis://"):
+    # Use db 2 for channels (0 is celery broker, 1 was sometimes used for celery results).
+    _CHANNELS_REDIS = _REDIS_URL.rstrip("/").rsplit("/", 1)[0] + "/2"
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [_CHANNELS_REDIS],
+                # Lift the default 100-msg channel-buffer to 500 so a bursty supplier/qassob exchange
+                # doesn't drop messages under brief Redis hiccups.
+                "capacity": 500,
+                # Channel-level deadline; if a worker hasn't drained its inbox in 60s the connection
+                # gets reset rather than buffering indefinitely.
+                "expiry": 60,
+            },
+        },
+    }
+else:
+    # Local dev / test without Redis — in-memory channel layer. Single-process only; broadcasts work
+    # within one runserver but won't cross workers.
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}

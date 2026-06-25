@@ -11,8 +11,16 @@ firebase-admin>=6.5         # FCM push notifications — Milestone E.5 (apps/not
 django-simple-history>=3.7  # row-level audit trail on Listing + Market (v3.1 catalog overhaul)
 django-storages[s3]>=1.14   # S3-compatible storage backend — used with Cloudflare R2 in production
 celery>=5.4                 # async task queue — image resize, cache warming, daily reports
-redis>=5.0                  # broker + result backend for Celery + (later) cache-aside layer
+redis>=5.0                  # broker + result backend for Celery + Channels presence + cache-aside
 gunicorn>=22.0
+# ----- v3.9 WebSocket chat stack -----
+# Channels gives us the ProtocolTypeRouter + Consumer abstractions. channels-redis is the
+# cross-worker channel layer (presence-aware broadcast across uvicorn workers). uvicorn[standard]
+# serves both HTTP and WebSocket protocols from one process; replaces gunicorn at runtime (see
+# entrypoint.sh — gunicorn stays in the lockfile for tooling that still wants WSGI).
+channels>=4.1
+channels-redis>=4.2
+uvicorn[standard]>=0.32
 
 # WhiteNoise — serves STATIC_ROOT directly from gunicorn without needing nginx in front. Required when
 # DEBUG=False (Django's built-in /static/ handler is disabled), which is why all /static/admin/* requests
