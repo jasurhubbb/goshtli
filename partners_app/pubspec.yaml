@@ -48,6 +48,7 @@ dependencies:
 
   # JSON model codegen
   json_annotation: ^4.9.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

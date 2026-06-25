@@ -30,6 +30,7 @@ dependencies:
   flutter_map: ^7.0.2                     # OSM tile map for the delivery-address picker (v3.1) — no API key required
   latlong2: ^0.9.1                        # LatLng type used by flutter_map; tiny dependency
   url_launcher: ^6.3.1                    # opens Telegram deep-link from the "Biz bilan bog'lanish" contact sheet
+  web_socket_channel: ^3.0.3
   # image_picker is already declared above for listing photos; admin new-listing form reuses the same plugin.
 
 # Build/test/codegen-only deps — never shipped to users

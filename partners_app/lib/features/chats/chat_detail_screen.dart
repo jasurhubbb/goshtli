@@ -1,39 +1,33 @@
-// ChatDetailScreen — v3.9 real-time edition.
-//
-// Replaces the v2 5s-polling architecture with a Django Channels WebSocket. Optimistic local echo
-// when sending (your message bubble appears before the server round-trips), then gets reconciled
-// when the canonical row arrives back via the WS group broadcast. Auto-reconnect with capped
-// backoff is handled by the underlying ChatWebSocket; the UI just shows a thin "Ulanmoqda…" banner
-// when disconnected.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_core/shared_core.dart';
 
-import '../../../core/config/env.dart';
-import '../../../l10n/app_localizations.dart';
-import '../../auth/providers/auth_providers.dart';
-import '../../auth/providers/auth_state.dart';
-import '../data/chat_ws.dart';
+import '../../core/auth/partner_auth_notifier.dart';
+import '../../core/config/env.dart';
+import '../../core/network/providers.dart';
+import 'data/chat_ws.dart';
 
 
-class ChatDetailScreen extends ConsumerStatefulWidget {
+/// Partner-side chat detail. Same lifecycle + rendering as the buyer-app sibling: open a WebSocket,
+/// listen for history + new messages, send via WS, render optimistic local bubbles while the
+/// canonical row round-trips back. Auto-reconnect with capped backoff is handled by ChatWebSocket.
+class PartnerChatDetailScreen extends ConsumerStatefulWidget {
   final int conversationId;
-  const ChatDetailScreen({super.key, required this.conversationId});
+  const PartnerChatDetailScreen({super.key, required this.conversationId});
   @override
-  ConsumerState<ChatDetailScreen> createState() => _ChatDetailScreenState();
+  ConsumerState<PartnerChatDetailScreen> createState() => _PartnerChatDetailScreenState();
 }
 
 
-class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
+class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
 
   ChatWebSocket? _ws;
   StreamSubscription<ChatWsEvent>? _eventsSub;
   final List<ChatWsMessage> _messages = [];
-  // Pending optimistic-local bubbles — keyed by a synthetic negative id so they don't collide with
-  // real server ids. Cleared when the matching canonical row arrives back via the WS broadcast.
   final List<_PendingMessage> _pending = [];
   bool _connected = false;
   String? _statusBanner;
@@ -74,7 +68,6 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           _scrollToBottom();
         case ChatWsNewMessage(message: final m):
           _messages.add(m);
-          // Drop any pending optimistic bubble that matches this real one (same sender + text).
           _pending.removeWhere((p) => p.text == m.text && m.senderId == p.senderId);
           _scrollToBottom();
       }
@@ -82,7 +75,6 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   }
 
   void _scrollToBottom() {
-    // Defer until after the rebuild settles so the new item's height is registered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
       _scroll.animateTo(_scroll.position.maxScrollExtent,
@@ -93,7 +85,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   void _send() {
     final text = _input.text.trim();
     if (text.isEmpty) return;
-    final auth = ref.read(authNotifierProvider);
+    final auth = ref.read(partnerAuthProvider);
     final myUid = (auth is AuthAuthenticated) ? auth.user.id : 0;
     _input.clear();
     setState(() {
@@ -114,29 +106,24 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final auth = ref.watch(authNotifierProvider);
+    final auth = ref.watch(partnerAuthProvider);
     final myUid = (auth is AuthAuthenticated) ? auth.user.id : 0;
     final cs = Theme.of(context).colorScheme;
 
-    // Compose the rendered bubble list from server-confirmed messages + pending optimistic ones.
     final bubbles = [
       ..._messages.map((m) => _BubbleData(text: m.text, mine: m.senderId == myUid)),
       ..._pending.map((p) => _BubbleData(text: p.text, mine: true, pending: true)),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.chatsTitle),
-        // Tiny connection-status dot on the right edge of the appbar — green/amber. Less obtrusive
-        // than the banner approach but enough info for users to debug "why isn't my message going".
+      appBar: AppBar(title: const Text('Chat'),
         actions: [Padding(padding: const EdgeInsets.only(right: 16),
           child: Center(child: Container(width: 9, height: 9,
             decoration: BoxDecoration(shape: BoxShape.circle,
                 color: _connected ? const Color(0xFF1B5E20) : const Color(0xFFEF6C00)))))]),
       body: SafeArea(child: Column(children: [
         if (_statusBanner != null)
-          Container(width: double.infinity,
-            color: const Color(0xFFFFF4E5),
+          Container(width: double.infinity, color: const Color(0xFFFFF4E5),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             child: Text(_statusBanner!,
                 style: const TextStyle(color: Color(0xFF8A4F00),
@@ -152,7 +139,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
               color: cs.outlineVariant.withValues(alpha: 0.5)))),
           child: Row(children: [
             Expanded(child: TextField(controller: _input, minLines: 1, maxLines: 4,
-              decoration: InputDecoration(hintText: t.messageHint, isDense: true),
+              decoration: const InputDecoration(hintText: 'Xabar…', isDense: true),
               onSubmitted: (_) => _send())),
             const SizedBox(width: 8),
             IconButton.filledTonal(onPressed: _send, icon: const Icon(Icons.send)),
@@ -186,8 +173,6 @@ class _Bubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final (bg, fg) = data.mine
         ? (cs.primary, cs.onPrimary) : (cs.surfaceContainerHighest, cs.onSurface);
-    // Pending optimistic bubbles render at 70% opacity so the user has a visual cue that the
-    // message is in-flight, not yet confirmed by the server.
     return Opacity(opacity: data.pending ? 0.7 : 1.0,
       child: Align(
         alignment: data.mine ? Alignment.centerRight : Alignment.centerLeft,

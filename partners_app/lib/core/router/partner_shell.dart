@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_core/shared_core.dart';
 
 import '../../features/catalog/catalog_screen.dart';
@@ -44,7 +45,11 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
       const ProfileScreen(),
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(_title(t, isQ))),
+      appBar: AppBar(title: Text(_title(t, isQ)),
+        // v3.9 — chat icon. Both qassobs and suppliers receive messages from buyers; the icon takes
+        // them to the chats list. Pushed above the shell so the back arrow returns cleanly.
+        actions: [IconButton(onPressed: () => context.push('/chats'),
+            icon: const Icon(Icons.chat_bubble_outline_rounded))]),
       body: IndexedStack(index: _idx, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _idx,
