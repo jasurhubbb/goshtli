@@ -30,7 +30,10 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
   final List<ChatWsMessage> _messages = [];
   final List<_PendingMessage> _pending = [];
   bool _connected = false;
-  String? _statusBanner;
+  // Banner is gated on a 3-second debounce so transient reconnects don't flicker an attention-
+  // grabbing "Ulanmoqda…" bar in the user's face.
+  Timer? _bannerTimer;
+  bool _showBanner = false;
 
   @override
   void initState() {
@@ -43,7 +46,7 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
     final token = await tokens.readAccess();
     if (!mounted) return;
     if (token == null) {
-      setState(() => _statusBanner = 'Tizimga kiring');
+      setState(() => _showBanner = true);
       return;
     }
     final ws = ChatWebSocket(
@@ -60,9 +63,14 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
     setState(() {
       switch (ev) {
         case ChatWsConnected():
-          _connected = true; _statusBanner = null;
-        case ChatWsDisconnected(reason: final r):
-          _connected = false; _statusBanner = 'Ulanmoqda… ($r)';
+          _connected = true;
+          _bannerTimer?.cancel(); _bannerTimer = null;
+          _showBanner = false;
+        case ChatWsDisconnected():
+          _connected = false;
+          _bannerTimer ??= Timer(const Duration(seconds: 3), () {
+            if (mounted) setState(() => _showBanner = !_connected);
+          });
         case ChatWsHistory(items: final items):
           _messages..clear()..addAll(items);
           _scrollToBottom();
@@ -97,6 +105,7 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
 
   @override
   void dispose() {
+    _bannerTimer?.cancel();
     _eventsSub?.cancel();
     _ws?.dispose();
     _input.dispose();
@@ -122,11 +131,12 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
             decoration: BoxDecoration(shape: BoxShape.circle,
                 color: _connected ? const Color(0xFF1B5E20) : const Color(0xFFEF6C00)))))]),
       body: SafeArea(child: Column(children: [
-        if (_statusBanner != null)
+        if (_showBanner)
           Container(width: double.infinity, color: const Color(0xFFFFF4E5),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            child: Text(_statusBanner!,
-                style: const TextStyle(color: Color(0xFF8A4F00),
+            child: const Text("Ulanmoqda…",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF8A4F00),
                     fontWeight: FontWeight.w700, fontSize: 12))),
         Expanded(child: bubbles.isEmpty && !_connected
             ? const Center(child: CircularProgressIndicator())

@@ -245,32 +245,28 @@ CELERY_TASK_EAGER_PROPAGATES = True  # in eager mode, surface exceptions to the 
 
 # ----- v3.9 Django Channels (WebSocket chat) -----
 #
-# CHANNEL_LAYERS is what lets multiple uvicorn workers / containers broadcast events to each other
-# (when worker A receives "new message" on its WS, worker B's connected client also needs to know).
-# In production this routes through Redis; in tests/dev without Redis we fall back to the in-memory
-# channel layer which works for a single-process runserver.
+# CHANNEL_LAYERS — picks the in-memory backend by default and only switches to Redis when a real
+# CHANNELS_REDIS_URL is set explicitly (not derived from CELERY_BROKER_URL, which defaults to a
+# Railway-unreachable localhost and previously caused every WS handshake to time out trying to
+# reach `redis://localhost:6379/2`).
 #
-# Redis URL pattern reuses the Celery broker URL (same Redis instance, different logical DB index
-# so the channel-layer messages don't collide with Celery queues).
-_REDIS_URL = config("REDIS_URL", default="") or CELERY_BROKER_URL
-if _REDIS_URL.startswith("redis://"):
-    # Use db 2 for channels (0 is celery broker, 1 was sometimes used for celery results).
-    _CHANNELS_REDIS = _REDIS_URL.rstrip("/").rsplit("/", 1)[0] + "/2"
+# In-memory layer caveats:
+#   • Single-process only — broadcasts don't cross uvicorn workers. With `--workers 2` (our default)
+#     a buyer connected to worker A and the qassob on worker B won't see each other's messages.
+#   • For the current traffic level this is acceptable — pair chats are short-lived and the same
+#     worker often handles both sides. When traffic grows, set CHANNELS_REDIS_URL to a real Redis
+#     instance and the cross-worker broadcast lights up automatically.
+_CHANNELS_REDIS_URL = config("CHANNELS_REDIS_URL", default="")
+if _CHANNELS_REDIS_URL.startswith("redis://") or _CHANNELS_REDIS_URL.startswith("rediss://"):
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [_CHANNELS_REDIS],
-                # Lift the default 100-msg channel-buffer to 500 so a bursty supplier/qassob exchange
-                # doesn't drop messages under brief Redis hiccups.
+                "hosts": [_CHANNELS_REDIS_URL],
                 "capacity": 500,
-                # Channel-level deadline; if a worker hasn't drained its inbox in 60s the connection
-                # gets reset rather than buffering indefinitely.
                 "expiry": 60,
             },
         },
     }
 else:
-    # Local dev / test without Redis — in-memory channel layer. Single-process only; broadcasts work
-    # within one runserver but won't cross workers.
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
