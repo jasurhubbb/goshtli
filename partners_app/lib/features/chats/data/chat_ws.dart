@@ -41,6 +41,11 @@ class ChatWsMessage {
         readByRecipient: (j['read_by_recipient'] ?? false) as bool,
         createdAt: (j['created_at'] ?? '') as String,
       );
+
+  ChatWsMessage copyWithRead(bool read) => ChatWsMessage(
+        id: id, conversationId: conversationId,
+        senderId: senderId, senderEmail: senderEmail,
+        text: text, readByRecipient: read, createdAt: createdAt);
 }
 
 
@@ -54,6 +59,14 @@ class ChatWsHistory extends ChatWsEvent {
 class ChatWsNewMessage extends ChatWsEvent {
   final ChatWsMessage message;
   const ChatWsNewMessage(this.message);
+}
+
+/// v3.9.8 — read receipts. Backend broadcasts {type:"read", reader_id, message_ids:[...]} when the
+/// other party opens the chat / sees the messages.
+class ChatWsRead extends ChatWsEvent {
+  final int readerId;
+  final List<int> messageIds;
+  const ChatWsRead({required this.readerId, required this.messageIds});
 }
 
 class ChatWsConnected extends ChatWsEvent { const ChatWsConnected(); }
@@ -128,6 +141,11 @@ class ChatWebSocket {
       } else if (type == 'msg') {
         _eventsController.add(ChatWsNewMessage(
             ChatWsMessage.fromJson(Map<String, dynamic>.from(data))));
+      } else if (type == 'read') {
+        final ids = ((data['message_ids'] as List?) ?? const [])
+            .map((e) => (e as num).toInt()).toList();
+        final readerId = (data['reader_id'] as num?)?.toInt() ?? 0;
+        _eventsController.add(ChatWsRead(readerId: readerId, messageIds: ids));
       }
     } catch (_) {}
   }

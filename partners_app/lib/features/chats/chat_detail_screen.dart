@@ -78,6 +78,12 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
           _messages.add(m);
           _pending.removeWhere((p) => p.text == m.text && m.senderId == p.senderId);
           _scrollToBottom();
+        case ChatWsRead(messageIds: final ids):
+          for (var i = 0; i < _messages.length; i++) {
+            if (ids.contains(_messages[i].id)) {
+              _messages[i] = _messages[i].copyWithRead(true);
+            }
+          }
       }
     });
   }
@@ -120,7 +126,8 @@ class _PartnerChatDetailScreenState extends ConsumerState<PartnerChatDetailScree
     final cs = Theme.of(context).colorScheme;
 
     final bubbles = [
-      ..._messages.map((m) => _BubbleData(text: m.text, mine: m.senderId == myUid)),
+      ..._messages.map((m) => _BubbleData(text: m.text, mine: m.senderId == myUid,
+          createdAt: m.createdAt, read: m.readByRecipient)),
       ..._pending.map((p) => _BubbleData(text: p.text, mine: true, pending: true)),
     ];
 
@@ -171,31 +178,58 @@ class _BubbleData {
   final String text;
   final bool mine;
   final bool pending;
-  const _BubbleData({required this.text, required this.mine, this.pending = false});
+  final String createdAt;
+  final bool read;
+  const _BubbleData({required this.text, required this.mine,
+                      this.pending = false, this.createdAt = '', this.read = false});
 }
 
 
 class _Bubble extends StatelessWidget {
   final _BubbleData data;
   const _Bubble({required this.data});
+
+  String _formatTime(String iso) {
+    if (iso.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) { return ''; }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final (bg, fg) = data.mine
         ? (cs.primary, cs.onPrimary) : (cs.surfaceContainerHighest, cs.onSurface);
+    final timeText = _formatTime(data.createdAt);
+    final tickColor = data.read ? const Color(0xFF6FE0FF) : fg.withValues(alpha: 0.7);
     return Opacity(opacity: data.pending ? 0.7 : 1.0,
       child: Align(
         alignment: data.mine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16), topRight: const Radius.circular(16),
               bottomLeft: Radius.circular(data.mine ? 16 : 4),
               bottomRight: Radius.circular(data.mine ? 4 : 16))),
-          child: Text(data.text, style: TextStyle(color: fg)))));
+          child: Column(crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min, children: [
+            Text(data.text, style: TextStyle(color: fg, fontSize: 15)),
+            const SizedBox(height: 2),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              if (timeText.isNotEmpty) Text(timeText,
+                  style: TextStyle(color: fg.withValues(alpha: 0.65), fontSize: 11)),
+              if (data.mine) ...[
+                const SizedBox(width: 3),
+                Icon(data.read ? Icons.done_all_rounded : Icons.done_rounded,
+                    size: 14, color: tickColor),
+              ],
+            ]),
+          ]))));
   }
 }

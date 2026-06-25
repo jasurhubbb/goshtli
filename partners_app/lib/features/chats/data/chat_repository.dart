@@ -13,12 +13,15 @@ class PartnerConversation {
   final String otherUserEmail;
   final String? lastMessageAt;
   final String lastMessagePreview;
+  final String lastMessageSenderName;
+  final bool lastMessageIsMine;
   final int unreadCount;
 
   const PartnerConversation({
     required this.id, required this.otherUserId,
     required this.otherUserName, required this.otherUserEmail,
     required this.lastMessageAt, required this.lastMessagePreview,
+    required this.lastMessageSenderName, required this.lastMessageIsMine,
     required this.unreadCount,
   });
 
@@ -29,6 +32,8 @@ class PartnerConversation {
         otherUserEmail: (j['other_user_email'] ?? '') as String,
         lastMessageAt: j['last_message_at'] as String?,
         lastMessagePreview: (j['last_message_preview'] ?? '') as String,
+        lastMessageSenderName: (j['last_message_sender_name'] ?? '') as String,
+        lastMessageIsMine: (j['last_message_is_mine'] ?? false) as bool,
         unreadCount: (j['unread_count'] ?? 0) as int,
       );
 }

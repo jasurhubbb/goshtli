@@ -66,6 +66,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         history = await self._recent_history(self.conv_id)
         await self.send_json({"type": "history", "items": history})
 
+        # v3.9.8 — eager-mark every inbound message as read on connect (mirrors the HTTP MessageList
+        # GET behavior). Then broadcast a "read" event to the channel group so the OTHER side's
+        # connected client can flip its bubble checkmarks to "blue ticks" without polling.
+        marked_ids = await self._mark_inbound_as_read(self.conv_id, self.user_id)
+        if marked_ids:
+            await self.channel_layer.group_send(self.group_name, {
+                "type": "chat.read",
+                "reader_id": self.user_id,
+                "message_ids": marked_ids,
+            })
+
     async def disconnect(self, code):
         # group_name only exists when connect() succeeded; guard for the early-close paths above.
         group = getattr(self, "group_name", None)
@@ -103,6 +114,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """Group event handler. event['row'] is the serialized message dict from receive_json."""
         await self.send_json({"type": "msg", **event["row"]})
 
+    async def chat_read(self, event):
+        """Group event handler — peer just opened the chat / scrolled, marking our messages read.
+        We forward the event to OUR own client so the sender's bubbles can flip to read state."""
+        # Don't echo our own reads back to ourselves — only the OTHER side needs the visual update.
+        if event.get("reader_id") == self.user_id:
+            return
+        await self.send_json({
+            "type": "read",
+            "reader_id": event.get("reader_id"),
+            "message_ids": event.get("message_ids", []),
+        })
+
     # ---- helpers (sync-DB calls wrapped via database_sync_to_async) --------------------------------
 
     @database_sync_to_async
@@ -125,6 +148,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         rows = list(qs)
         rows.reverse()                                                          # oldest-first
         return [self._serialize(m) for m in rows]
+
+    @database_sync_to_async
+    def _mark_inbound_as_read(self, conv_id: int, reader_id: int) -> list[int]:
+        """Flip read_by_recipient=True on every message in this conversation that wasn't sent by the
+        caller. Returns the list of affected message ids so the caller can broadcast a 'read' event
+        to the sender for live tick updates."""
+        qs = Message.objects.filter(conversation_id=conv_id, read_by_recipient=False).exclude(
+            sender_id=reader_id)
+        ids = list(qs.values_list("id", flat=True))
+        if ids:
+            qs.update(read_by_recipient=True)
+        return ids
 
     @database_sync_to_async
     def _persist_message(self, conv_id: int, sender_id: int, text: str) -> dict | None:

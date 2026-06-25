@@ -10,6 +10,8 @@ import '../../listings/data/listings_repository.dart' show ApiException;
 
 
 /// Compact summary used by the conversation list. Matches the backend ConversationSerializer fields.
+/// v3.9.8 adds `lastMessageSenderName` + `lastMessageIsMine` so the list row can render the
+/// "[Other]\n[Sender]: text…" format used by Telegram / WhatsApp without a second roundtrip.
 class Conversation {
   final int id;
   final int otherUserId;
@@ -17,11 +19,15 @@ class Conversation {
   final String otherUserName;
   final String? lastMessageAt;
   final String lastMessagePreview;
+  final String lastMessageSenderName;
+  final bool lastMessageIsMine;
   final int unreadCount;
 
   const Conversation({required this.id, required this.otherUserId, required this.otherUserEmail,
                       required this.otherUserName, required this.lastMessageAt,
-                      required this.lastMessagePreview, required this.unreadCount});
+                      required this.lastMessagePreview,
+                      required this.lastMessageSenderName, required this.lastMessageIsMine,
+                      required this.unreadCount});
 
   factory Conversation.fromJson(Map<String, dynamic> j) => Conversation(
         id: j['id'] as int,
@@ -30,6 +36,8 @@ class Conversation {
         otherUserName: (j['other_user_name'] ?? '') as String,
         lastMessageAt: j['last_message_at'] as String?,
         lastMessagePreview: (j['last_message_preview'] ?? '') as String,
+        lastMessageSenderName: (j['last_message_sender_name'] ?? '') as String,
+        lastMessageIsMine: (j['last_message_is_mine'] ?? false) as bool,
         unreadCount: (j['unread_count'] ?? 0) as int);
 }
 

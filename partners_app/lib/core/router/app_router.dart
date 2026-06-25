@@ -13,6 +13,7 @@ import '../../features/language/language_picker_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/presentation/qassob_wizard_screen.dart';
 import '../../features/onboarding/presentation/supplier_wizard_screen.dart';
+import '../../features/profile/qassob_profile_edit_screen.dart';
 import '../../features/ratings/ratings_screen.dart';
 import '../../features/role_picker/role_picker_screen.dart';
 import '../auth/partner_auth_notifier.dart';
@@ -74,6 +75,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Full-page Yangi tovar qo'shish — replaces the v3.8.1 sheet so the form has room to breathe +
       // can host an image picker. Pops with the new listing id so Katalog can refresh.
       GoRoute(path: '/catalog/new', builder: (ctx, st) => const NewListingScreen()),
+      // v3.9.8 — dedicated full-page qassob profile edit screen (avatar upload + name + phone
+      // visibility). Replaces the previous one-size-fits-all sheet for qassobs because they need
+      // a proper photo editor that doesn't fit in a bottom sheet.
+      GoRoute(path: '/profile/edit-qassob',
+          builder: (ctx, st) => const QassobProfileEditScreen()),
       // v3.9 — chat list + chat detail. Reachable from the dashboard chat icon and from push
       // notification deep links. Detail screen owns the WebSocket lifecycle.
       GoRoute(path: '/chats', builder: (ctx, st) => const PartnerChatsListScreen()),

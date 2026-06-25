@@ -74,8 +74,6 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           _showBanner = false;
         case ChatWsDisconnected():
           _connected = false;
-          // Don't show the banner immediately — let the reconnect happen quietly. Only surface
-          // after 3s of continued downtime so the user knows something's wrong without flicker.
           _bannerTimer ??= Timer(const Duration(seconds: 3), () {
             if (mounted) setState(() => _showBanner = !_connected);
           });
@@ -86,6 +84,15 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           _messages.add(m);
           _pending.removeWhere((p) => p.text == m.text && m.senderId == p.senderId);
           _scrollToBottom();
+        case ChatWsRead(messageIds: final ids):
+          // Flip read_by_recipient on our own out-bound messages so the bubble checkmark goes from
+          // single-tick to double-tick without a refetch. Server marks them; we just mirror the
+          // state locally.
+          for (var i = 0; i < _messages.length; i++) {
+            if (ids.contains(_messages[i].id)) {
+              _messages[i] = _messages[i].copyWithRead(true);
+            }
+          }
       }
     });
   }
@@ -131,7 +138,8 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
 
     // Compose the rendered bubble list from server-confirmed messages + pending optimistic ones.
     final bubbles = [
-      ..._messages.map((m) => _BubbleData(text: m.text, mine: m.senderId == myUid)),
+      ..._messages.map((m) => _BubbleData(text: m.text, mine: m.senderId == myUid,
+          createdAt: m.createdAt, read: m.readByRecipient)),
       ..._pending.map((p) => _BubbleData(text: p.text, mine: true, pending: true)),
     ];
 
@@ -185,18 +193,34 @@ class _BubbleData {
   final String text;
   final bool mine;
   final bool pending;
-  const _BubbleData({required this.text, required this.mine, this.pending = false});
+  final String createdAt;
+  final bool read;
+  const _BubbleData({required this.text, required this.mine,
+                      this.pending = false, this.createdAt = '', this.read = false});
 }
 
 
 class _Bubble extends StatelessWidget {
   final _BubbleData data;
   const _Bubble({required this.data});
+
+  /// HH:MM in the user's local timezone. Empty when the message is still optimistic / has no
+  /// server-side timestamp yet.
+  String _formatTime(String iso) {
+    if (iso.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) { return ''; }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final (bg, fg) = data.mine
         ? (cs.primary, cs.onPrimary) : (cs.surfaceContainerHighest, cs.onSurface);
+    final timeText = _formatTime(data.createdAt);
+    final tickColor = data.read ? const Color(0xFF6FE0FF) : fg.withValues(alpha: 0.7);
     // Pending optimistic bubbles render at 70% opacity so the user has a visual cue that the
     // message is in-flight, not yet confirmed by the server.
     return Opacity(opacity: data.pending ? 0.7 : 1.0,
@@ -204,14 +228,28 @@ class _Bubble extends StatelessWidget {
         alignment: data.mine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16), topRight: const Radius.circular(16),
               bottomLeft: Radius.circular(data.mine ? 16 : 4),
               bottomRight: Radius.circular(data.mine ? 4 : 16))),
-          child: Text(data.text, style: TextStyle(color: fg)))));
+          child: Column(crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min, children: [
+            Text(data.text, style: TextStyle(color: fg, fontSize: 15)),
+            const SizedBox(height: 2),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              if (timeText.isNotEmpty) Text(timeText,
+                  style: TextStyle(color: fg.withValues(alpha: 0.65), fontSize: 11)),
+              if (data.mine) ...[
+                const SizedBox(width: 3),
+                // Single tick when sent but not yet read, double tick (blue-tinted) when read.
+                Icon(data.read ? Icons.done_all_rounded : Icons.done_rounded,
+                    size: 14, color: tickColor),
+              ],
+            ]),
+          ]))));
   }
 }

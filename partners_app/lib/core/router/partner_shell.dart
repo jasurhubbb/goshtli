@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_core/shared_core.dart';
 
 import '../../features/catalog/catalog_screen.dart';
+import '../../features/chats/chats_list_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/earnings/earnings_screen.dart';
 import '../../features/orders_inbox/inbox_screen.dart';
@@ -44,12 +45,25 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
       const EarningsScreen(),
       const ProfileScreen(),
     ];
+    final unread = ref.watch(partnerUnreadChatsTotalProvider).asData?.value ?? 0;
     return Scaffold(
       appBar: AppBar(title: Text(_title(t, isQ)),
-        // v3.9 — chat icon. Both qassobs and suppliers receive messages from buyers; the icon takes
-        // them to the chats list. Pushed above the shell so the back arrow returns cleanly.
-        actions: [IconButton(onPressed: () => context.push('/chats'),
-            icon: const Icon(Icons.chat_bubble_outline_rounded))]),
+        // v3.9.8 chat icon with unread badge — same Telegram-style red pill the buyer-app home
+        // screen uses. Both qassobs and suppliers receive messages from buyers; the badge gives an
+        // at-a-glance "you have new" indicator without opening Chatlar.
+        actions: [Stack(clipBehavior: Clip.none, children: [
+          IconButton(onPressed: () => context.push('/chats'),
+              icon: const Icon(Icons.chat_bubble_outline_rounded)),
+          if (unread > 0) Positioned(top: 6, right: 4, child: IgnorePointer(child: Container(
+            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(color: const Color(0xFFD32F2F),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white, width: 1.5)),
+            child: Center(child: Text(unread > 99 ? '99+' : '$unread',
+                style: const TextStyle(color: Colors.white,
+                    fontSize: 10, fontWeight: FontWeight.w800, height: 1.0)))))),
+        ])]),
       body: IndexedStack(index: _idx, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _idx,

@@ -19,6 +19,7 @@ import '../../addresses/presentation/address_sheet.dart';
 import '../../addresses/providers/addresses_providers.dart';
 import '../../cart/presentation/qty_editor_sheet.dart';
 import '../../cart/providers/cart_providers.dart';
+import '../../chats/presentation/chat_icon_with_badge.dart';
 import '../../listings/providers/listings_providers.dart';
 
 
@@ -68,13 +69,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: CustomScrollView(
             controller: _scrollCtl,
             slivers: [
-              // ---------- Header (location pill + search bar) ----------
-              // Generous spacing: top=44 (room from status bar), 22 between pill/search, 22 below search before grid.
-              SliverPadding(padding: const EdgeInsets.fromLTRB(16, 44, 16, 18),
+              // ---------- Header (location pill + chat icon + search bar) ----------
+              // Top row puts the location pill on the left taking all remaining space, with the
+              // chat icon pinned to the top-right corner — same anchor every food-delivery app
+              // uses for "messages / notifications" (Swiggy, Wolt, Yandex Eda).
+              SliverPadding(padding: const EdgeInsets.fromLTRB(16, 44, 8, 18),
                 sliver: SliverList.list(children: const [
-                  _LocationPill(),
+                  Row(children: [
+                    Expanded(child: _LocationPill()),
+                    ChatIconWithBadge(),
+                  ]),
                   SizedBox(height: 22),
-                  _SearchBar(),
+                  Padding(padding: EdgeInsets.only(right: 8), child: _SearchBar()),
                 ])),
 
               // ---------- 4×2 category quick-pick grid (in-flow) ----------

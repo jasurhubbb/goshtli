@@ -1,5 +1,6 @@
-"""Chat views — conversation list (own pairs), get/post messages (with eager-read marking), start-chat shortcut."""
-from django.db.models import Q
+"""Chat views — conversation list (own pairs), get/post messages (with eager-read marking),
+start-chat shortcut, unread-total badge endpoint."""
+from django.db.models import Count, Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework import generics, permissions, status
@@ -72,3 +73,28 @@ class MessageListCreateView(generics.ListCreateAPIView):
         # Bump last_message_at on the conversation so the list view sorts correctly
         conv.last_message_at = timezone.now(); conv.save(update_fields=("last_message_at",))
         return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(responses={200: {"type": "object",
+                                "properties": {"unread": {"type": "integer"},
+                                               "by_conversation": {"type": "object"}}}},
+               description="Global unread total + per-conversation map. Drives the AppBar dot-badge "
+                           "on both apps so the user knows there's a new message without opening Chatlar.")
+class UnreadTotalView(APIView):
+    """GET /api/v1/chats/unread-total/ — total unread messages across all the caller's conversations,
+    plus a per-conversation breakdown so the chats list can render badges without re-fetching the
+    full list. Cheap: one COUNT() aggregate + one GROUP BY."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        u = request.user
+        # Per-conversation breakdown. We only count messages NOT sent by this user that are unread.
+        per_conv = (Message.objects
+                    .filter(conversation__in=Conversation.objects.filter(Q(user_a=u) | Q(user_b=u)),
+                            read_by_recipient=False)
+                    .exclude(sender=u)
+                    .values("conversation_id")
+                    .annotate(c=Count("id")))
+        by_conv = {row["conversation_id"]: row["c"] for row in per_conv}
+        total = sum(by_conv.values())
+        return Response({"unread": total, "by_conversation": by_conv})

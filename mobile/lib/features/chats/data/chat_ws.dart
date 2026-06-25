@@ -48,6 +48,11 @@ class ChatWsMessage {
         readByRecipient: (j['read_by_recipient'] ?? false) as bool,
         createdAt: (j['created_at'] ?? '') as String,
       );
+
+  ChatWsMessage copyWithRead(bool read) => ChatWsMessage(
+        id: id, conversationId: conversationId,
+        senderId: senderId, senderEmail: senderEmail,
+        text: text, readByRecipient: read, createdAt: createdAt);
 }
 
 
@@ -64,6 +69,15 @@ class ChatWsHistory extends ChatWsEvent {
 class ChatWsNewMessage extends ChatWsEvent {
   final ChatWsMessage message;
   const ChatWsNewMessage(this.message);
+}
+
+/// v3.9.8 — backend broadcasts a `read` frame to the chat group when the OTHER party marks our
+/// outbound messages as read (they opened the chat). Carries the ids so the bubble list can flip
+/// just those messages to "read" instead of refetching the whole history.
+class ChatWsRead extends ChatWsEvent {
+  final int readerId;
+  final List<int> messageIds;
+  const ChatWsRead({required this.readerId, required this.messageIds});
 }
 
 class ChatWsConnected extends ChatWsEvent {
@@ -146,6 +160,11 @@ class ChatWebSocket {
       } else if (type == 'msg') {
         _eventsController.add(ChatWsNewMessage(
             ChatWsMessage.fromJson(Map<String, dynamic>.from(data))));
+      } else if (type == 'read') {
+        final ids = ((data['message_ids'] as List?) ?? const [])
+            .map((e) => (e as num).toInt()).toList();
+        final readerId = (data['reader_id'] as num?)?.toInt() ?? 0;
+        _eventsController.add(ChatWsRead(readerId: readerId, messageIds: ids));
       }
     } catch (_) {/* malformed frame — swallow rather than crash the stream */}
   }

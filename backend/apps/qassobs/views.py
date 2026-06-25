@@ -23,9 +23,13 @@ class QassobMeView(generics.GenericAPIView):
 
     POST creates the profile on first call from the onboarding wizard's submit page; subsequent PATCHes
     edit it. GET returns the current shape (with photo_url so the partner-app can render the avatar).
+
+    Accepts both JSON and multipart/form-data so the partner-app profile-edit page can PATCH the
+    avatar file in the same request as the rest of the structured fields.
     """
     permission_classes = (IsQassob,)
     serializer_class = QassobMeSerializer
+    parser_classes = (parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser)
 
     def _get_or_none(self, request):
         try: return QassobProfile.objects.get(user=request.user)
