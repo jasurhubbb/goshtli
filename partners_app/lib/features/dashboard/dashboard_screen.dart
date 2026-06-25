@@ -22,6 +22,11 @@ class DashboardScreen extends ConsumerWidget {
     final async = ref.watch(dashboardProvider);
     final tips = ref.watch(smartTipsProvider);
     final user = auth is AuthAuthenticated ? auth.user : null;
+    // v3.9: qassobs don't have an inventory concept, so "Kam zaxira" makes no sense for them.
+    // "Yangi buyurtmalar" is also more naturally "Yangi takliflar" (new offers) for qassobs since
+    // they receive butcher-service offers, not direct product orders. Branch the KPI grid below on
+    // this flag to keep both flows clean without duplicating the whole tile-grid block.
+    final isQassob = user?.isQassob ?? false;
 
     return RefreshIndicator(
       onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
@@ -58,10 +63,19 @@ class DashboardScreen extends ConsumerWidget {
                 // literal string "null" which leaked through in v3.8.0.
                 _Kpi(label: t.dashboardKpiTodayRevenue,
                       value: _fmtMoney(d['today_revenue']), accent: cs.primary),
-                _Kpi(label: t.dashboardKpiOpenOrders,
+                _Kpi(label: isQassob ? 'Yangi takliflar' : t.dashboardKpiOpenOrders,
                       value: _fmtCount(d['open_orders']), accent: const Color(0xFF1B5E20)),
-                _Kpi(label: t.dashboardKpiLowStock,
-                      value: _fmtCount(d['low_stock_count']), accent: const Color(0xFFEF6C00)),
+                // Stock concept is supplier-only. For qassobs we swap in a "Tomonkun sig'imi" (today's
+                // capacity slot) tile so the grid layout stays 2x2 — fallback to "0" until the
+                // backend dashboard endpoint surfaces per-day capacity.
+                if (isQassob)
+                  _Kpi(label: "Bugungi sig'im",
+                        value: _fmtCount(d['daily_capacity_head']),
+                        accent: const Color(0xFFEF6C00))
+                else
+                  _Kpi(label: t.dashboardKpiLowStock,
+                        value: _fmtCount(d['low_stock_count']),
+                        accent: const Color(0xFFEF6C00)),
                 _Kpi(label: t.dashboardKpiReviews,
                       value: _fmtCount(d['unread_reviews']), accent: const Color(0xFF6A1B9A)),
               ]))),

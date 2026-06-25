@@ -304,6 +304,12 @@ class DashboardView(APIView):
             is_verified = False
             is_open_now = False
 
+        # v3.9 — also surface qassob's daily_capacity_head so the partner-app dashboard can show a
+        # "Bugungi sig'im" tile in place of "Kam zaxira" (which doesn't make sense for qassobs).
+        daily_capacity = 0
+        if u.is_qassob and hasattr(u, "qassob_profile"):
+            daily_capacity = u.qassob_profile.daily_capacity_head or 0
+
         return Response({
             "role": u.role,
             "is_verified": is_verified,
@@ -311,6 +317,7 @@ class DashboardView(APIView):
             "today_revenue": str(today_revenue),
             "open_orders": open_orders,
             "low_stock_count": low_stock,
+            "daily_capacity_head": daily_capacity,
             "unread_reviews": 0,                              # wired in F6 below; 0 for v1
         })
 

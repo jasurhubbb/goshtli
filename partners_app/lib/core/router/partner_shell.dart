@@ -2,19 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_core/shared_core.dart';
 
-import '../../features/calendar/calendar_screen.dart';
 import '../../features/catalog/catalog_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/earnings/earnings_screen.dart';
 import '../../features/orders_inbox/inbox_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/servisim/servisim_screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/partner_auth_notifier.dart';
 
 
 /// 5-tab home shell. Tab 1 + 2 swap label/icon based on role:
-///   QASSOB  → Ishlar / Jadval
+///   QASSOB   → Ishlar  / Servisim
 ///   SUPPLIER → Buyurtmalar / Katalog
+///
+/// v3.9: qassobs' 3rd tab was Jadval (capacity calendar) which conflated capacity planning with the
+/// concept of "their service offering". The new Servisim screen is the proper home for the qassob's
+/// service-profile CRUD (bio / specialties / hours / prices / certifications / languages / gallery).
+/// Capacity planning still exists as a backend concept but no longer takes a tab slot — when we
+/// rebuild it, a "Sig'im jadvali" button inside Servisim will reach it.
 class PartnerShell extends ConsumerStatefulWidget {
   const PartnerShell({super.key});
   @override
@@ -33,7 +39,7 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
     final pages = <Widget>[
       const DashboardScreen(),
       InboxScreen(isQassob: isQ),
-      isQ ? const CalendarScreen() : const CatalogScreen(),
+      isQ ? const ServisimScreen() : const CatalogScreen(),
       const EarningsScreen(),
       const ProfileScreen(),
     ];
@@ -52,9 +58,9 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
               selectedIcon: const Icon(Icons.inbox_rounded),
               label: isQ ? t.tabJobs : t.tabOrders),
           NavigationDestination(
-              icon: Icon(isQ ? Icons.calendar_today_outlined : Icons.list_alt_outlined),
-              selectedIcon: Icon(isQ ? Icons.calendar_today_rounded : Icons.list_alt_rounded),
-              label: isQ ? t.tabSchedule : t.tabCatalog),
+              icon: Icon(isQ ? Icons.handyman_outlined : Icons.list_alt_outlined),
+              selectedIcon: Icon(isQ ? Icons.handyman_rounded : Icons.list_alt_rounded),
+              label: isQ ? 'Servisim' : t.tabCatalog),
           NavigationDestination(icon: const Icon(Icons.bar_chart_outlined),
               selectedIcon: const Icon(Icons.bar_chart_rounded),
               label: t.tabEarnings),
@@ -69,7 +75,7 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
     switch (_idx) {
       case 0: return t.tabHome;
       case 1: return isQ ? t.tabJobs : t.tabOrders;
-      case 2: return isQ ? t.tabSchedule : t.tabCatalog;
+      case 2: return isQ ? 'Servisim' : t.tabCatalog;
       case 3: return t.tabEarnings;
       case 4: return t.tabProfile;
       default: return t.appTitle;
