@@ -7,6 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from rest_framework import parsers as drf_parsers
+
 from apps.common.permissions import IsAdminRole, IsSupplier
 from apps.listings.models import Listing
 from apps.orders.models import Order
@@ -15,9 +17,14 @@ from .serializers import SupplierDashboardSerializer, SupplierProfileSerializer
 
 
 class SupplierMeView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /api/v1/suppliers/me/ — current supplier's profile. Auto-created via signal at registration."""
+    """GET/PATCH /api/v1/suppliers/me/ — current supplier's profile. Auto-created via signal at registration.
+
+    Accepts both JSON and multipart/form-data so the partner-app profile-edit page can PATCH the
+    avatar file in the same request as the rest of the structured fields (v3.9.10).
+    """
     serializer_class = SupplierProfileSerializer
     permission_classes = (IsSupplier,)
+    parser_classes = (drf_parsers.JSONParser, drf_parsers.MultiPartParser, drf_parsers.FormParser)
     http_method_names = ("get", "patch", "head", "options")
 
     def get_object(self):

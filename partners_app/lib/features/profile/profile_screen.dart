@@ -63,10 +63,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = auth is AuthAuthenticated ? auth.user : null;
     final verified = dashboard.value?['is_verified'] == true;
 
+    // v3.9.10 — surface the saved profile photo (qassobs edit theirs via the dedicated Profile
+    // Edit screen; suppliers via the sheet). Falls back to the generic person icon when no photo
+    // is set. `photo_url` comes from /qassobs/me/ or /suppliers/me/ — both serializers now expose it.
+    final photoUrl = (_profile?['photo_url'] as String?) ?? '';
     return ListView(children: [
       Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: Row(children: [
-          CircleAvatar(radius: 32, backgroundColor: cs.primary.withValues(alpha: 0.12),
+          CircleAvatar(radius: 32,
+              backgroundColor: cs.primary.withValues(alpha: 0.12),
+              foregroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
               child: Icon(Icons.person_rounded, color: cs.primary, size: 32)),
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
