@@ -165,7 +165,11 @@ class _Carousel extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
-    return SizedBox(height: 280, child: async.when(
+    // v3.9.11 — was 280 (assumed every card would render specialty chips). When a qassob hasn't set
+    // specialties yet the card only needs ~220pt, leaving a wide white void at the bottom that
+    // makes the whole carousel look broken. 232 fits both states cleanly: no wasted space for empty
+    // profiles, one-line specialty chips still fit for populated ones.
+    return SizedBox(height: 232, child: async.when(
       loading: () => const Center(child: CupertinoActivityIndicator()),
       error: (e, _) => Center(child: Text(e.toString(), style: TextStyle(color: cs.error))),
       data: (rows) {

@@ -17,8 +17,37 @@ class OrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
     final auth = ref.watch(authNotifierProvider);
-    if (auth is! AuthAuthenticated) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    // v3.9.11 — distinguish auth states so the tab always renders SOMETHING useful. The previous
+    // code returned a permanent spinner for anything that wasn't AuthAuthenticated, which meant
+    // anonymous users tapping the Buyurtmalar tab saw a "loading forever" screen — the "sometimes
+    // doesn't open" symptom.
+    if (auth is AuthInitial || auth is AuthLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (auth is! AuthAuthenticated) {
+      // Anonymous or session-expired — buyers need to sign in before they can have orders. Render
+      // an empty-state illustration + Kirish CTA, wrapped in the same Scaffold shell so the tab
+      // header is consistent with the authenticated view.
+      return Scaffold(body: SafeArea(child: Center(
+        child: Padding(padding: const EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.receipt_long_outlined, size: 64, color: cs.onSurfaceVariant),
+            const SizedBox(height: 14),
+            Text(t.noOrdersYet, textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text("Buyurtmalarni ko'rish uchun tizimga kiring",
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 20),
+            FilledButton(onPressed: () => context.push('/auth/phone'),
+                child: const Text("Kirish")),
+          ])))));
+    }
     final ordersAsync = auth.user.isSupplier ? ref.watch(supplierOrdersProvider) : ref.watch(myOrdersProvider);
     final providerToInvalidate = auth.user.isSupplier ? supplierOrdersProvider : myOrdersProvider;
 
@@ -36,9 +65,16 @@ class OrdersScreen extends ConsumerWidget {
           ordersAsync.when(
             data: (page) => page.results.isEmpty
                 ? SliverFillRemaining(hasScrollBody: false,
-                    child: Center(child: Text(t.noOrdersYet,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant))))
+                    child: Center(child: Padding(padding: const EdgeInsets.all(32),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        // Empty-with-icon layout mirrors the buyer-side Chats + Servislar tabs so the
+                        // "nothing here yet" message reads as intentional design, not a bug.
+                        Icon(Icons.receipt_long_outlined, size: 64, color: cs.onSurfaceVariant),
+                        const SizedBox(height: 14),
+                        Text(t.noOrdersYet, textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+                      ]))))
                 : SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     sliver: SliverList.separated(
                       itemCount: page.results.length,
