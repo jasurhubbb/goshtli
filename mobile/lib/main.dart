@@ -50,6 +50,9 @@ class MeatMarketplaceApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,    // any Cupertino widgets we add later
       ],
       routerConfig: router,
+      // v3.9.12 — global key so FcmService can pop the Telegram-style in-app banner on foreground
+      // pushes without needing a BuildContext parameter.
+      scaffoldMessengerKey: FcmService.messengerKey,
     );
   }
 }

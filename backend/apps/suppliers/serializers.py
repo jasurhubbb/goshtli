@@ -21,7 +21,7 @@ class SupplierProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierProfile
         fields = ("id", "email", "full_name", "business_name", "region", "address",
-                  "animals_supported", "photo", "photo_url",
+                  "animals_supported", "photo", "photo_url", "phone_visible",
                   "is_verified", "created_at", "updated_at")
         read_only_fields = ("id", "photo_url", "is_verified", "created_at", "updated_at")
         extra_kwargs = {"photo": {"write_only": True, "required": False}}

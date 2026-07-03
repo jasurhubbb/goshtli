@@ -212,7 +212,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             Notification.objects.create(
                 user=recipient, kind=Notification.Kind.OTHER,
                 title=title, message=preview, link=f"/chats/{conv_id}")
-            send_to_user(recipient, title=title, body=preview, link=f"/chats/{conv_id}")
+            # v3.9.12 — pass kind + conversation_id so the mobile FCM handler can invalidate the
+            # unread total + the specific conversation's cache the moment the push arrives, even
+            # when the app is foregrounded on a different tab.
+            send_to_user(recipient, title=title, body=preview,
+                          link=f"/chats/{conv_id}",
+                          kind="CHAT_MESSAGE",
+                          extra={"conversation_id": conv_id,
+                                 "sender_id": row.get("sender_id")})
         except Exception:
             return
 

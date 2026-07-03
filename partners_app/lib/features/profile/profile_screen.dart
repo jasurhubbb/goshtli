@@ -10,7 +10,6 @@ import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/dashboard_providers.dart';
 import 'animals_supported_sheet.dart';
-import 'edit_profile_sheet.dart';
 
 
 /// Partner Profil tab.
@@ -126,16 +125,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = (ref.read(partnerAuthProvider) is AuthAuthenticated)
         ? (ref.read(partnerAuthProvider) as AuthAuthenticated).user
         : null;
-    // v3.9.8 — qassobs get the dedicated full-page edit screen so they can manage their avatar
-    // alongside name + phone visibility. Suppliers keep the lightweight bottom sheet because their
-    // primary "avatar" concept is the market logo, which lives elsewhere.
+    // v3.9.12 — both roles now get a dedicated full-page edit screen so they can manage their
+    // avatar alongside identity fields. The old bottom-sheet path (edit_profile_sheet.dart) is
+    // kept for callers that want a lightweight edit but is no longer wired here.
     bool saved = false;
     if (user?.isQassob ?? false) {
       saved = (await context.push<bool>('/profile/edit-qassob')) ?? false;
     } else {
-      saved = await showEditProfileSheet(context,
-          currentName: user?.fullName ?? '',
-          currentPhoneVisible: (_profile?['phone_visible'] as bool?) ?? true);
+      saved = (await context.push<bool>('/profile/edit-supplier')) ?? false;
     }
     if (saved) {
       _loadProfile();

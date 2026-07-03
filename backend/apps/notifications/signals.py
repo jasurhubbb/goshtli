@@ -11,10 +11,14 @@ from .fcm import send_to_user
 from .models import Notification
 
 
-def _notify(user, kind, title, message, link):
-    """Create an in-app Notification row AND fire a push. Centralized so both rails stay in sync."""
+def _notify(user, kind, title, message, link, extra=None):
+    """Create an in-app Notification row AND fire a push. Centralized so both rails stay in sync.
+
+    v3.9.12 — passes `kind` (Notification.Kind value) + optional `extra` dict to FCM so the client
+    can route on the payload without parsing the link path. `extra` typically carries the entity id
+    that changed (order_id, conversation_id) so the mobile can invalidate exactly the right cache."""
     Notification.objects.create(user=user, kind=kind, title=title, message=message, link=link)
-    send_to_user(user, title=title, body=message, link=link)
+    send_to_user(user, title=title, body=message, link=link, kind=kind, extra=extra or {})
 
 
 # ---------- Supplier verification ----------
@@ -54,7 +58,8 @@ def _notify_order_event(sender, instance, created, **kwargs):
         _notify(instance.listing.supplier, Notification.Kind.ORDER_PLACED,
             f"New order #{instance.pk}",
             f"{instance.buyer.email} ordered {instance.quantity_kg}kg of {instance.listing.name_uz}.",
-            f"/orders/{instance.pk}")
+            f"/orders/{instance.pk}",
+            extra={"order_id": instance.pk})
         return
 
     prev = getattr(instance, "_previous_status", None)
@@ -66,10 +71,12 @@ def _notify_order_event(sender, instance, created, **kwargs):
             _notify(u, Notification.Kind.ORDER_CANCELLED,
                 f"Order #{instance.pk} cancelled",
                 f"Stock for {instance.listing.name_uz} has been restored.",
-                f"/orders/{instance.pk}")
+                f"/orders/{instance.pk}",
+                extra={"order_id": instance.pk})
     else:
         # Forward transition (CONFIRMED/PROCESSING/IN_TRANSIT/DELIVERED) — buyer is the one tracking the order
         _notify(instance.buyer, Notification.Kind.ORDER_STATUS_CHANGED,
             f"Order #{instance.pk}: {instance.get_status_display()}",
             f"Your order for {instance.listing.name_uz} is now {instance.get_status_display().lower()}.",
-            f"/orders/{instance.pk}")
+            f"/orders/{instance.pk}",
+            extra={"order_id": instance.pk, "status": instance.status})

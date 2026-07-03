@@ -69,21 +69,33 @@ def _ensure_initialized() -> bool:
         return False
 
 
-def send_to_user(user, *, title: str, body: str, link: str = "") -> None:
-    """Send a push notification to every device the user has registered. Best-effort — never raises."""
+def send_to_user(user, *, title: str, body: str, link: str = "",
+                  kind: str = "", extra: dict | None = None) -> None:
+    """Send a push notification to every device the user has registered. Best-effort — never raises.
+
+    v3.9.12 — accepts `kind` (Notification.Kind value like "ORDER_PLACED") + arbitrary `extra` dict
+    for entity ids (conversation_id, order_id, etc). Both are shipped in the FCM data payload so the
+    Flutter client can route by kind + invalidate the right Riverpod providers WITHOUT parsing the
+    link path. This is what turns FCM from "tap to jump" into a real-time signal that live-refreshes
+    the UI even when the app is in the foreground (Telegram/WhatsApp behavior).
+    """
     if not _ensure_initialized(): return
     tokens = list(DeviceToken.objects.filter(user=user).values_list("token", flat=True))
     if not tokens: return
-    _send_to_tokens(tokens, title=title, body=body, link=link)
+    _send_to_tokens(tokens, title=title, body=body, link=link, kind=kind, extra=extra)
 
 
-def _send_to_tokens(tokens: Iterable[str], *, title: str, body: str, link: str = "") -> None:
-    """Multicast send. Removes stale tokens that FCM rejects (uninstalls, expired registrations)."""
+def _send_to_tokens(tokens: Iterable[str], *, title: str, body: str, link: str = "",
+                     kind: str = "", extra: dict | None = None) -> None:
+    """Multicast send. Removes stale tokens that FCM rejects (uninstalls, expired registrations).
+    FCM data values must all be strings — stringify anything the caller shoves into `extra`."""
+    data = {"link": link, "kind": kind}
+    for k, v in (extra or {}).items():
+        data[str(k)] = "" if v is None else str(v)
     message = messaging.MulticastMessage(
         tokens=list(tokens),
         notification=messaging.Notification(title=title, body=body),
-        # data: arbitrary key/value pairs Flutter reads when the user taps the notification
-        data={"link": link},
+        data=data,
         android=messaging.AndroidConfig(priority="high",
             notification=messaging.AndroidNotification(sound="default")))
     try:

@@ -1,23 +1,27 @@
-// FCM bootstrap — Firebase init, OS permission, FCM token registration with backend, deep-link tap handling.
+// FCM bootstrap — Firebase init, permission, token registration, foreground live-refresh, deep-link
+// tap handling.
 //
-// Lifecycle:
-//   • app boot: initialize() runs from main.dart before runApp (sets up the background handler)
-//   • after first router builds: bindRouter() attaches tap listeners that navigate via go_router
-//   • on login: registerCurrentToken() pushes the FCM token to backend so events route to the right user
-//   • on logout: tokens stay on device; backend update_or_create re-binds them at next login
+// v3.9.12 production-quality real-time updates:
+//   • Foreground FCM arrival → parse data['kind'] → invalidate the matching Riverpod providers so
+//     the UI live-updates (Buyurtmalar, chat unread badge, notifications) WITHOUT a pull-to-refresh
+//     — Telegram/WhatsApp behavior where new messages just appear on-screen.
+//   • In-app banner (SnackBar via a global scaffoldMessengerKey) fires for pushes whose deep-link
+//     destination isn't the currently-visible screen.
 //
-// Tap handling covers three states:
-//   1. App in foreground  → push arrives → onMessage listener (currently silent; in-app polling refreshes UI)
-//   2. App in background  → user taps the system tray notification → onMessageOpenedApp listener → navigate
-//   3. App terminated    → user taps the system tray notification → getInitialMessage() on next launch → navigate
-//
-// Each push payload carries data['link'] (e.g. "/orders/5"). We feed that path to go_router's push().
+// Data payload contract (from backend apps/notifications/fcm.py.send_to_user):
+//   {kind: "ORDER_PLACED"|"ORDER_STATUS_CHANGED"|"CHAT_MESSAGE"|..., link: "/orders/5",
+//    order_id: "5", conversation_id: "7", ...}
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../network/api_client.dart';
+import '../../features/chats/providers/chats_providers.dart';
+import '../../features/orders/providers/orders_providers.dart';
 
 
 /// Background message handler — MUST be a top-level function with @pragma('vm:entry-point') so the Dart VM can
@@ -31,10 +35,18 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 
 class FcmService {
   final ApiClient _api;
+  Ref? _ref;
   GoRouter? _router;
   bool _listenersAttached = false;
 
-  FcmService(this._api);
+  static final GlobalKey<ScaffoldMessengerState> messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
+  FcmService(this._api, {Ref? ref}) : _ref = ref;
+
+  /// Late-bind the Riverpod Ref after ProviderScope has spun up. Must be called from the app root
+  /// before FCM listeners actually deliver messages (otherwise foreground pushes can't invalidate).
+  set ref(Ref ref) => _ref = ref;
 
   /// One-time init from main(). Tries to initialize Firebase + register the background handler.
   /// If google-services.json is missing or Firebase misconfigured, fails silently — push disabled, rest of app still works.
@@ -57,11 +69,12 @@ class FcmService {
     }
   }
 
-  /// Wire up three notification-tap entry points. Foreground stays silent for now.
+  /// Wire up three notification-tap entry points + foreground live-refresh (v3.9.12).
   Future<void> _attachListeners() async {
     try {
-      // Foreground arrival — placeholder. Could show a SnackBar if we plumb in a ScaffoldMessenger key later.
-      FirebaseMessaging.onMessage.listen((m) => debugPrint('FCM foreground: ${m.notification?.title}'));
+      // Foreground: live-refresh + in-app banner. This is what turns FCM from "tap to jump" into
+      // real-time messenger behavior — new orders appear in the tab, chat badge updates, etc.
+      FirebaseMessaging.onMessage.listen(_handleForeground);
 
       // Background → user taps the system tray notification → app comes to foreground here
       FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
@@ -74,7 +87,70 @@ class FcmService {
     }
   }
 
+  void _handleForeground(RemoteMessage message) {
+    _invalidateProviders(message);
+    _showInAppBanner(message);
+  }
+
+  /// Route by `data['kind']` (populated by backend v3.9.12) to the buyer-side providers so the UI
+  /// re-fetches the moment the FCM lands. Falls back safely when the kind is unknown.
+  void _invalidateProviders(RemoteMessage message) {
+    final ref = _ref;
+    if (ref == null) return;
+    final kind = message.data['kind']?.toString() ?? '';
+    try {
+      switch (kind) {
+        case 'ORDER_PLACED':
+        case 'ORDER_STATUS_CHANGED':
+        case 'ORDER_CANCELLED':
+          // Buyer's orders list — status just moved on one of their orders.
+          ref.invalidate(myOrdersProvider);
+        case 'CHAT_MESSAGE':
+          // Unread badge on the home AppBar chat icon + conversations list.
+          ref.invalidate(unreadChatsTotalProvider);
+          ref.invalidate(conversationsProvider);
+        default:
+          // Unknown → refresh the two most-visible surfaces so the user's next glance is fresh.
+          ref.invalidate(myOrdersProvider);
+      }
+    } catch (e) {
+      debugPrint('FCM provider invalidation failed for kind=$kind: $e');
+    }
+  }
+
+  /// Telegram-style in-app banner. Suppressed when the user is already viewing the destination
+  /// (no point notifying about a chat they're actively reading).
+  void _showInAppBanner(RemoteMessage message) {
+    final title = message.notification?.title ?? '';
+    final body = message.notification?.body ?? '';
+    if (title.isEmpty && body.isEmpty) return;
+    final messenger = messengerKey.currentState;
+    if (messenger == null) return;
+    final link = message.data['link']?.toString() ?? '';
+    if (link.isNotEmpty && _router?.state.matchedLocation == link) return;
+    messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 4),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title.isNotEmpty) Text(title,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          if (body.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(body, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13)),
+          ],
+        ]),
+      action: link.isEmpty ? null : SnackBarAction(label: "OCH",
+          onPressed: () { try { _router?.push(link); } catch (_) {} }),
+    ));
+  }
+
   void _handleTap(RemoteMessage message) {
+    // Same live-refresh we do on foreground — user may have missed several pushes while away.
+    _invalidateProviders(message);
     // Backend sends a path string in data['link'] (e.g. "/orders/5", "/listings/new", "/chats/3").
     // Feed it directly to go_router. Empty/missing → ignore (notification was informational only).
     final link = (message.data['link'] as String?)?.trim() ?? '';

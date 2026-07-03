@@ -14,6 +14,7 @@ import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/presentation/qassob_wizard_screen.dart';
 import '../../features/onboarding/presentation/supplier_wizard_screen.dart';
 import '../../features/profile/qassob_profile_edit_screen.dart';
+import '../../features/profile/supplier_profile_edit_screen.dart';
 import '../../features/ratings/ratings_screen.dart';
 import '../../features/role_picker/role_picker_screen.dart';
 import '../auth/partner_auth_notifier.dart';
@@ -80,6 +81,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // a proper photo editor that doesn't fit in a bottom sheet.
       GoRoute(path: '/profile/edit-qassob',
           builder: (ctx, st) => const QassobProfileEditScreen()),
+      // v3.9.12 — same treatment for suppliers. Bottom sheet couldn't fit the avatar editor + name
+      // + business_name + phone toggle without feeling cramped; dedicated page mirrors the qassob
+      // one so both partner roles get the same production-quality profile-edit surface.
+      GoRoute(path: '/profile/edit-supplier',
+          builder: (ctx, st) => const SupplierProfileEditScreen()),
       // v3.9 — chat list + chat detail. Reachable from the dashboard chat icon and from push
       // notification deep links. Detail screen owns the WebSocket lifecycle.
       GoRoute(path: '/chats', builder: (ctx, st) => const PartnerChatsListScreen()),

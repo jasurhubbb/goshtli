@@ -29,7 +29,11 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository(
 
 
 /// FcmService — shares the same ApiClient so the register-device call rides the same auth interceptor as everything else.
-final fcmServiceProvider = Provider<FcmService>((ref) => FcmService(ref.watch(apiClientProvider)));
+///
+/// v3.9.12 — passes `ref` in so the FCM service can invalidate other providers when a foreground
+/// push arrives (live-refresh of Buyurtmalar list, chat unread badge, conversations).
+final fcmServiceProvider = Provider<FcmService>((ref) =>
+    FcmService(ref.watch(apiClientProvider), ref: ref));
 
 
 /// The screen-facing notifier. Reads use ref.watch(authNotifierProvider); mutations use ref.read(authNotifierProvider.notifier).
