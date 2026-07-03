@@ -118,10 +118,27 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsListingOwnerOrReadOnly)
 
     def perform_destroy(self, instance):
-        # Refuse hard-delete if there are orders attached — preserves FK integrity. Set status=ARCHIVED for soft delete.
+        # v3.9.13 — split the "has orders" gate into two cases so the supplier's partner-app CAN
+        # delete listings that only have terminal (DELIVERED / CANCELLED) orders in history:
+        #
+        #   1. Any NON-terminal order → 400, "buyurtmalar tugatilishi kerak" (finish them first).
+        #      That's the user's product requirement: no destroying a listing mid-fulfillment.
+        #   2. Only terminal orders → soft-delete via status=ARCHIVED (buyer stops seeing it, but
+        #      the historical Order rows keep their FK).
+        #   3. Zero orders at all → hard delete.
+        from apps.orders.models import Order
+        NON_TERMINAL = (Order.Status.PENDING, Order.Status.CONFIRMED, Order.Status.PROCESSING,
+                        Order.Status.PROCESSING_BUTCHER, Order.Status.AWAITING_QASSOB,
+                        Order.Status.IN_TRANSIT)
+        active = instance.orders.filter(status__in=NON_TERMINAL).count()
+        if active > 0:
+            raise PermissionDenied(
+                f"Bu tovarda {active} ta aktiv buyurtma bor. Avval hammasini yakunlang.")
         if instance.orders.exists():
-            raise PermissionDenied("Cannot delete a listing that has orders. Set status to ARCHIVED instead.")
-        instance.delete()
+            instance.status = Listing.Status.ARCHIVED
+            instance.save(update_fields=("status", "updated_at"))
+        else:
+            instance.delete()
 
 
 class MyListingsView(generics.ListAPIView):

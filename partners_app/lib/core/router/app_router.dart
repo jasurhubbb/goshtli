@@ -5,6 +5,7 @@ import 'package:shared_core/shared_core.dart';
 
 import '../../features/auth/otp_entry_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
+import '../../features/catalog/listing_detail_screen.dart';
 import '../../features/catalog/new_listing_screen.dart';
 import '../../features/chats/chat_detail_screen.dart';
 import '../../features/chats/chats_list_screen.dart';
@@ -76,6 +77,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Full-page Yangi tovar qo'shish — replaces the v3.8.1 sheet so the form has room to breathe +
       // can host an image picker. Pops with the new listing id so Katalog can refresh.
       GoRoute(path: '/catalog/new', builder: (ctx, st) => const NewListingScreen()),
+      // v3.9.13 — supplier product detail (photo + info rows + Delete button with active-order
+      // guard). Pops with `true` when the delete succeeds so the Katalog list refreshes.
+      GoRoute(path: '/catalog/:id',
+          builder: (ctx, gs) => ListingDetailScreen(
+              listingId: int.parse(gs.pathParameters['id']!))),
       // v3.9.8 — dedicated full-page qassob profile edit screen (avatar upload + name + phone
       // visibility). Replaces the previous one-size-fits-all sheet for qassobs because they need
       // a proper photo editor that doesn't fit in a bottom sheet.

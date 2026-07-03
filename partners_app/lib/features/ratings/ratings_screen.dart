@@ -6,8 +6,12 @@ import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 
 
-/// "Sharhlar" screen — list of reviews left for this partner.
-/// Empty state shows a clear message (no spinner, no "null" leak).
+/// "Sharhlar" screen — read-only list of reviews left for this partner.
+///
+/// v3.9.13 — dropped the reply text field + Send button. Partners kept ignoring the reply feature
+/// (it's a lot of typing for little payoff, and buyers don't check back for a reply anyway), so
+/// the card is now a pure "who said what" summary. Backend /reply endpoint stays wired in case we
+/// bring the surface back for select partner tiers later.
 class RatingsScreen extends ConsumerWidget {
   const RatingsScreen({super.key});
 
@@ -71,77 +75,33 @@ final _reviewsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async 
 });
 
 
-class _ReviewCard extends ConsumerStatefulWidget {
+class _ReviewCard extends StatelessWidget {
   final Map<String, dynamic> row;
   const _ReviewCard({required this.row});
-  @override
-  ConsumerState<_ReviewCard> createState() => _ReviewCardState();
-}
-
-
-class _ReviewCardState extends ConsumerState<_ReviewCard> {
-  bool _replying = false;
-  final _replyCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _replyCtrl.text = (widget.row['reply_text'] as String?) ?? '';
-  }
-
-  @override
-  void dispose() { _replyCtrl.dispose(); super.dispose(); }
-
-  Future<void> _sendReply() async {
-    final text = _replyCtrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() => _replying = true);
-    try {
-      await ref.read(apiClientProvider).dio.post(
-        '/partner/reviews/${widget.row['id']}/reply/',
-        data: {'reply_text': text});
-      ref.invalidate(_reviewsProvider);
-    } catch (_) {} finally {
-      if (mounted) setState(() => _replying = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final r = widget.row;
-    final rating = (r['rating'] as num?)?.toInt() ?? 0;
+    final rating = (row['rating'] as num?)?.toInt() ?? 0;
+    final comment = (row['comment'] as String?) ?? '';
     return Container(padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: cs.outlineVariant)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text(r['buyer_name']?.toString() ?? '—',
+          Expanded(child: Text(row['buyer_name']?.toString() ?? '—',
               style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
           Row(mainAxisSize: MainAxisSize.min,
               children: List.generate(5, (i) => Icon(
                   i < rating ? Icons.star_rounded : Icons.star_border_rounded,
                   size: 18, color: const Color(0xFFEF9A00)))),
         ]),
-        if ((r['comment'] as String?)?.isNotEmpty ?? false) ...[
+        if (comment.isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text(r['comment'] as String,
-              style: tt.bodyMedium?.copyWith(color: cs.onSurface)),
+          Text(comment, style: tt.bodyMedium?.copyWith(color: cs.onSurface)),
         ],
-        const SizedBox(height: 12),
-        TextField(controller: _replyCtrl,
-          maxLines: 2,
-          decoration: InputDecoration(hintText: t.ratingsReplyHint)),
-        const SizedBox(height: 8),
-        Align(alignment: Alignment.centerRight, child: FilledButton(
-          onPressed: _replying ? null : _sendReply,
-          child: _replying
-              ? const SizedBox(width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Text(t.ratingsReplyAction))),
       ]));
   }
 }

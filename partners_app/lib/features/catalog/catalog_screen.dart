@@ -101,6 +101,15 @@ class _ListingCardState extends ConsumerState<_ListingCard> {
     } catch (_) {}
   }
 
+  /// v3.9.13 — tap → dedicated product detail page (info + delete). Long-press keeps the F5 quick
+  /// price sheet. Pops with `true` when the detail page's delete succeeds so we refresh the list.
+  Future<void> _openDetail() async {
+    final id = (widget.row['id'] as num?)?.toInt();
+    if (id == null) return;
+    final deleted = await context.push<bool>('/catalog/$id');
+    if (deleted == true) ref.invalidate(_myListingsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -108,7 +117,7 @@ class _ListingCardState extends ConsumerState<_ListingCard> {
     final cs = Theme.of(context).colorScheme;
     final r = widget.row;
     final qty = r['quantity_kg']?.toString() ?? '0';
-    return GestureDetector(onLongPress: _quickPrice,
+    return GestureDetector(onTap: _openDetail, onLongPress: _quickPrice,
       child: Container(padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -123,6 +132,7 @@ class _ListingCardState extends ConsumerState<_ListingCard> {
           ])),
           Text('${r['price_per_kg']} so\'m',
               style: tt.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w800)),
+          Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
         ])));
   }
 }

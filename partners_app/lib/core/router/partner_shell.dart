@@ -46,12 +46,15 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
       const ProfileScreen(),
     ];
     final unread = ref.watch(partnerUnreadChatsTotalProvider).asData?.value ?? 0;
+    // v3.9.13 — chat icon shows for QASSOBS ONLY. Rationale: qassobs offer bespoke butcher
+    // services and buyers routinely need to negotiate specifics (delivery window, cut style,
+    // slaughter method) which is what chat is for. Suppliers sell standardized listings ordered
+    // through the cart — no free-form conversation needed for that flow. Removing the icon for
+    // suppliers cuts noise without losing capability (backend still routes /chats/* if a supplier
+    // ever gets messaged — they'd see it via the notification banner and the /chats route).
     return Scaffold(
       appBar: AppBar(title: Text(_title(t, isQ)),
-        // v3.9.8 chat icon with unread badge — same Telegram-style red pill the buyer-app home
-        // screen uses. Both qassobs and suppliers receive messages from buyers; the badge gives an
-        // at-a-glance "you have new" indicator without opening Chatlar.
-        actions: [Stack(clipBehavior: Clip.none, children: [
+        actions: [if (isQ) Stack(clipBehavior: Clip.none, children: [
           IconButton(onPressed: () => context.push('/chats'),
               icon: const Icon(Icons.chat_bubble_outline_rounded)),
           if (unread > 0) Positioned(top: 6, right: 4, child: IgnorePointer(child: Container(
