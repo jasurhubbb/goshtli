@@ -81,8 +81,32 @@ class IsVerifiedQassob(BasePermission):
 
 
 class IsPartner(BasePermission):
-    """Any partner-app role — SUPPLIER or QASSOB. Used by /partner/* cross-role endpoints (inbox,
-    earnings, dashboard, etc.) where the data is role-routed inside the view."""
+    """Any partner-app role — SUPPLIER or QASSOB or (v3.9.15) COURIER. Used by /partner/* cross-role
+    endpoints (inbox, earnings, dashboard, etc.) where the data is role-routed inside the view."""
     def has_permission(self, request, view):
         u = request.user
         return bool(u and u.is_authenticated and (u.is_partner or u.is_admin_role))
+
+
+# ---------- v3.9.15 courier gates ----------
+
+class IsCourier(BasePermission):
+    """role=COURIER only. Used by every /couriers/* endpoint. Note: a supplier acting as their own
+    courier for their supplier_delivers listings is NOT role=COURIER — they get an "implicit courier
+    hat" via CourierProfile but keep role=SUPPLIER. Those flows use IsCourierOrSelfDeliveringSupplier
+    (below) instead of raw IsCourier."""
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and u.is_courier)
+
+
+class IsCourierOrSelfDeliveringSupplier(BasePermission):
+    """The broader gate — either a real COURIER account, OR a SUPPLIER who has a CourierProfile
+    (auto-created when they mark supplier_delivers=True on at least one listing). Both surfaces use
+    the same courier-side UI + endpoints."""
+    def has_permission(self, request, view):
+        u = request.user
+        if not (u and u.is_authenticated): return False
+        if u.is_admin_role: return True
+        if u.is_courier: return True
+        return u.is_supplier and hasattr(u, "courier_profile")

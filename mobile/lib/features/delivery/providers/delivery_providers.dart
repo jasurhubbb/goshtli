@@ -19,18 +19,23 @@ class DeliverySelection {
   final String? vehicleCode;                       // matches VehicleOption.code; null = unset
   final String? timeSlotCode;                      // matches TimeSlotOption.code
   final bool butcherRequested;                     // mirrors the toggle in the butcher section
+  // v3.9.15 — buyer's picked qassob for this order (null = "let the system fan out to any qassob").
+  // Set by tapping a card in the SuggestedQassobsStrip; cleared by tapping the same card again.
+  final int? preferredQassobId;
   final DeliveryQuote? quote;                      // last successful quote (null while loading)
   final bool loading;
   final String? error;
 
   const DeliverySelection({this.vehicleCode, this.timeSlotCode,
-                           this.butcherRequested = false, this.quote,
+                           this.butcherRequested = false, this.preferredQassobId,
+                           this.quote,
                            this.loading = false, this.error});
 
   DeliverySelection copyWith({
     String? vehicleCode, bool resetVehicle = false,
     String? timeSlotCode, bool resetTimeSlot = false,
     bool? butcherRequested,
+    int? preferredQassobId, bool resetPreferredQassob = false,
     DeliveryQuote? quote, bool resetQuote = false,
     bool? loading,
     String? error, bool resetError = false,
@@ -38,6 +43,8 @@ class DeliverySelection {
     vehicleCode: resetVehicle ? null : (vehicleCode ?? this.vehicleCode),
     timeSlotCode: resetTimeSlot ? null : (timeSlotCode ?? this.timeSlotCode),
     butcherRequested: butcherRequested ?? this.butcherRequested,
+    preferredQassobId: resetPreferredQassob
+        ? null : (preferredQassobId ?? this.preferredQassobId),
     quote: resetQuote ? null : (quote ?? this.quote),
     loading: loading ?? this.loading,
     error: resetError ? null : (error ?? this.error),
@@ -57,7 +64,18 @@ class DeliverySelectionNotifier extends StateNotifier<DeliverySelection> {
 
   void setVehicle(String code) => state = state.copyWith(vehicleCode: code);
   void setTimeSlot(String code) => state = state.copyWith(timeSlotCode: code);
-  void setButcherRequested(bool v) => state = state.copyWith(butcherRequested: v);
+  void setButcherRequested(bool v) => state = state.copyWith(butcherRequested: v,
+      // Turning butcher OFF also clears any previously-picked qassob so the order doesn't ship with
+      // a lingering preferred_qassob pointing at a service the buyer decided against.
+      resetPreferredQassob: !v);
+  /// Toggle a qassob: tapping the same id un-picks (nulls the field), tapping a different id picks it.
+  void togglePreferredQassob(int id) {
+    if (state.preferredQassobId == id) {
+      state = state.copyWith(resetPreferredQassob: true);
+    } else {
+      state = state.copyWith(preferredQassobId: id);
+    }
+  }
   void setLoading(bool v) => state = state.copyWith(loading: v);
   void setError(String? err) => state = state.copyWith(error: err, resetError: err == null);
 

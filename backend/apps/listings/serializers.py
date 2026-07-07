@@ -121,6 +121,9 @@ class ListingSerializer(serializers.ModelSerializer):
                   # animal listings from the same supplier dashboard; buyers branch UI on `is_live_animal`.
                   "is_live_animal", "sale_type", "estimated_meat_yield_pct",
                   "breed_type", "head_count", "live_weight_per_head_kg",
+                  # v3.9.15 — supplier opts in to self-delivery per listing. When True the courier
+                  # auto-assignment step is skipped and the supplier's own driver handles pickup+drop.
+                  "supplier_delivers",
                   "supplier_id", "supplier_email",
                   "photos",
                   "created_at", "updated_at")

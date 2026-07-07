@@ -48,6 +48,9 @@ class OrderReadSerializer(serializers.ModelSerializer):
                   "delivery_vehicle_type", "delivery_time_slot", "delivery_distance_km",
                   "delivery_lat", "delivery_lng", "delivery_price",
                   "butcher_service_requested", "butcher_service_fee",
+                  # v3.9.15 — expose both qassob FKs so the buyer's order detail can render "Sizning
+                  # tanlagan qassob: <name>" (preferred) and "Qabul qilgan qassob: <name>" (assigned).
+                  "preferred_qassob", "assigned_qassob",
                   "created_at", "updated_at")
         read_only_fields = fields  # read serializer — no field is writable here
 
@@ -81,6 +84,10 @@ class OrderCreateSerializer(serializers.Serializer):
     butcher_service_requested = serializers.BooleanField(required=False, default=False)
     butcher_service_fee = serializers.DecimalField(max_digits=12, decimal_places=2, required=False,
                                                     default=Decimal("0.00"))
+    # v3.9.15 — buyer's preferred qassob (User pk). Passed only for live-animal orders with the
+    # butcher service requested. The service layer soft-reserves this qassob for 60s before fanning
+    # the job out to the wider matching pool.
+    preferred_qassob = serializers.IntegerField(required=False, allow_null=True, default=None)
 
 
 class OrderStatusUpdateSerializer(serializers.Serializer):

@@ -37,6 +37,10 @@ class OrdersRepository {
     required double deliveryPrice,
     required bool butcherServiceRequested,
     required double butcherServiceFee,
+    // v3.9.15 — buyer's picked qassob for live-animal orders. Only sent when butcherServiceRequested
+    // is true; the backend soft-reserves this qassob for the first ~60s of dispatch before fanning
+    // the job out.
+    int? preferredQassobId,
   }) async {
     final r = await _api.dio.post('/orders/', data: {
       'listing': listingId, 'quantity_kg': quantityKg.toStringAsFixed(2),
@@ -49,6 +53,8 @@ class OrdersRepository {
       'delivery_price': deliveryPrice.toStringAsFixed(2),
       'butcher_service_requested': butcherServiceRequested,
       'butcher_service_fee': butcherServiceFee.toStringAsFixed(2),
+      if (preferredQassobId != null && butcherServiceRequested)
+        'preferred_qassob': preferredQassobId,
     });
     if (r.statusCode == 201) return model.Order.fromJson(r.data as Map<String, dynamic>);
     throw _toApiException(r);

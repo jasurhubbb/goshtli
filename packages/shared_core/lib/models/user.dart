@@ -1,12 +1,14 @@
 /// Canonical User model shared between buyer + partner apps. Mirrors backend apps/accounts/User.
 ///
-/// v3.8 adds QASSOB to UserRole. The partner app reads `role` to branch its tab layout (SUPPLIER sees
-/// Buyurtmalar/Katalog, QASSOB sees Ishlar/Jadval).
+/// v3.8 added QASSOB. v3.9.15 adds COURIER (the delivery driver). The partner app reads `role` to
+/// branch its shell layout — SUPPLIER sees Buyurtmalar/Katalog, QASSOB sees Ishlar/Servisim,
+/// COURIER sees Queue/Active/Earnings/History.
 enum UserRole {
   admin,
   supplier,
   buyer,
   qassob,
+  courier,
 }
 
 UserRole _roleFromString(String s) {
@@ -15,6 +17,7 @@ UserRole _roleFromString(String s) {
     case 'SUPPLIER': return UserRole.supplier;
     case 'BUYER':    return UserRole.buyer;
     case 'QASSOB':   return UserRole.qassob;
+    case 'COURIER':  return UserRole.courier;
   }
   return UserRole.buyer;                                   // permissive default keeps legacy responses parsing
 }
@@ -25,6 +28,7 @@ String roleToWire(UserRole r) {
     case UserRole.supplier: return 'SUPPLIER';
     case UserRole.buyer: return 'BUYER';
     case UserRole.qassob: return 'QASSOB';
+    case UserRole.courier: return 'COURIER';
   }
 }
 
@@ -67,7 +71,10 @@ class User {
   bool get isBuyer => role == UserRole.buyer;
   bool get isSupplier => role == UserRole.supplier;
   bool get isQassob => role == UserRole.qassob;
+  bool get isCourier => role == UserRole.courier;
   bool get isAdmin => role == UserRole.admin;
-  /// True for any partner-app role.
-  bool get isPartner => role == UserRole.supplier || role == UserRole.qassob;
+  /// True for any partner-app role (v3.9.15 — includes courier).
+  bool get isPartner => role == UserRole.supplier
+      || role == UserRole.qassob
+      || role == UserRole.courier;
 }

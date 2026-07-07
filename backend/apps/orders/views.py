@@ -50,7 +50,9 @@ class OrderCreateView(APIView):
                                  delivery_lng=d.get("delivery_lng"),
                                  delivery_price=d.get("delivery_price", 0),
                                  butcher_service_requested=d.get("butcher_service_requested", False),
-                                 butcher_service_fee=d.get("butcher_service_fee", 0))
+                                 butcher_service_fee=d.get("butcher_service_fee", 0),
+                                 # v3.9.15 — buyer's picked qassob from the Servislar tab or listing detail.
+                                 preferred_qassob_id=d.get("preferred_qassob"))
         except (InsufficientStock, ListingNotOrderable, DjangoValidationError) as e:
             _service_errors_to_drf(e)
         return Response(OrderReadSerializer(order).data, status=status.HTTP_201_CREATED)

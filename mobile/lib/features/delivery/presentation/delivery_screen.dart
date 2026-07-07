@@ -142,10 +142,10 @@ class _DeliveryScreenState extends ConsumerState<DeliveryScreen> {
                               ref.read(deliverySelectionProvider.notifier).setButcherRequested(v);
                               _refreshQuote();                                  // re-quote because vehicle eligibility shifts
                             }),
-            // v3.9.14 — when butcher service is requested, surface a suggested-qassobs strip.
-            // Discovery / trust signal so the buyer sees WHO might handle the slaughter before
-            // committing. Tapping a card opens the full qassob detail; picking a specific one for
-            // this order is a Phase 2 flow (needs Order.preferred_qassob + assignment logic).
+            // v3.9.14 — suggested qassobs strip surfaces when butcher service is requested.
+            // v3.9.15 upgrade: tap = pick a specific qassob for this order (sends preferred_qassob
+            // on POST /orders/). Second tap on the same card un-picks. Chevron-right icon on each
+            // card still opens the full detail page for buyers who want to research first.
             if (selection.butcherRequested) ...[
               const SizedBox(height: 12),
               const _SuggestedQassobsStrip(),
@@ -444,15 +444,29 @@ class _SuggestedQassobsStrip extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final async = ref.watch(_suggestedQassobsProvider);
+    final picked = ref.watch(deliverySelectionProvider
+        .select((s) => s.preferredQassobId != null));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(children: [
           Icon(Icons.groups_2_rounded, size: 18, color: cs.primary),
           const SizedBox(width: 6),
-          Text("Sizga tavsiya qassoblar",
-              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+          Expanded(child: Text("Qassobni tanlang (ixtiyoriy)",
+              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+          if (picked) TextButton.icon(
+              onPressed: () => ref.read(deliverySelectionProvider.notifier)
+                  .togglePreferredQassob(
+                      ref.read(deliverySelectionProvider).preferredQassobId!),
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Bekor',
+                  style: TextStyle(fontWeight: FontWeight.w800))),
         ])),
-      const SizedBox(height: 8),
+      Padding(padding: const EdgeInsets.only(left: 4, right: 4, bottom: 6),
+        child: Text(picked
+            ? "Tanlangan qassobga birinchi navbatda taklif yuboriladi"
+            : "Ma'lum qassob tanlamasangiz, sistema mos qassobga taklifni yuboradi",
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant))),
+      const SizedBox(height: 4),
       SizedBox(height: 120, child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('—',
@@ -491,12 +505,12 @@ final _suggestedQassobsProvider = FutureProvider.autoDispose<List<Map<String, dy
 });
 
 
-class _SuggestedCard extends StatelessWidget {
+class _SuggestedCard extends ConsumerWidget {
   final Map<String, dynamic> row;
   const _SuggestedCard({required this.row});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final id = (row['id'] as num?)?.toInt() ?? 0;
@@ -504,17 +518,30 @@ class _SuggestedCard extends StatelessWidget {
     final photoUrl = (row['photo_url'] as String?) ?? '';
     final ratingCount = (row['rating_count'] as num?)?.toInt() ?? 0;
     final ratingAvg = double.tryParse('${row['rating_avg'] ?? 0}') ?? 0;
-    return InkWell(onTap: () => context.push('/servislar/$id'),
+    final picked = ref.watch(deliverySelectionProvider
+        .select((s) => s.preferredQassobId == id));
+    return InkWell(
+      onTap: () => ref.read(deliverySelectionProvider.notifier).togglePreferredQassob(id),
       borderRadius: BorderRadius.circular(14),
-      child: Container(width: 150,
+      child: Container(width: 170,
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: Colors.white,
+        decoration: BoxDecoration(
+            color: picked ? cs.primary.withValues(alpha: 0.10) : Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: cs.outlineVariant)),
+            border: Border.all(
+                color: picked ? cs.primary : cs.outlineVariant,
+                width: picked ? 1.5 : 1)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          CircleAvatar(radius: 22, backgroundColor: cs.primary.withValues(alpha: 0.10),
-              foregroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-              child: Icon(Icons.cut_rounded, color: cs.primary)),
+          Stack(clipBehavior: Clip.none, children: [
+            CircleAvatar(radius: 22, backgroundColor: cs.primary.withValues(alpha: 0.10),
+                foregroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                child: Icon(Icons.cut_rounded, color: cs.primary)),
+            if (picked) Positioned(right: -2, bottom: -2,
+              child: Container(width: 18, height: 18,
+                decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5)),
+                child: const Icon(Icons.check, color: Colors.white, size: 12))),
+          ]),
           const SizedBox(width: 8),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -526,6 +553,13 @@ class _SuggestedCard extends StatelessWidget {
               const SizedBox(width: 2),
               Text(ratingCount > 0 ? ratingAvg.toStringAsFixed(1) : '—',
                   style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(width: 4),
+              // Info button opens the full detail page — separate from the card tap.
+              InkWell(onTap: () => context.push('/servislar/$id'),
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.info_outline_rounded, size: 14,
+                      color: cs.onSurfaceVariant))),
             ]),
           ])),
         ])));
@@ -697,6 +731,9 @@ class _CheckoutBarState extends ConsumerState<_CheckoutBar> {
           deliveryPrice: perLineDelivery,
           butcherServiceRequested: selection.butcherRequested,
           butcherServiceFee: perLineButcher,
+          // v3.9.15 — pass the buyer's picked qassob (null if they didn't pick one). Repository only
+          // includes the field on the wire when butcher service is on, so this is safe to always pass.
+          preferredQassobId: selection.preferredQassobId,
         );
         createdIds.add(order.id);
       }

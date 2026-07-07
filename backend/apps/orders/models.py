@@ -112,6 +112,15 @@ class Order(TimeStampedModel):
     assigned_qassob = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                           null=True, blank=True, related_name="qassob_orders",
                                           db_index=True)
+    # v3.9.15 — buyer's PREFERRED qassob (chosen from the Servislar tab or listing detail when a live-
+    # animal order is placed). Distinct from `assigned_qassob` because the qassob still has to accept
+    # the job — until then, other qassobs won't see it in their inbox (soft-reservation for 60s window
+    # handled in orders/services.py). If the preferred qassob rejects, the order fans out to all
+    # matching qassobs and `preferred_qassob` remains as a historical hint (buyer told us who they
+    # wanted) while `assigned_qassob` fills with whoever eventually accepts.
+    preferred_qassob = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                          null=True, blank=True, related_name="preferred_qassob_orders",
+                                          db_index=True)
     # Snapshot payout — what we'll pay the qassob when the order completes. Frozen at assignment time so
     # later rate-card changes don't retroactively rewrite history. F10 income export reads this.
     qassob_payout = models.DecimalField(_("qassob payout"), max_digits=12, decimal_places=2,

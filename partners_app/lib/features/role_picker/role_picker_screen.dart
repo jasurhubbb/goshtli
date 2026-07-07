@@ -7,13 +7,13 @@ import 'package:shared_core/shared_core.dart';
 import '../../core/auth/role_draft_provider.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Role picker — the SECOND first-run screen, between language pick and phone OTP. Two big cards:
-///   * Qassobman  — slaughter + cut live animals
-///   * Go'sht sotaman — sell raw meat or live animals (may also deliver)
+/// Role picker — three big cards after language pick:
+///   • Qassobman         — slaughter + cut live animals (Firebase OTP)
+///   • Go'sht sotaman    — sell raw meat or live animals (Firebase OTP)
+///   • Kuryer (v3.9.15)  — delivery driver (email + password issued by ops)
 ///
-/// Picking writes to `roleDraftProvider` (SharedPreferences). The onboarding wizard reads it AFTER
-/// the user completes Firebase OTP + lands on /auth/details as a new user, to know which question
-/// set to render.
+/// Picking Qassob/Supplier writes to `roleDraftProvider` and pushes /auth/phone. Kuryer pushes to
+/// /auth/courier which is a plain email+password form (no OTP because couriers are admin-provisioned).
 class RolePickerScreen extends ConsumerWidget {
   const RolePickerScreen({super.key});
 
@@ -25,7 +25,8 @@ class RolePickerScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
           onPressed: () => context.go('/'))),
-      body: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      body: SafeArea(child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(t.rolePickerTitle,
               style: tt.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
@@ -41,6 +42,19 @@ class RolePickerScreen extends ConsumerWidget {
             icon: Icons.store_rounded, accent: const Color(0xFF1B5E20),
             title: t.roleSupplierTitle, body: t.roleSupplierBody,
             onTap: () => _pick(ref, context, UserRole.supplier)),
+          const SizedBox(height: 16),
+          // v3.9.15 — courier card. Uses a dedicated email+password login instead of Firebase OTP
+          // because courier accounts are provisioned by admins (see the provision_courier command
+          // + POST /couriers/admin/provision/).
+          _RoleCard(
+            icon: Icons.delivery_dining_rounded, accent: const Color(0xFF0D47A1),
+            title: 'Kuryer',
+            body: "Yetkazib beruvchi — admin bergan email + parol bilan kiring",
+            onTap: () async {
+              HapticFeedback.selectionClick();
+              await ref.read(roleDraftProvider.notifier).set(UserRole.courier);
+              if (context.mounted) context.push('/auth/courier');
+            }),
         ]))));
   }
 

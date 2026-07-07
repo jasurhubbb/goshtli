@@ -36,6 +36,10 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   final _price = TextEditingController();
   String? _form;                                  // null until user taps a chip — no RAW_CUT default
   File? _photo;
+  // v3.9.15 — supplier opts in to self-delivery for THIS listing. Default false → the courier
+  // auto-assignment signal picks a courier when the order enters IN_TRANSIT. When true the supplier
+  // is on the hook for pickup+drop themselves and the signal bypasses courier assignment.
+  bool _supplierDelivers = false;
 
   bool _submitting = false;
   bool _ready = false;
@@ -190,6 +194,7 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
         'location': 'Tashkent',
         'available_from': '${today.year}-${today.month.toString().padLeft(2, "0")}-${today.day.toString().padLeft(2, "0")}',
         'status': 'ACTIVE', 'animal_form': _form,
+        'supplier_delivers': _supplierDelivers,
       });
       if (r.statusCode != 201) {
         setState(() {
@@ -338,6 +343,31 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
                 _FormChip(label: 'Ikkalasi', selected: _form == 'BOTH',
                             onTap: () => setState(() => _form = 'BOTH')),
               ]),
+              const SizedBox(height: 22),
+              // v3.9.15 — self-delivery opt-in. Suppliers who have their own driver skip courier
+              // auto-assignment for this listing; when off, the platform picks a courier when the
+              // order enters IN_TRANSIT.
+              Container(padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+                decoration: BoxDecoration(color: cs.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: cs.outlineVariant)),
+                child: Row(children: [
+                  Icon(Icons.local_shipping_outlined,
+                      color: _supplierDelivers ? cs.primary : cs.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text("O'zim yetkazib beraman",
+                        style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(_supplierDelivers
+                        ? "Buyurtma tayyor bo'lganda o'zingiz olib borasiz"
+                        : "Platforma kuryeri buyurtmani yetkazadi",
+                        style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  ])),
+                  Switch.adaptive(value: _supplierDelivers,
+                      onChanged: (v) => setState(() => _supplierDelivers = v)),
+                ])),
               if (_warning != null) Padding(padding: const EdgeInsets.only(top: 16),
                   child: Container(padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(color: const Color(0xFFFFF4E5),

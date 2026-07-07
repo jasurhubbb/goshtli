@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_core/shared_core.dart';
 
+import '../../features/auth/courier_login_screen.dart';
 import '../../features/auth/otp_entry_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
 import '../../features/catalog/listing_detail_screen.dart';
 import '../../features/catalog/new_listing_screen.dart';
 import '../../features/chats/chat_detail_screen.dart';
 import '../../features/chats/chats_list_screen.dart';
+import '../../features/courier/presentation/courier_delivery_detail_screen.dart';
 import '../../features/kyc/kyc_upload_screen.dart';
 import '../../features/language/language_picker_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
@@ -20,6 +22,7 @@ import '../../features/ratings/ratings_screen.dart';
 import '../../features/role_picker/role_picker_screen.dart';
 import '../auth/partner_auth_notifier.dart';
 import '../auth/role_draft_provider.dart';
+import 'courier_shell.dart';
 import 'partner_shell.dart';
 
 /// Go-router for the partner app. Single root-level router (no shell yet — wizards push, then the
@@ -42,7 +45,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Anonymous on a protected path → bounce back to the role picker. Without this rule, tapping
       // Chiqish in Profil clears tokens but leaves the user stranded on /home/profile rendering an
       // empty user, and the next API call 401s into the void.
-      const publicPaths = {'/', '/role-pick', '/auth/phone', '/auth/otp', '/onboarding'};
+      const publicPaths = {'/', '/role-pick', '/auth/phone', '/auth/otp', '/onboarding',
+                            '/auth/courier'};
       if (!loggedIn && !publicPaths.contains(loc)) {
         return '/role-pick';
       }
@@ -59,6 +63,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           verificationId: extra['verificationId'] as String? ?? '',
         );
       }),
+      // v3.9.15 — dedicated courier email+password login. Distinct from the phone-OTP path because
+      // courier accounts are admin-provisioned (no self-registration flow).
+      GoRoute(path: '/auth/courier', builder: (ctx, st) => const CourierLoginScreen()),
       // Onboarding wizards — dispatched by role from roleDraftProvider. Qassob = 8 pages, Supplier = 7.
       GoRoute(path: '/onboarding', builder: (ctx, gs) {
         final extra = (gs.extra as Map<String, dynamic>?) ?? const {};
@@ -98,8 +105,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/chats/:id',
           builder: (ctx, gs) => PartnerChatDetailScreen(
               conversationId: int.parse(gs.pathParameters['id']!))),
-      // Main 5-tab shell.
-      GoRoute(path: '/home', builder: (ctx, st) => const PartnerShell()),
+      // v3.9.15 — courier delivery detail. Pushed from Queue / Active / History rows in CourierShell.
+      // Owns the state-advance buttons, cash input, and photo-proof upload for one delivery.
+      GoRoute(path: '/courier/delivery/:id',
+          builder: (ctx, gs) => CourierDeliveryDetailScreen(
+              deliveryId: int.parse(gs.pathParameters['id']!))),
+      // Main 5-tab shell — role-branched. Couriers get their delivery-driver shell (Queue / Active
+      // / Earnings / History / Profile); everyone else (qassob + supplier) gets the standard
+      // PartnerShell. Consumer wrapper reads the auth state so the choice re-evaluates when the
+      // user completes login.
+      GoRoute(path: '/home', builder: (ctx, st) => Consumer(builder: (_, ref, __) {
+        final auth = ref.watch(partnerAuthProvider);
+        final isCourier = auth is AuthAuthenticated && auth.user.isCourier;
+        return isCourier ? const CourierShell() : const PartnerShell();
+      })),
     ],
   );
 });

@@ -72,7 +72,11 @@ def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_addre
                  delivery_lat=None, delivery_lng=None,
                  delivery_price: Decimal = Decimal("0.00"),
                  butcher_service_requested: bool = False,
-                 butcher_service_fee: Decimal = Decimal("0.00")) -> Order:
+                 butcher_service_fee: Decimal = Decimal("0.00"),
+                 # v3.9.15 — buyer's picked qassob (User pk). Only honored when butcher_service_requested
+                 # and the target user is role=QASSOB; otherwise silently dropped so a stale/forged pk
+                 # can't corrupt state.
+                 preferred_qassob_id: int | None = None) -> Order:
     """Place an order: lock the listing row, validate stock, decrement quantity, flip to OUT_OF_STOCK if zero, snapshot price.
 
     v3.6: delivery fields (vehicle, slot, distance, price, lat/lng) and butcher_service_* are now persisted on
@@ -111,6 +115,15 @@ def create_order(*, buyer, listing_id: int, quantity_kg: Decimal, delivery_addre
                                  delivery_price=delivery_price,
                                  butcher_service_requested=butcher_service_requested,
                                  butcher_service_fee=butcher_service_fee)
+
+    # v3.9.15 — resolve the preferred qassob if the buyer picked one. Silently drop if the id doesn't
+    # resolve to a real QASSOB — a stale id shouldn't fail the whole checkout.
+    if preferred_qassob_id and butcher_service_requested:
+        from apps.accounts.models import User
+        pref = User.objects.filter(pk=preferred_qassob_id, role=User.Role.QASSOB).first()
+        if pref is not None:
+            order.preferred_qassob = pref
+            order.save(update_fields=("preferred_qassob", "updated_at"))
 
     # Decrement stock and auto-flip to OUT_OF_STOCK when fully drained — single save() to keep DB writes minimal
     listing.quantity_kg -= quantity_kg

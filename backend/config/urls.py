@@ -37,6 +37,9 @@ urlpatterns = [
     # v3.8 — Cross-role partner endpoints (inbox, accept/reject, earnings, dashboard, calendar, reviews,
     # loyalty, smart-tips, quick-price). Mobile sees one URL set; backend routes by role.
     path("api/v1/partner/", include("apps.partner.urls")),
+    # v3.9.15 — couriers (delivery drivers). Owner CRUD, queue, delivery-status advance, proof
+    # upload, earnings + dashboard aggregates, admin provisioning.
+    path("api/v1/couriers/", include("apps.couriers.urls")),
     path("api/v1/notifications/", include("apps.notifications.urls")),  # in-app notifications + unread count
 
     # v2 Milestone C — social + trust

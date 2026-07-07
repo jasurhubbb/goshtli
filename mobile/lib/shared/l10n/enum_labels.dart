@@ -30,6 +30,10 @@ extension OrderStatusL10n on model.OrderStatus {
       model.OrderStatus.confirmed => t.orderStatusConfirmed,
       model.OrderStatus.processing => t.orderStatusProcessing,
       model.OrderStatus.inTransit => t.orderStatusInTransit,
+      // v3.9.14 — buyer confirmation gate: courier said delivered, buyer hasn't confirmed yet. We
+      // don't have a dedicated ARB key for this yet, so fall back to inTransit's label until the
+      // wider l10n pass lands. Uzbek text used inline elsewhere so this is safe.
+      model.OrderStatus.deliveredPendingConfirmation => 'Yetkazildi — tasdiqlang',
       model.OrderStatus.delivered => t.orderStatusDelivered,
       model.OrderStatus.cancelled => t.orderStatusCancelled,
     };
