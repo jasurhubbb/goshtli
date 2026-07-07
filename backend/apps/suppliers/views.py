@@ -1,8 +1,10 @@
 """Supplier views — /me for profile read/update, /dashboard for the supplier home screen aggregate.
-v3.3 adds /list/ (admin-curated supplier picker) and /<id>/ (admin edit of any supplier profile)."""
+v3.3 adds /list/ (admin-curated supplier picker) and /<id>/ (admin edit of any supplier profile).
+v3.9.14 adds /public/<id>/ — public read shape so the buyer app can render a supplier profile page
+from any listing detail."""
 from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics
+from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,7 +15,8 @@ from apps.common.permissions import IsAdminRole, IsSupplier
 from apps.listings.models import Listing
 from apps.orders.models import Order
 from .models import SupplierProfile
-from .serializers import SupplierDashboardSerializer, SupplierProfileSerializer
+from .serializers import (SupplierDashboardSerializer, SupplierProfileSerializer,
+                          SupplierPublicSerializer)
 
 
 class SupplierMeView(generics.RetrieveUpdateAPIView):
@@ -58,6 +61,19 @@ class SupplierAdminDetailView(generics.RetrieveUpdateAPIView):
             class Meta(Base.Meta):
                 read_only_fields = ("id", "created_at", "updated_at")  # is_verified writable for admin
         return _AdminSerializer
+
+
+class SupplierPublicDetailView(generics.RetrieveAPIView):
+    """GET /api/v1/suppliers/public/<user_id>/ — public, buyer-facing supplier profile.
+
+    v3.9.14 — the buyer app now surfaces a supplier's own profile (name, business_name, region,
+    photo, listings count) from any listing detail. Keyed on User.id (not SupplierProfile.id) so
+    the frontend can pass listing.supplier_id straight through without a resolve step.
+    """
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = SupplierPublicSerializer
+    queryset = SupplierProfile.objects.select_related("user")
+    lookup_field = "user_id"                                                     # matches the URL kwarg
 
 
 @extend_schema(responses={200: SupplierDashboardSerializer},

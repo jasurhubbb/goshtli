@@ -149,6 +149,48 @@ class QassobDetailView(generics.RetrieveAPIView):
     queryset = QassobProfile.objects.filter(is_verified=True).select_related("user")
 
 
+class QassobCallbackRequestView(APIView):
+    """POST /api/v1/qassobs/<id>/callback/  {phone, note?}
+
+    v3.9.14 — buyer's alternative to opening a chat: leave a phone number and note. Creates an
+    in-app Notification row on the qassob's side + fires an FCM push so the qassob sees the callback
+    request in Bildirishnomalar. Anonymous callers allowed (buyer doesn't need to sign in just to
+    leave a phone).
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, pk):
+        phone = (request.data.get("phone") or "").strip()
+        note = (request.data.get("note") or "").strip()
+        if not phone:
+            return Response({"phone": "Telefon raqami majburiy."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            qassob = QassobProfile.objects.select_related("user").get(pk=pk, is_verified=True)
+        except QassobProfile.DoesNotExist:
+            return Response({"detail": "Qassob topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        # Compose a compact, actionable notification the qassob can tap-to-call directly. The
+        # `tel:` uri lives in the `link` field so the mobile can render a Call button on the row.
+        title = "Yangi qo'ng'iroq so'rovi"
+        message = f"Buyer telefon raqamini qoldirdi: {phone}"
+        if note:
+            message += f"\nIzoh: {note[:200]}"
+        try:
+            from apps.notifications.models import Notification
+            from apps.notifications.fcm import send_to_user
+            Notification.objects.create(
+                user=qassob.user, kind=Notification.Kind.OTHER,
+                title=title, message=message, link=f"tel:{phone}")
+            send_to_user(qassob.user, title=title, body=message, link=f"tel:{phone}",
+                          kind="CALLBACK_REQUEST",
+                          extra={"phone": phone, "qassob_id": qassob.pk})
+        except Exception:
+            # Best-effort push — don't fail the buyer's request if FCM cert is missing.
+            pass
+        return Response({"detail": "Qassob sizga qo'ng'iroq qiladi."},
+                        status=status.HTTP_201_CREATED)
+
+
 def _haversine_km(lat1, lng1, lat2, lng2):
     r = 6371.0
     lat1, lat2 = math.radians(lat1), math.radians(lat2)

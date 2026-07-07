@@ -23,6 +23,11 @@ class Order(TimeStampedModel):
         AWAITING_QASSOB = "AWAITING_QASSOB", _("Awaiting qassob")
         PROCESSING_BUTCHER = "PROCESSING_BUTCHER", _("At butcher (slaughter & cut)")
         IN_TRANSIT = "IN_TRANSIT", _("In transit")
+        # v3.9.14 — the courier / self-delivering supplier marks "yetkazildi" via the delivery app,
+        # BUT the order isn't truly closed until the buyer taps "Buyurtmani qabul qildim" in their
+        # app. This state is the confirmation window in between. Prevents disputes about whether a
+        # package actually arrived (mirrors Uzum Tezkor / Wolt behavior).
+        DELIVERED_PENDING_CONFIRMATION = "DELIVERED_PENDING_CONFIRMATION", _("Delivered — awaiting buyer confirmation")
         DELIVERED = "DELIVERED", _("Delivered")
         CANCELLED = "CANCELLED", _("Cancelled")
 
@@ -63,7 +68,7 @@ class Order(TimeStampedModel):
                                       validators=[MinValueValidator(Decimal("0.00"))])
     delivery_address = models.TextField(_("delivery address"))
     notes = models.TextField(_("notes"), blank=True)
-    status = models.CharField(_("status"), max_length=24, choices=Status.choices, default=Status.PENDING, db_index=True)
+    status = models.CharField(_("status"), max_length=32, choices=Status.choices, default=Status.PENDING, db_index=True)
 
     # ---- v3.5 payment fields ----
     payment_status = models.CharField(_("payment status"), max_length=10,

@@ -47,10 +47,19 @@ SUPPLIER_TRANSITIONS = {
     Order.Status.AWAITING_QASSOB: {Order.Status.PROCESSING_BUTCHER, Order.Status.CANCELLED},
     Order.Status.PROCESSING: {Order.Status.IN_TRANSIT, Order.Status.CANCELLED},
     Order.Status.PROCESSING_BUTCHER: {Order.Status.IN_TRANSIT, Order.Status.CANCELLED},
-    Order.Status.IN_TRANSIT: {Order.Status.DELIVERED},
+    # v3.9.14 — courier / self-delivering supplier marks arrival: IN_TRANSIT → DELIVERED_PENDING_CONFIRMATION.
+    # Buyer confirms: DELIVERED_PENDING_CONFIRMATION → DELIVERED. Supplier can still cancel from
+    # IN_TRANSIT (rare — refused at doorstep) but not once buyer confirmed.
+    Order.Status.IN_TRANSIT: {Order.Status.DELIVERED_PENDING_CONFIRMATION, Order.Status.CANCELLED},
+    Order.Status.DELIVERED_PENDING_CONFIRMATION: {Order.Status.DELIVERED, Order.Status.CANCELLED},
     # DELIVERED + CANCELLED are terminal — no key here
 }
 BUYER_CANCELLABLE_FROM = {Order.Status.PENDING}  # buyer's only allowed transition is PENDING → CANCELLED
+
+# v3.9.14 — buyer's OTHER allowed transition: confirm receipt after the courier marked arrival.
+# Kept as a separate constant (not a full state machine entry) because the confirmation flow is
+# buyer-only, not supplier-driven like the rest of SUPPLIER_TRANSITIONS.
+BUYER_CONFIRMABLE_FROM = {Order.Status.DELIVERED_PENDING_CONFIRMATION}
 
 
 # ---------- Public service functions ----------

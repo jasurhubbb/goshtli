@@ -66,6 +66,7 @@ const _$OrderStatusEnumMap = {
   OrderStatus.confirmed: 'CONFIRMED',
   OrderStatus.processing: 'PROCESSING',
   OrderStatus.inTransit: 'IN_TRANSIT',
+  OrderStatus.deliveredPendingConfirmation: 'DELIVERED_PENDING_CONFIRMATION',
   OrderStatus.delivered: 'DELIVERED',
   OrderStatus.cancelled: 'CANCELLED',
 };

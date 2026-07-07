@@ -45,6 +45,7 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/profile_settings_screen.dart';
 import '../../features/services/presentation/qassob_detail_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
+import '../../features/services/presentation/supplier_detail_screen.dart';
 import '../location/location_providers.dart';
 import 'main_shell.dart';
 
@@ -160,6 +161,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       // above the tab bar so the back arrow returns to Servislar without losing scroll state.
       GoRoute(path: '/servislar/:id', name: 'qassob-detail',
         builder: (_, gs) => QassobDetailScreen(qassobId: int.parse(gs.pathParameters['id']!))),
+      // v3.9.14 — supplier public profile. Reached from the listing detail's "Sotuvchi haqida" row.
+      // Keyed on User.id (matches the /suppliers/public/<user_id>/ endpoint) so the frontend can
+      // pass listing.supplier_id straight through.
+      GoRoute(path: '/suppliers/:user_id', name: 'supplier-public',
+        builder: (_, gs) => SupplierDetailScreen(
+            userId: int.parse(gs.pathParameters['user_id']!))),
       GoRoute(path: '/orders/:id', name: 'order-detail',
         builder: (_, gs) => OrderDetailScreen(orderId: int.parse(gs.pathParameters['id']!))),
       // v3.5 — WebView checkout. Reachable from the cart "Buyurtma berish" CTA right after the order is

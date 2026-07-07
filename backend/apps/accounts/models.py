@@ -12,13 +12,18 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     """Single user table for all roles — role field decides which profile (Supplier/Buyer) and permissions apply."""
 
     class Role(models.TextChoices):
-        # Four fixed roles. v3.8 adds QASSOB (butcher + slaughterhouse), powering the new Partners app.
-        # SUPPLIER == "Go'sht yetkazib beruvchi" (wholesale meat seller, may self-deliver) — extended in
-        # apps.suppliers with delivery_modes + vehicle fields. ADMIN curates; BUYER orders.
+        # Five fixed roles. v3.8 added QASSOB (butcher + slaughterhouse); v3.9.14 adds COURIER.
+        # SUPPLIER == "Go'sht yetkazib beruvchi" (wholesale meat seller). ADMIN curates; BUYER orders.
+        # COURIER == the delivery driver. Provisioned in two ways:
+        #   (a) a supplier who ticks "supplier_delivers" on a listing gets an in-app COURIER "hat" —
+        #       same account, extra dashboard tab in the partner app.
+        #   (b) platform-employed couriers get standalone accounts with role=COURIER + a system-
+        #       generated password issued during onboarding.
         ADMIN = "ADMIN", _("Admin")
         SUPPLIER = "SUPPLIER", _("Supplier")
         BUYER = "BUYER", _("Buyer")
         QASSOB = "QASSOB", _("Qassob")
+        COURIER = "COURIER", _("Courier")
 
     # ---- Gender enum (v3.3 profile settings) ----
     class Gender(models.TextChoices):
@@ -72,9 +77,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     @property
     def is_qassob(self): return self.role == self.Role.QASSOB
     @property
+    def is_courier(self): return self.role == self.Role.COURIER
+    @property
     def is_partner(self):
-        """Any partner-app role (supplier or qassob). Used to gate /partner/* endpoints with a single check."""
-        return self.role in (self.Role.SUPPLIER, self.Role.QASSOB)
+        """Any partner-app role (supplier / qassob / courier). Gates /partner/* endpoints with a single check."""
+        return self.role in (self.Role.SUPPLIER, self.Role.QASSOB, self.Role.COURIER)
 
 
 def kyc_upload_path(instance, filename):

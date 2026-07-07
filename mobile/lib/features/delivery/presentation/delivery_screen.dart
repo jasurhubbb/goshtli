@@ -142,6 +142,14 @@ class _DeliveryScreenState extends ConsumerState<DeliveryScreen> {
                               ref.read(deliverySelectionProvider.notifier).setButcherRequested(v);
                               _refreshQuote();                                  // re-quote because vehicle eligibility shifts
                             }),
+            // v3.9.14 — when butcher service is requested, surface a suggested-qassobs strip.
+            // Discovery / trust signal so the buyer sees WHO might handle the slaughter before
+            // committing. Tapping a card opens the full qassob detail; picking a specific one for
+            // this order is a Phase 2 flow (needs Order.preferred_qassob + assignment logic).
+            if (selection.butcherRequested) ...[
+              const SizedBox(height: 12),
+              const _SuggestedQassobsStrip(),
+            ],
           ],
           const SizedBox(height: 16),
           _BreakdownCard(
@@ -419,6 +427,108 @@ class _ButcherSection extends StatelessWidget {
           ]),
         ])),
     );
+  }
+}
+
+
+// ---------- Section: Suggested qassobs (v3.9.14) ----------
+
+/// Horizontal carousel of verified qassobs that could handle the live-animal slaughter for this
+/// order. Pulled from GET /qassobs/ (defaults to open + verified). Tap → /servislar/<id> full
+/// detail. Renders inline under the ButcherSection whenever `butcherRequested` is on.
+class _SuggestedQassobsStrip extends ConsumerWidget {
+  const _SuggestedQassobsStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final async = ref.watch(_suggestedQassobsProvider);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(children: [
+          Icon(Icons.groups_2_rounded, size: 18, color: cs.primary),
+          const SizedBox(width: 6),
+          Text("Sizga tavsiya qassoblar",
+              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        ])),
+      const SizedBox(height: 8),
+      SizedBox(height: 120, child: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('—',
+            style: TextStyle(color: cs.onSurfaceVariant))),
+        data: (rows) {
+          if (rows.isEmpty) {
+            return Center(child: Text("Hozircha qassoblar yo'q",
+                style: TextStyle(color: cs.onSurfaceVariant)));
+          }
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: rows.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => _SuggestedCard(row: rows[i]));
+        },
+      )),
+    ]);
+  }
+}
+
+
+/// Fetches verified qassobs. autoDispose so the list frees when the delivery screen closes.
+final _suggestedQassobsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  try {
+    final r = await ref.read(apiClientProvider).dio.get('/qassobs/');
+    if (r.data is List) {
+      return (r.data as List).cast<Map<String, dynamic>>().take(8).toList();
+    }
+    if (r.data is Map && r.data['results'] is List) {
+      return (r.data['results'] as List).cast<Map<String, dynamic>>().take(8).toList();
+    }
+  } catch (_) {}
+  return const [];
+});
+
+
+class _SuggestedCard extends StatelessWidget {
+  final Map<String, dynamic> row;
+  const _SuggestedCard({required this.row});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final id = (row['id'] as num?)?.toInt() ?? 0;
+    final name = (row['full_name'] as String?) ?? '—';
+    final photoUrl = (row['photo_url'] as String?) ?? '';
+    final ratingCount = (row['rating_count'] as num?)?.toInt() ?? 0;
+    final ratingAvg = double.tryParse('${row['rating_avg'] ?? 0}') ?? 0;
+    return InkWell(onTap: () => context.push('/servislar/$id'),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(width: 150,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: cs.outlineVariant)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          CircleAvatar(radius: 22, backgroundColor: cs.primary.withValues(alpha: 0.10),
+              foregroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+              child: Icon(Icons.cut_rounded, color: cs.primary)),
+          const SizedBox(width: 8),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 3),
+            Row(children: [
+              const Icon(Icons.star_rounded, size: 13, color: Color(0xFFEF9A00)),
+              const SizedBox(width: 2),
+              Text(ratingCount > 0 ? ratingAvg.toStringAsFixed(1) : '—',
+                  style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
+            ]),
+          ])),
+        ])));
   }
 }
 

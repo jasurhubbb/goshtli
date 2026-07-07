@@ -156,6 +156,13 @@ class Listing(TimeStampedModel):
                                                   validators=[MinValueValidator(Decimal("0.00"))],
                                                   help_text=_("Average live weight per animal for BY_HEAD listings"))
 
+    # v3.9.14 — supplier opts into doing the delivery themselves for this listing (owned vehicle,
+    # in-region radius). When True the buyer's checkout skips the courier assignment step and the
+    # supplier shows up as their own courier in the partner app's delivery inbox. When False, the
+    # order gets routed to the platform courier pool at IN_TRANSIT time.
+    supplier_delivers = models.BooleanField(_("supplier does own delivery"), default=False,
+                                             help_text=_("Skip courier assignment — supplier delivers this listing themselves."))
+
     # ---- Audit ------------------------------------------------------------------------------------
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="listings_created", editable=False)

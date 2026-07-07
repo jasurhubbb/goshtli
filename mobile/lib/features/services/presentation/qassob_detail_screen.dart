@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../auth/providers/auth_providers.dart' show authNotifierProvider;
+import '../../auth/providers/auth_providers.dart' show authNotifierProvider, apiClientProvider;
 import '../../auth/providers/auth_state.dart';
 import '../../chats/providers/chats_providers.dart';
 import '../data/qassob_models.dart';
@@ -42,9 +42,151 @@ class QassobDetailScreen extends ConsumerWidget {
         error: (e, _) => _ErrorBody(message: e.toString()),
         data: (q) => _Body(q: q)),
       bottomNavigationBar: async.maybeWhen(
-        data: (q) => _ChatButton(q: q),
+        data: (q) => _ContactBar(q: q),
         orElse: () => null),
     );
+  }
+}
+
+
+/// v3.9.14 — two-option contact bar. LEFT (secondary) = "Raqam qoldirish" opens a small dialog for
+/// the buyer to leave their phone + optional note — creates a callback request the qassob sees in
+/// Bildirishnomalar with a tap-to-call action. RIGHT (primary) = "Chat" starts a WebSocket chat.
+class _ContactBar extends ConsumerWidget {
+  final Qassob q;
+  const _ContactBar({required this.q});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SafeArea(top: false,
+      child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Row(children: [
+          Expanded(child: SizedBox(height: 54,
+            child: OutlinedButton.icon(
+              onPressed: () => _openCallbackDialog(context, ref, q),
+              icon: const Icon(Icons.phone_outlined),
+              label: const Text('Raqam qoldirish',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+              style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))))),
+          const SizedBox(width: 10),
+          Expanded(flex: 2, child: SizedBox(height: 54, child: _ChatButtonInner(q: q))),
+        ])));
+  }
+}
+
+
+Future<void> _openCallbackDialog(BuildContext context, WidgetRef ref, Qassob q) async {
+  final phoneCtrl = TextEditingController();
+  final noteCtrl = TextEditingController();
+  final sent = await showModalBottomSheet<bool>(
+    context: context, isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+    builder: (ctx) {
+      final cs = Theme.of(ctx).colorScheme;
+      final tt = Theme.of(ctx).textTheme;
+      return Padding(padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: SafeArea(top: false, child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Center(child: Container(width: 40, height: 4,
+                margin: const EdgeInsets.only(top: 6, bottom: 14),
+                decoration: BoxDecoration(color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2)))),
+            Text("Qassob sizga qo'ng'iroq qilsin",
+                style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text("Telefon raqamingizni qoldiring — qassob ko'radi va tez orada aloqaga chiqadi.",
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            TextField(controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(border: OutlineInputBorder(),
+                  hintText: '+998 90 123 45 67',
+                  labelText: 'Telefon raqami *')),
+            const SizedBox(height: 10),
+            TextField(controller: noteCtrl, maxLines: 3, maxLength: 200,
+              decoration: const InputDecoration(border: OutlineInputBorder(),
+                  labelText: 'Qisqa izoh (ixtiyoriy)',
+                  hintText: 'Masalan: 1 ta mol so\'ymoqchiman')),
+            const SizedBox(height: 6),
+            FilledButton(onPressed: () async {
+              final phone = phoneCtrl.text.trim();
+              if (phone.isEmpty) return;
+              try {
+                await ref.read(apiClientProvider).dio.post(
+                    '/qassobs/${q.id}/callback/',
+                    data: {'phone': phone, 'note': noteCtrl.text.trim()});
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              } catch (_) {
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content: Text("Yuborilmadi. Qayta urinib ko'ring.")));
+              }
+            },
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: const Text("Yuborish",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+          ]))));
+    });
+  if (sent == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Qassob sizga qo'ng'iroq qiladi")));
+  }
+}
+
+
+class _ChatButtonInner extends ConsumerStatefulWidget {
+  final Qassob q;
+  const _ChatButtonInner({required this.q});
+  @override
+  ConsumerState<_ChatButtonInner> createState() => _ChatButtonInnerState();
+}
+
+
+class _ChatButtonInnerState extends ConsumerState<_ChatButtonInner> {
+  bool _busy = false;
+
+  Future<void> _open() async {
+    final auth = ref.read(authNotifierProvider);
+    if (auth is! AuthAuthenticated) {
+      context.push('/auth/phone');
+      return;
+    }
+    if (widget.q.userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Qassob bilan aloqa hozircha mavjud emas (server eski versiya).")));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final conv = await ref.read(chatsRepositoryProvider).startWith(widget.q.userId!);
+      if (!mounted) return;
+      context.push('/chats/${conv.id}');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+        onPressed: _busy ? null : _open,
+        icon: _busy
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(
+                strokeWidth: 2.2, color: Colors.white))
+            : const Icon(Icons.chat_bubble_rounded),
+        label: const Text('Chat',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900,
+                letterSpacing: 0.3)),
+        style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))));
   }
 }
 
@@ -432,65 +574,6 @@ class _Pill extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
       ]));
-  }
-}
-
-
-/// Fixed-bottom Chat CTA. Disabled when the qassob's user_id wasn't surfaced (shouldn't happen on
-/// v3.9+ backend) or when the viewer is anonymous (gates to phone-login).
-class _ChatButton extends ConsumerStatefulWidget {
-  final Qassob q;
-  const _ChatButton({required this.q});
-  @override
-  ConsumerState<_ChatButton> createState() => _ChatButtonState();
-}
-
-
-class _ChatButtonState extends ConsumerState<_ChatButton> {
-  bool _busy = false;
-
-  Future<void> _open() async {
-    final auth = ref.read(authNotifierProvider);
-    if (auth is! AuthAuthenticated) {
-      // Anonymous user — bounce to phone login. Chat is a logged-in feature; we don't pop a snackbar
-      // and stay because the buyer will retry, so the flow needs to take them somewhere.
-      context.push('/auth/phone');
-      return;
-    }
-    if (widget.q.userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Qassob bilan aloqa hozircha mavjud emas (server eski versiya).")));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final conv = await ref.read(chatsRepositoryProvider).startWith(widget.q.userId!);
-      if (!mounted) return;
-      context.push('/chats/${conv.id}');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(top: false,
-      child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: SizedBox(width: double.infinity, height: 54,
-          child: FilledButton.icon(
-            onPressed: _busy ? null : _open,
-            icon: _busy
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(
-                    strokeWidth: 2.2, color: Colors.white))
-                : const Icon(Icons.chat_bubble_rounded),
-            label: const Text('Chat',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900,
-                    letterSpacing: 0.3)),
-            style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))))));
   }
 }
 

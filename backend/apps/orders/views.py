@@ -96,6 +96,37 @@ class OrderCancelView(APIView):
         return Response(OrderReadSerializer(order).data)
 
 
+@extend_schema(request=None, responses={200: OrderReadSerializer},
+               parameters=[OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH)],
+               description="v3.9.14 — buyer confirms receipt after courier marked arrival "
+                           "(DELIVERED_PENDING_CONFIRMATION → DELIVERED). Rejects other transitions.")
+class OrderConfirmDeliveryView(APIView):
+    """POST /api/v1/orders/{id}/confirm-delivery/ — buyer's "Buyurtmani qabul qildim" button.
+
+    Last step in the fulfilment lifecycle. Only the ORDER's buyer can call this, and only from
+    DELIVERED_PENDING_CONFIRMATION. Mirrors the receipt-confirmation flow in Uzum Tezkor / Wolt.
+    Kept separate from the supplier's status endpoint so the buyer's confirmation intent is
+    explicit in the URL — no accidental supplier-driven "auto-confirm".
+    """
+    permission_classes = (IsBuyer,)
+
+    def post(self, request, pk):
+        from .services import BUYER_CONFIRMABLE_FROM
+        try:
+            order = Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            raise NotFound()
+        if order.buyer_id != request.user.id:
+            raise PermissionDenied("Not your order.")
+        if order.status not in BUYER_CONFIRMABLE_FROM:
+            return Response({"detail":
+                f"Order status is {order.status}, cannot confirm delivery from that state."},
+                status=status.HTTP_400_BAD_REQUEST)
+        order.status = Order.Status.DELIVERED
+        order.save(update_fields=("status", "updated_at"))
+        return Response(OrderReadSerializer(order).data)
+
+
 # ---------- Supplier-side ----------
 
 class SupplierOrdersView(generics.ListAPIView):

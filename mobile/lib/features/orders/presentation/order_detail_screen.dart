@@ -106,6 +106,16 @@ class _Body extends ConsumerWidget {
             if (isBuyer && order.status == model.OrderStatus.pending)
               OutlinedButton.icon(icon: const Icon(Icons.cancel_outlined), label: Text(t.orderCancelButton),
                 onPressed: () => _confirmAndCancel(context, ref, asBuyer: true)),
+            // v3.9.14 — buyer confirms receipt after courier marked arrival. Full-width, primary
+            // color, generous padding — this is THE action that closes the order lifecycle.
+            if (isBuyer && order.status == model.OrderStatus.deliveredPendingConfirmation)
+              SizedBox(width: double.infinity, child: FilledButton.icon(
+                icon: const Icon(Icons.check_circle_rounded),
+                label: const Text("Buyurtmani qabul qildim",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                onPressed: () => _confirmDelivery(context, ref, order.id))),
             // Buyer-side review — only on DELIVERED orders. Backend rejects double-review at the DB-level.
             if (isBuyer && order.status == model.OrderStatus.delivered)
               FilledButton.icon(icon: const Icon(Icons.star_outline),
@@ -210,6 +220,29 @@ class _Body extends ConsumerWidget {
     }
   }
 
+  /// v3.9.14 — buyer's final action: POST /orders/<id>/confirm-delivery/ moves the order from
+  /// DELIVERED_PENDING_CONFIRMATION → DELIVERED. Wrapped in a tap-confirm dialog because it's
+  /// irreversible and the buyer waives their right to dispute afterward.
+  Future<void> _confirmDelivery(BuildContext context, WidgetRef ref, int orderId) async {
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text("Qabul qilishni tasdiqlaysizmi?"),
+      content: const Text("Buyurtma to'liq va yaxshi holatda yetkazib berildi degan tasdiq. "
+                          "Keyin shikoyat qilish murakkab bo'ladi."),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Bekor')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ha, qabul qildim')),
+      ]));
+    if (ok != true) return;
+    try {
+      await ref.read(ordersRepositoryProvider).confirmDelivery(orderId);
+      _refreshAll(ref);
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Rahmat! Buyurtma yakunlandi.")));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
   void _refreshAll(WidgetRef ref) {
     // v3.1: legacy listingsBrowseProvider / myListingsProvider were removed when the catalog refactor landed.
     // The home grid feeds off activeListingsProvider, which is what we invalidate here so a status flip on this
@@ -256,6 +289,10 @@ class _StatusHero extends StatelessWidget {
                                        'Confirmed', 'Supplier will start processing shortly'),
       model.OrderStatus.pending => (const Color(0xFF1F2937), Colors.white,
                                      'Waiting for supplier', 'Awaiting confirmation'),
+      // v3.9.14 — courier marked delivered; buyer needs to confirm receipt to close the order.
+      model.OrderStatus.deliveredPendingConfirmation => (const Color(0xFFEF6C00), Colors.white,
+                                     'Yetkazildi — tasdiqlang',
+                                     'Kuryer paketni topshirdi. "Buyurtmani qabul qildim" tugmasini bosing.'),
     };
     return Container(width: double.infinity, padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
       decoration: BoxDecoration(color: bg),

@@ -63,6 +63,29 @@ class ListingDetailScreen extends ConsumerWidget {
           if ((lang == 'ru' ? l.descriptionRu : l.descriptionUz).isNotEmpty)
             Text(lang == 'ru' ? l.descriptionRu : l.descriptionUz,
                 style: tt.bodyLarge?.copyWith(color: cs.onSurface.withValues(alpha: 0.85), height: 1.4)),
+          const SizedBox(height: 24),
+          // v3.9.14 — "Sotuvchi haqida" tappable row. Pushes /suppliers/<supplier_id> so the buyer
+          // can see who's selling this before committing to add-to-cart.
+          InkWell(onTap: () => context.push('/suppliers/${l.supplierId}'),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(14),
+                  color: cs.surfaceContainerLowest,
+                  border: Border.all(color: cs.outlineVariant)),
+              child: Row(children: [
+                CircleAvatar(radius: 20,
+                  backgroundColor: cs.primary.withValues(alpha: 0.12),
+                  child: Icon(Icons.storefront_rounded, color: cs.primary)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text("Sotuvchi haqida",
+                      style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text("Profilni ko'ring — hudud, aloqa, boshqa tovarlar",
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                ])),
+                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+              ]))),
         ]))),
 
       // Sticky bottom CTA — full-width add-to-cart

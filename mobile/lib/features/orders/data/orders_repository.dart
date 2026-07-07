@@ -87,6 +87,14 @@ class OrdersRepository {
     throw _toApiException(r);
   }
 
+  /// v3.9.14 — POST /orders/{id}/confirm-delivery/ — buyer confirms receipt. Only valid from
+  /// DELIVERED_PENDING_CONFIRMATION; backend rejects other states with 400.
+  Future<model.Order> confirmDelivery(int id) async {
+    final r = await _api.dio.post('/orders/$id/confirm-delivery/');
+    if (r.statusCode == 200) return model.Order.fromJson(r.data as Map<String, dynamic>);
+    throw _toApiException(r);
+  }
+
   /// POST /orders/supplier/{id}/status/ — supplier drives the state machine (CONFIRMED/PROCESSING/IN_TRANSIT/DELIVERED/CANCELLED).
   Future<model.Order> setSupplierStatus(int id, model.OrderStatus status) async {
     final r = await _api.dio.post('/orders/supplier/$id/status/', data: {'status': _statusToWire(status)});
@@ -117,6 +125,7 @@ class OrdersRepository {
   static String? _statusToWire(model.OrderStatus? s) => s == null ? null : switch (s) {
     model.OrderStatus.pending => 'PENDING', model.OrderStatus.confirmed => 'CONFIRMED',
     model.OrderStatus.processing => 'PROCESSING', model.OrderStatus.inTransit => 'IN_TRANSIT',
+    model.OrderStatus.deliveredPendingConfirmation => 'DELIVERED_PENDING_CONFIRMATION',
     model.OrderStatus.delivered => 'DELIVERED', model.OrderStatus.cancelled => 'CANCELLED',
   };
 

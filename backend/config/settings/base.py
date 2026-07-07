@@ -37,7 +37,11 @@ LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               "apps.qassobs",
               # v3.8 — Cross-role partner-app endpoints (inbox, earnings, dashboard, calendar, reviews,
               # loyalty, smart-tips). Routes data by role internally so the mobile sees one URL set.
-              "apps.partner"]
+              "apps.partner",
+              # v3.9.14 — Courier + Delivery. Delivery driver's app-facing shape + one dispatch per
+              # assigned Order → Courier pair. The delivery-app UI + platform assignment logic live
+              # in the partner app + apps.partner respectively; this app owns just the models.
+              "apps.couriers"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF

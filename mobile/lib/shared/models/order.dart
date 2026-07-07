@@ -10,6 +10,9 @@ enum OrderStatus {
   @JsonValue('CONFIRMED') confirmed,
   @JsonValue('PROCESSING') processing,
   @JsonValue('IN_TRANSIT') inTransit,
+  // v3.9.14 — courier marked "delivered" from their side; waits for the buyer to tap "Buyurtmani
+  // qabul qildim" in this app to finalize. Prevents "did it actually arrive?" disputes.
+  @JsonValue('DELIVERED_PENDING_CONFIRMATION') deliveredPendingConfirmation,
   @JsonValue('DELIVERED') delivered,
   @JsonValue('CANCELLED') cancelled,
 }

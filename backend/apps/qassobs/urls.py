@@ -1,8 +1,8 @@
 """Qassob URL routes. Mounted at /api/v1/qassobs/ from config/urls.py."""
 from django.urls import path
 
-from .views import (QassobAvailabilityView, QassobCapacityView, QassobDetailView,
-                    QassobGalleryDeleteView, QassobGalleryListCreateView,
+from .views import (QassobAvailabilityView, QassobCallbackRequestView, QassobCapacityView,
+                    QassobDetailView, QassobGalleryDeleteView, QassobGalleryListCreateView,
                     QassobGalleryReorderView, QassobListView, QassobMeView)
 
 urlpatterns = [
@@ -19,4 +19,7 @@ urlpatterns = [
     # Public discovery — buyer-app Servislar tab
     path("", QassobListView.as_view(), name="qassobs-list"),
     path("<int:pk>/", QassobDetailView.as_view(), name="qassobs-detail"),
+    # v3.9.14 — buyer's "leave a phone number" alternative to the Chat CTA. Fires an in-app
+    # notification + FCM push on the qassob's side so they can call back.
+    path("<int:pk>/callback/", QassobCallbackRequestView.as_view(), name="qassobs-callback"),
 ]
