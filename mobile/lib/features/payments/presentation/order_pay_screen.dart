@@ -30,7 +30,10 @@ import 'add_card_sheet.dart';
 
 class OrderPayScreen extends ConsumerStatefulWidget {
   final int orderId;
-  const OrderPayScreen({super.key, required this.orderId});
+  // v3.9.16 — remaining unpaid orders from a multi-item cart. After this order is paid we advance to the
+  // next one's pay screen, so every order in a multi-line checkout collects payment (empty = last/only order).
+  final List<int> nextOrderIds;
+  const OrderPayScreen({super.key, required this.orderId, this.nextOrderIds = const []});
   @override
   ConsumerState<OrderPayScreen> createState() => _OrderPayScreenState();
 }
@@ -93,9 +96,16 @@ class _OrderPayScreenState extends ConsumerState<OrderPayScreen> {
           _paidCardLast4 = res.cardLast4;
           _paidCardBrand = res.cardBrand;
         });
-        // After a brief visual confirmation, hop to the order detail screen.
+        // After a brief visual confirmation: if this was one of several orders from a multi-item cart,
+        // advance to the next order's payment; otherwise hop to the order detail screen.
         Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted) context.go('/orders/${widget.orderId}');
+          if (!mounted) return;
+          if (widget.nextOrderIds.isNotEmpty) {
+            context.pushReplacement('/orders/${widget.nextOrderIds.first}/pay',
+                extra: {'batch': widget.nextOrderIds.sublist(1)});
+          } else {
+            context.go('/orders/${widget.orderId}');
+          }
         });
       } else {
         setState(() { _paying = false; _error = t.payFailedTitle; });

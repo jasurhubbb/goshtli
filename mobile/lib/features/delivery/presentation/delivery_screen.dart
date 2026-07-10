@@ -748,11 +748,17 @@ class _CheckoutBarState extends ConsumerState<_CheckoutBar> {
       return;
     }
     ref.read(cartProvider.notifier).clear();
-    if (createdIds.length == 1) {
-      router.push('/orders/${createdIds.first}/pay');
-    } else {
-      router.go('/orders');
+    // Partial failure: some lines placed, some failed. Surface it but still collect payment for the ones
+    // that succeeded rather than dropping them silently.
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text(error)));
     }
+    // ALWAYS route through payment. A multi-item cart becomes one order per line, and payment is per-order,
+    // so we chain the pay screens: pay the first, then it advances to the next order in the batch, until all
+    // are paid. Previously multi-item carts did `go('/orders')` here and were placed UNPAID with no card
+    // prompt — the bug the buyer reported.
+    router.push('/orders/${createdIds.first}/pay',
+        extra: {'batch': createdIds.sublist(1)});
   }
 
   @override

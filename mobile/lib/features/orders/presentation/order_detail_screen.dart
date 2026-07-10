@@ -102,6 +102,19 @@ class _Body extends ConsumerWidget {
         }),
         const SizedBox(height: 28),
 
+            // v3.9.16 — "To'lash" for any UNPAID buyer order. This is the pay-later path: if a multi-item
+            // checkout was interrupted before every order was paid, the buyer can finish payment from here
+            // (routes to the same card pay screen). Non-cancelled + not-yet-paid only.
+            if (isBuyer && order.status != model.OrderStatus.cancelled
+                && (order.paymentStatus == model.OrderPaymentStatus.unpaid
+                    || order.paymentStatus == model.OrderPaymentStatus.pending
+                    || order.paymentStatus == model.OrderPaymentStatus.failed))
+              Padding(padding: const EdgeInsets.only(bottom: 12),
+                child: SizedBox(width: double.infinity, child: FilledButton.icon(
+                  icon: const Icon(Icons.credit_card_rounded),
+                  label: const Text("To'lash", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: () => context.push('/orders/${order.id}/pay')))),
             // Buyer-side action — Cancel only on PENDING
             if (isBuyer && order.status == model.OrderStatus.pending)
               OutlinedButton.icon(icon: const Icon(Icons.cancel_outlined), label: Text(t.orderCancelButton),

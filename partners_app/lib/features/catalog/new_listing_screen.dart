@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/image_source_picker.dart';
+import '../profile/animals_supported_sheet.dart';
 
 
 /// Full-page "Yangi tovar qo'shish".
@@ -49,8 +50,11 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   int? _marketId;
   int? _categoryId;
   // Categories matching the supplier's `animals_supported` + the always-on extras (Qiyma, Jigar,
-  // Boshqa). Computed once in _bootstrap so the build method stays cheap. STRICT — no full fallback.
+  // Boshqa). Recomputed from _allCategories whenever animals_supported changes (incl. inline edits).
   List<Map<String, dynamic>> _visibleCategories = const [];
+  // Every category the backend returned — kept so the inline "add meat types" flow can re-filter
+  // without a second /categories/ round-trip.
+  List<Map<String, dynamic>> _allCategories = const [];
   // Tracks whether the supplier has set animals_supported at all. When false we render a CTA telling
   // them to set it from Profil instead of silently showing every category in the system.
   bool _animalsSelected = false;
@@ -123,11 +127,21 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
       }
     } catch (_) {}
 
-    // STRICT filter: only categories matching the supplier's animals_supported + the always-visible
-    // extras (Qiyma/Jigar/Boshqa). If animals is empty (supplier never set their list, or backend
-    // dropped it before the v3.8.2 serializer change), we show ONLY the extras + a CTA pointing to
-    // Profil tab — the previous "show everything as fallback" was the bug the user reported.
-    final visible = cats.where((c) {
+    if (!mounted) return;
+    setState(() {
+      _marketId = marketId;
+      _allCategories = cats;
+      _visibleCategories = _filterByAnimals(cats, animals);
+      _animalsSelected = animals.isNotEmpty;
+      _warning = warning;
+      _ready = true;
+    });
+  }
+
+  /// STRICT filter: only categories matching the supplier's animals_supported + the always-visible extras
+  /// (Qiyma/Jigar/Boshqa). If animals is empty we show ONLY the extras + a CTA — no "show everything" fallback.
+  List<Map<String, dynamic>> _filterByAnimals(List<Map<String, dynamic>> cats, List<String> animals) {
+    return cats.where((c) {
       final name = ((c['name_uz'] as String?) ?? '').toLowerCase();
       if (_alwaysVisibleNames.any(name.contains)) return true;
       for (final a in animals) {
@@ -136,14 +150,30 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
       }
       return false;
     }).toList();
+  }
 
+  /// Opens the SAME "Sotadigan go'shtlar" sheet the Profil tab uses (so the two stay in sync — it PATCHes
+  /// /suppliers/me/ and pre-selects the supplier's current animals). On save we re-read animals_supported
+  /// and re-filter the category chips in place, so a newly added meat type appears here immediately without
+  /// leaving the page. If the previously-picked category is no longer visible (a type got removed), clear it.
+  Future<void> _openAddMeatTypes() async {
+    final changed = await showAnimalsSupportedSheet(context);
+    if (!changed || !mounted) return;
+    List<String> animals = const [];
+    try {
+      final r = await ref.read(apiClientProvider).dio.get('/suppliers/me/');
+      if (r.data is Map && r.data['animals_supported'] is List) {
+        animals = (r.data['animals_supported'] as List).map((e) => e.toString().toUpperCase()).toList();
+      }
+    } catch (_) {}
     if (!mounted) return;
+    final visible = _filterByAnimals(_allCategories, animals);
     setState(() {
-      _marketId = marketId;
       _visibleCategories = visible;
       _animalsSelected = animals.isNotEmpty;
-      _warning = warning;
-      _ready = true;
+      if (_categoryId != null && !visible.any((c) => (c['id'] as num).toInt() == _categoryId)) {
+        _categoryId = null;
+      }
     });
   }
 
@@ -301,36 +331,50 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
                     decoration: const InputDecoration(labelText: "Narx so'm/kg *"))),
               ]),
               const SizedBox(height: 18),
-              Text("Go'sht turi *",
-                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-              const SizedBox(height: 4),
-              Text("Profil → Sotadigan go'shtlar dan tanlang",
+              Row(children: [
+                Text("Go'sht turi *", style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                const Spacer(),
+                // Inline add — opens the SAME "Sotadigan go'shtlar" sheet the Profil tab uses. It pre-selects
+                // the supplier's current types and PATCHes /suppliers/me/, so adding a new meat type here
+                // stays in sync with the profile and the new chip appears immediately — no trip to Profil.
+                TextButton.icon(onPressed: _openAddMeatTypes,
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text("Qo'shish", style: TextStyle(fontWeight: FontWeight.w800))),
+              ]),
+              const SizedBox(height: 2),
+              Text("Faqat siz sotadigan go'shtlar ko'rinadi. Yangi tur qo'shish uchun \"Qo'shish\"ni bosing.",
                   style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
               const SizedBox(height: 8),
               if (cats.isEmpty)
-                // Empty chip row = supplier hasn't set animals_supported AND no extras returned. Tell
-                // them clearly + give them a one-tap shortcut to Profil instead of leaving them stuck.
+                // No matching categories yet. Instead of bouncing to Profil, open the add-sheet right here.
                 Container(padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(color: const Color(0xFFFFF4E5),
                       borderRadius: BorderRadius.circular(12)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_animalsSelected
                             ? "Sizning go'sht turlaringiz uchun kategoriya topilmadi"
-                            : "Avval Profil → Sotadigan go'shtlar dan tanlang",
+                            : "Hali go'sht turi tanlanmagan",
                         style: tt.bodyMedium?.copyWith(
                             color: const Color(0xFF8A4F00), fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    SizedBox(width: double.infinity, child: FilledButton.tonal(
-                      onPressed: () { context.pop(); /* return to catalog; user taps Profil tab */ },
-                      child: const Text("Profilga o'tish"))),
+                    SizedBox(width: double.infinity, child: FilledButton.tonalIcon(
+                      onPressed: _openAddMeatTypes,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text("Go'sht turi qo'shish"))),
                   ]))
               else
-                Wrap(spacing: 8, runSpacing: 8, children: cats.map((c) {
-                  final id = (c['id'] as num).toInt();
-                  final label = (c['name_uz'] as String?) ?? (c['name_ru'] as String?) ?? '—';
-                  return _FormChip(label: label, selected: _categoryId == id,
-                      onTap: () => setState(() => _categoryId = id));
-                }).toList()),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  ...cats.map((c) {
+                    final id = (c['id'] as num).toInt();
+                    final label = (c['name_uz'] as String?) ?? (c['name_ru'] as String?) ?? '—';
+                    return _FormChip(label: label, selected: _categoryId == id,
+                        onTap: () => setState(() => _categoryId = id));
+                  }),
+                  // Trailing dashed "+ Qo'shish" chip — add more meat types right where the chips are.
+                  _AddChip(onTap: _openAddMeatTypes),
+                ]),
               const SizedBox(height: 18),
               Text("Mahsulot shakli *",
                   style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
@@ -406,5 +450,29 @@ class _FormChip extends StatelessWidget {
         child: Text(label, style: TextStyle(
             fontWeight: FontWeight.w700,
             color: selected ? cs.onPrimary : cs.onSurface))));
+  }
+}
+
+
+/// "+ Qo'shish" chip that sits at the end of the meat-type chip row. Outlined/tinted so it reads as an
+/// action rather than a selectable value; opens the shared animals sheet.
+class _AddChip extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(onTap: onTap,
+      child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: cs.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.5))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.add_rounded, size: 18, color: cs.primary),
+          const SizedBox(width: 4),
+          Text("Qo'shish", style: TextStyle(fontWeight: FontWeight.w800, color: cs.primary)),
+        ])));
   }
 }

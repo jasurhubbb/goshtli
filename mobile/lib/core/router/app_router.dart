@@ -175,7 +175,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       // v3.5 — WebView checkout. Reachable from the cart "Buyurtma berish" CTA right after the order is
       // created, OR from the order detail screen's "To'lash" button on unpaid orders.
       GoRoute(path: '/orders/:id/pay', name: 'order-pay',
-        builder: (_, gs) => OrderPayScreen(orderId: int.parse(gs.pathParameters['id']!))),
+        builder: (_, gs) {
+          // `batch` carries the remaining unpaid order ids when a multi-item cart chains payments.
+          final extra = gs.extra as Map<String, dynamic>?;
+          final batch = (extra?['batch'] as List?)?.map((e) => e as int).toList() ?? const <int>[];
+          return OrderPayScreen(orderId: int.parse(gs.pathParameters['id']!), nextOrderIds: batch);
+        }),
       // v3.6 PRD §3 — separate delivery page between Cart and Payment. Buyer picks vehicle + time slot,
       // optionally requests butcher service, sees the price breakdown, then proceeds to pay.
       GoRoute(path: '/delivery', name: 'delivery',
