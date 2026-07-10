@@ -6,7 +6,7 @@ Security posture (per NIST 800-63B / OWASP / Twilio best-practice research):
     entropy, so a plain hash is brute-forceable from a DB dump in milliseconds; the server-side PEPPER (held in
     env, never in the DB) is what actually defeats a DB-only attacker. HMAC is also fast (no per-verify Argon2 cost).
   • Constant-time comparison (`hmac.compare_digest`) to avoid a timing side-channel.
-The lifetime / attempt / rate limits live on the model + views (5-min TTL, max 5 attempts, 60s resend cooldown,
+The lifetime / attempt / rate limits live on the model + views (2-min TTL, max 5 attempts, 60s resend cooldown,
 5 sends/hr per phone, single-use, only-latest-code-valid).
 """
 import hashlib
@@ -18,7 +18,11 @@ from django.conf import settings
 
 
 CODE_LENGTH = 6
-CODE_TTL_SECONDS = 5 * 60                     # 5-minute validity window (inside NIST's 10-min out-of-band max)
+# 2-minute validity window. Tightened from 5 min per an explicit security requirement: a code that isn't
+# entered within 2 minutes of being issued is rejected as expired (enforced in TelegramVerifyView against
+# code_expires_at = code_sent_at + this). Well inside NIST's 10-min out-of-band max; the shorter window
+# shrinks the brute-force + interception surface.
+CODE_TTL_SECONDS = 2 * 60
 MAX_VERIFY_ATTEMPTS = 5                       # wrong entries before the code is burned + a fresh one is required
 RESEND_COOLDOWN_SECONDS = 60                 # minimum gap between code sends to the same phone (anti-flood)
 MAX_SENDS_PER_HOUR = 5                        # per-phone cap on code sends per rolling hour (toll/abuse guard)

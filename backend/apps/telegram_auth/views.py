@@ -10,7 +10,7 @@ Three endpoints:
                                                      so the buyer app's downstream (phone-register) is unchanged.
 
 Security controls (see otp.py for the code-hashing rationale): 6-digit CSPRNG code, HMAC+pepper storage,
-constant-time compare, 5-min TTL, max 5 attempts, 60s resend cooldown, 5 sends/hr per phone, single-use,
+constant-time compare, 2-min TTL, max 5 attempts, 60s resend cooldown, 5 sends/hr per phone, single-use,
 only-the-latest-code valid, anti-spoof (contact.user_id == sender.id), webhook secret-token header, and
 enumeration-safe responses (identical whether or not the phone maps to an account).
 """
@@ -57,9 +57,13 @@ class TelegramStartView(APIView):
         if not phone:
             return Response({"detail": "Telefon raqami noto'g'ri."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Only the newest session per phone should be live. Sweep this phone's still-open (unverified) sessions
-        # so a shared contact can't match a stale row and the "latest code only" rule holds.
-        TelegramVerification.objects.filter(phone=phone).exclude(
+        # Sweep only this phone's STALE sessions (older than the session TTL). We must NOT blanket-delete
+        # live rows here: /start is anonymous and knows only the phone, so deleting in-flight sessions would
+        # let anyone who knows a victim's number wipe the victim's just-issued code (account-lockout DoS) and
+        # force the victim's next contact-share onto an attacker-created row (session fixation). Isolation is
+        # instead enforced at contact time by binding the code to the Telegram user who opened the deep link.
+        stale_before = timezone.now() - timedelta(seconds=otp.SESSION_TTL_SECONDS)
+        TelegramVerification.objects.filter(phone=phone, created_at__lt=stale_before).exclude(
             status=TelegramVerification.Status.VERIFIED).delete()
 
         v = TelegramVerification.objects.create(phone=phone, session_token=otp.new_session_token())
@@ -209,11 +213,15 @@ class TelegramWebhookView(APIView):
             return
 
         now = timezone.now()
-        # Latest live session for this phone (the app just created it in /start/). If there's none, the user
-        # opened the bot without starting from the app — tell them to start there.
+        # Match the session THIS Telegram user opened via the deep link, NOT the phone's newest row. At
+        # /start we bound the sender's telegram_user_id onto the payload's row, so keying on it ties the code
+        # to the person who actually came from the app. An attacker who POSTed /auth/telegram/start/ for a
+        # victim's phone created an UNBOUND row (no telegram_user_id) that can never be selected here, so it
+        # can't hijack or lock out the victim's flow.
         v = (TelegramVerification.objects
-             .filter(phone=phone, status__in=(TelegramVerification.Status.AWAITING_CONTACT,
-                                              TelegramVerification.Status.CODE_SENT))
+             .filter(telegram_user_id=sender_id,
+                     status__in=(TelegramVerification.Status.AWAITING_CONTACT,
+                                 TelegramVerification.Status.CODE_SENT))
              .filter(created_at__gte=now - timedelta(seconds=otp.SESSION_TTL_SECONDS))
              .order_by("-created_at").first())
         if v is None:
@@ -221,6 +229,15 @@ class TelegramWebhookView(APIView):
                 chat_id,
                 "Avval ilovada telefon raqamingizni kiriting, keyin shu yerga qayting.\n"
                 "Please enter your phone in the app first, then come back here.",
+                reply_markup=telegram_api.REMOVE_KEYBOARD)
+            return
+        # The Telegram-verified number they shared MUST equal the number they typed in the app — this is the
+        # whole point of the flow (prove the entered phone is really theirs). Reject a mismatch clearly.
+        if v.phone != phone:
+            telegram_api.send_message(
+                chat_id,
+                "Yuborilgan raqam ilovada kiritilgan raqamga mos kelmadi.\n"
+                "The number you shared doesn't match the one you entered in the app.",
                 reply_markup=telegram_api.REMOVE_KEYBOARD)
             return
 

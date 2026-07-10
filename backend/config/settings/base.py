@@ -207,10 +207,11 @@ REST_FRAMEWORK = {
                                 "rest_framework.filters.SearchFilter", "rest_framework.filters.OrderingFilter"),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",  # required by drf-spectacular for OpenAPI 3 generation
-    # v3.9.16 — scoped throttles for the anonymous Telegram phone-verification endpoints. Per-IP guards on
-    # top of the per-phone limits enforced in the views (60s resend cooldown + 5 sends/hr/phone). Keeps a
-    # single IP from spraying start/verify calls to brute-force codes or enumerate.
-    "DEFAULT_THROTTLE_RATES": {"telegram_start": "20/hour", "telegram_verify": "30/hour"}}
+    # v3.9.16 — scoped throttles for the anonymous auth endpoints. Per-IP guards on top of the per-phone
+    # limits in the views. telegram_*: code start/verify. partner_login: phone+password credential login
+    # (brute-force guard). admin_unlock: the admin password gate (spraying guard — it mints an ADMIN JWT).
+    "DEFAULT_THROTTLE_RATES": {"telegram_start": "20/hour", "telegram_verify": "30/hour",
+                               "partner_login": "10/min", "admin_unlock": "5/min"}}
 
 # OpenAPI / Swagger metadata — keep minimal; full docs live in /docs/api-plan.md and the rendered Swagger UI
 SPECTACULAR_SETTINGS = {
@@ -246,6 +247,11 @@ TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 TELEGRAM_BOT_USERNAME = config("TELEGRAM_BOT_USERNAME", default="")
 TELEGRAM_WEBHOOK_SECRET = config("TELEGRAM_WEBHOOK_SECRET", default="")
 TELEGRAM_OTP_PEPPER = config("TELEGRAM_OTP_PEPPER", default="")
+
+# v3.9.16 SECURITY — admin-unlock password. Now actually read from the env (previously the view fell back to
+# a hardcoded "123123" because nothing read this). Empty default = the admin-unlock endpoint is DISABLED.
+# Set a long random value in Railway; treat it like a root password.
+ADMIN_UNLOCK_PASSWORD = config("ADMIN_UNLOCK_PASSWORD", default="")
 
 # ----- Celery (async tasks: image resize, future cache warming + daily reports) -----
 #

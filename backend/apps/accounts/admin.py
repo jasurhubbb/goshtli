@@ -2,12 +2,16 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.utils.html import format_html
+from .forms import AdminUserCreationForm
 from .models import KYCDocument, User
 
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    """Adapts Django's built-in UserAdmin to our email-based custom user — preserves password hashing & permissions UI."""
+    """Adapts Django's built-in UserAdmin to our email-based custom user — preserves password hashing & permissions UI.
+    v3.9.16 — the Add form (AdminUserCreationForm) makes email optional + synthesizes it from phone so ops can
+    create phone-first partner accounts without an email; only admins who need Django-admin login type one."""
+    add_form = AdminUserCreationForm
     ordering = ("-created_at",)
     list_display = ("email", "full_name", "role", "is_active", "is_staff", "created_at")
     list_filter = ("role", "is_active", "is_staff", "is_superuser")

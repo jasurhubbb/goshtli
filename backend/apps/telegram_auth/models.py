@@ -6,7 +6,7 @@ Lifecycle:
   CODE_SENT         bot matched the shared (Telegram-verified) phone to this row + sent a 6-digit code.
   VERIFIED          the user entered the correct code in the app; row is consumed (single-use).
 
-We keep the code only as an HMAC digest (see otp.hash_code) with a 5-minute TTL + a 5-attempt cap. On resend we
+We keep the code only as an HMAC digest (see otp.hash_code) with a 2-minute TTL + a 5-attempt cap. On resend we
 create a fresh row and let the newest AWAITING_CONTACT/CODE_SENT row for a phone win, so only the latest code is
 ever valid (older rows are ignored + swept).
 """
@@ -33,7 +33,7 @@ class TelegramVerification(TimeStampedModel):
     code_hash = models.CharField(max_length=64, blank=True)
     attempts = models.PositiveSmallIntegerField(default=0)          # wrong verify attempts against code_hash
     code_sent_at = models.DateTimeField(null=True, blank=True)      # anchors the resend cooldown / hourly cap
-    code_expires_at = models.DateTimeField(null=True, blank=True)   # code_sent_at + 5 min
+    code_expires_at = models.DateTimeField(null=True, blank=True)   # code_sent_at + 2 min (CODE_TTL_SECONDS)
     consumed_at = models.DateTimeField(null=True, blank=True)       # set on successful verify (single-use gate)
 
     # Telegram identity captured at contact-share time (for auditing + so we could re-message the same chat).

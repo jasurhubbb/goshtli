@@ -18,8 +18,11 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 from drf_spectacular.utils import extend_schema
+from django.contrib.auth.hashers import check_password as _check_password, make_password as _make_password
+from django.utils.crypto import constant_time_compare
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,10 +33,17 @@ from .serializers import (PhoneCheckSerializer, PhoneRegisterSerializer,
                           RegisterSerializer, UserSerializer)
 
 
-# Default admin gate password — overridable via settings.ADMIN_UNLOCK_PASSWORD when we promote out of dev.
-ADMIN_UNLOCK_PASSWORD = getattr(settings, "ADMIN_UNLOCK_PASSWORD", "123123")
+# v3.9.16 SECURITY — the admin-unlock password now comes ONLY from settings.ADMIN_UNLOCK_PASSWORD (read
+# from the env in config/settings). The old hardcoded "123123" fallback is gone: if the env var is unset
+# the endpoint is DISABLED (fail closed) rather than silently accepting a public default that anyone could
+# use to mint an ADMIN JWT. Set a long random value in Railway.
+ADMIN_UNLOCK_PASSWORD = getattr(settings, "ADMIN_UNLOCK_PASSWORD", "") or ""
 # Bootstrap email for the auto-created admin. Stable so subsequent unlocks reuse the same user record.
 ADMIN_BOOTSTRAP_EMAIL = "admin@goshtli.local"
+# Precomputed throwaway PBKDF2 hash. When a phone doesn't resolve to a user we still run a password check
+# against this so the response takes the same ~PBKDF2 time as a real-but-wrong-password attempt — closing
+# the timing oracle that would otherwise reveal which phones have accounts.
+_DUMMY_PASSWORD_HASH = _make_password("timing-equalizer-not-a-real-password")
 
 
 def _jwt_for(user):
@@ -138,8 +148,12 @@ class PhonePasswordLoginView(APIView):
 
     Django's authenticate() keys on email (USERNAME_FIELD), so we resolve the phone → user ourselves and
     verify the password with check_password. One generic 401 whether the phone is unknown or the password is
-    wrong, so the endpoint can't be used to enumerate which phones have accounts."""
+    wrong. To keep that promise the unknown-phone path also runs a PBKDF2 check (against a dummy hash) so
+    response timing doesn't leak which phones have accounts. Throttled per-IP (partner_login scope) to bound
+    brute-force / password-spraying."""
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = "partner_login"
 
     _BAD = {"detail": "Telefon raqami yoki parol noto'g'ri."}
 
@@ -147,9 +161,14 @@ class PhonePasswordLoginView(APIView):
         phone = (request.data.get("phone") or "").strip()
         password = request.data.get("password") or ""
         if not phone or not password:
+            # Still burn the dummy hash so a missing-field request isn't measurably faster than a real one.
+            _check_password(password or "x", _DUMMY_PASSWORD_HASH)
             return Response(self._BAD, status=status.HTTP_401_UNAUTHORIZED)
         user = User.objects.filter(phone=phone).first()
-        if user is None or not user.check_password(password):
+        if user is None:
+            _check_password(password, _DUMMY_PASSWORD_HASH)   # equalize timing with the wrong-password path
+            return Response(self._BAD, status=status.HTTP_401_UNAUTHORIZED)
+        if not user.check_password(password):
             return Response(self._BAD, status=status.HTTP_401_UNAUTHORIZED)
         if not user.is_active:
             return Response({"detail": "Hisob o'chirilgan. Qo'llab-quvvatlashga murojaat qiling."},
@@ -294,11 +313,21 @@ class PhoneRegisterView(APIView):
                 "backend authority. Caller swaps in the returned tokens and the next API calls run as admin.")
 class AdminUnlockView(APIView):
     """POST /api/v1/auth/admin-unlock/ — password → admin JWT. Anonymous endpoint by design (the password IS
-    the gate). On first call we create the bootstrap admin user via createsuperuser-equivalent code path."""
+    the gate). On first call we create the bootstrap admin user via createsuperuser-equivalent code path.
+
+    v3.9.16 SECURITY: (1) fail closed — if ADMIN_UNLOCK_PASSWORD is unset the endpoint is disabled (503), so
+    a misconfigured deploy can't fall back to a public default. (2) constant-time password compare. (3)
+    per-IP throttle (admin_unlock scope) since a match mints a full is_superuser JWT."""
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = "admin_unlock"
 
     def post(self, request):
-        if request.data.get("password") != ADMIN_UNLOCK_PASSWORD:
+        # Disabled unless an unlock password is configured — never accept an empty/absent secret.
+        if not ADMIN_UNLOCK_PASSWORD:
+            return Response({"detail": "Admin unlock is not configured."},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        if not constant_time_compare(request.data.get("password") or "", ADMIN_UNLOCK_PASSWORD):
             return Response({"detail": "Invalid password."}, status=status.HTTP_401_UNAUTHORIZED)
         # get_or_create the bootstrap admin so repeated unlocks return JWTs for the same User row. Using
         # create_superuser here so is_staff/is_superuser/role=ADMIN all line up with the legacy createsuperuser

@@ -64,6 +64,10 @@ class UserManager(BaseUserManager):
         if not phone: raise ValueError(_("Phone is required"))
         if not password: raise ValueError(_("Password is required"))
         user = self.filter(phone=phone).first()
+        # v3.9.16 SECURITY — never let partner provisioning overwrite an ADMIN / superuser / staff account.
+        # Otherwise an admin-token holder could demote another admin (and reset their password) by phone.
+        if user is not None and (user.is_superuser or user.is_staff or user.role == "ADMIN"):
+            raise ValueError("Refusing to re-provision an admin/staff account.")
         created = user is None
         if created:
             synthetic_email = f"{phone.lstrip('+')}@phone.goshtli.local"
