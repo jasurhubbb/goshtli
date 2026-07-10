@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_core/shared_core.dart';
 import '../../../core/auth/partner_auth_notifier.dart';
 import '../../../core/network/providers.dart';
 import '../../../l10n/app_localizations.dart';
@@ -25,8 +26,7 @@ import 'one_question_scaffold.dart';
 ///   6 Location            (GPS autodetect + manual)
 ///   7 Photo + submit      (image_picker; skip OK)
 class QassobWizardScreen extends ConsumerStatefulWidget {
-  final String phone;
-  const QassobWizardScreen({super.key, required this.phone});
+  const QassobWizardScreen({super.key});
   @override
   ConsumerState<QassobWizardScreen> createState() => _QassobWizardScreenState();
 }
@@ -53,15 +53,13 @@ class _QassobWizardScreenState extends ConsumerState<QassobWizardScreen> {
     final draft = ref.read(onboardingDraftProvider);
     final router = GoRouter.of(context);
     try {
-      // Backend creates BUYER by default; partner-app wizard overrides role to QASSOB on phone-register.
-      final user = await ref.read(firebaseBridgeProvider).phoneRegister(
-        phone: widget.phone, fullName: draft.fullName,
-        businessName: '', roleOverride: 'QASSOB');
-      // Now POST /qassobs/me/ with the wizard payload.
+      // v3.9.16 — the qassob is already logged in (admin-issued phone + password); this wizard is the
+      // one-time profile SETUP, not registration. Write the profile, then refresh the user.
       final api = ref.read(apiClientProvider);
       final r = await api.dio.post('/qassobs/me/', data: draft.toQassobPayload());
       if (r.statusCode == 201 || r.statusCode == 200) {
-        ref.read(partnerAuthProvider.notifier).setAuthenticated(user);
+        final me = await api.dio.get('/auth/me/');
+        ref.read(partnerAuthProvider.notifier).setAuthenticated(User.fromJson(me.data as Map<String, dynamic>));
         await ref.read(onboardingDraftProvider.notifier).clear();
         if (mounted) router.go('/home');
       } else {

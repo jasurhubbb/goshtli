@@ -169,13 +169,16 @@ class TelegramWebhookView(APIView):
             ).update(telegram_chat_id=chat_id, telegram_user_id=(message.get("from") or {}).get("id"))
 
         text = (
-            f"Salom {first_name} 👋\n"
-            "@qirikki'ning rasmiy botiga xush kelibsiz\n\n"
-            "⬇ Kontaktingizni yuboring (tugmani bosib)\n\n"
-            "🇺🇸\n"
-            f"Hi {first_name} 👋\n"
-            "Welcome to @qirikki's official bot\n\n"
-            "⬇ Send your contact (by clicking button)"
+            f"Assalomu alaykum, {first_name}! 👋\n"
+            "LeBara rasmiy botiga xush kelibsiz 🥩\n\n"
+            "Tasdiqlash kodini olish uchun pastdagi tugma orqali\n"
+            "telefon raqamingizni yuboring ⬇️\n\n"
+            "━━━━━━━━━━━━━━\n"
+            "🇬🇧\n"
+            f"Hello, {first_name}! 👋\n"
+            "Welcome to the official LeBara bot 🥩\n\n"
+            "Tap the button below to share your phone number\n"
+            "and receive your verification code ⬇️"
         )
         telegram_api.send_message(
             chat_id, text,

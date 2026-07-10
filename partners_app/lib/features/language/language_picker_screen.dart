@@ -41,7 +41,7 @@ class LanguagePickerScreen extends ConsumerWidget {
   void _pick(WidgetRef ref, BuildContext context, Locale locale) async {
     HapticFeedback.selectionClick();
     await ref.read(localeNotifierProvider.notifier).set(locale);
-    if (context.mounted) context.go('/role-pick');
+    if (context.mounted) context.go('/auth/login');
   }
 }
 

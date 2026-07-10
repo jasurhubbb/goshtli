@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_core/shared_core.dart';
 
-import '../../features/auth/courier_login_screen.dart';
-import '../../features/auth/otp_entry_screen.dart';
-import '../../features/auth/phone_entry_screen.dart';
+import '../../features/auth/login_screen.dart';
 import '../../features/catalog/listing_detail_screen.dart';
 import '../../features/catalog/new_listing_screen.dart';
 import '../../features/chats/chat_detail_screen.dart';
@@ -19,7 +17,6 @@ import '../../features/onboarding/presentation/supplier_wizard_screen.dart';
 import '../../features/profile/qassob_profile_edit_screen.dart';
 import '../../features/profile/supplier_profile_edit_screen.dart';
 import '../../features/ratings/ratings_screen.dart';
-import '../../features/role_picker/role_picker_screen.dart';
 import '../auth/partner_auth_notifier.dart';
 import '../auth/role_draft_provider.dart';
 import 'courier_shell.dart';
@@ -36,43 +33,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(partnerAuthProvider);
       final loc = gs.matchedLocation;
       if (auth is AuthInitial || auth is AuthLoading) return null;
-      // Authenticated → push past auth gates, but allow visits to home + nested routes.
+      // v3.9.16 — partners no longer self-register. The only pre-auth screens are the language picker and
+      // the phone+password login. After login the LoginScreen routes supplier/qassob into /onboarding
+      // (the profile-setup wizard) or /home.
       final loggedIn = auth is AuthAuthenticated;
-      const authPaths = {'/auth/phone', '/auth/otp'};
-      if (loggedIn && (loc == '/' || loc == '/role-pick' || authPaths.contains(loc))) {
-        return '/home';
-      }
-      // Anonymous on a protected path → bounce back to the role picker. Without this rule, tapping
-      // Chiqish in Profil clears tokens but leaves the user stranded on /home/profile rendering an
-      // empty user, and the next API call 401s into the void.
-      const publicPaths = {'/', '/role-pick', '/auth/phone', '/auth/otp', '/onboarding',
-                            '/auth/courier'};
+      // Authenticated → don't sit on the language / login screens; jump to home.
+      if (loggedIn && (loc == '/' || loc == '/auth/login')) return '/home';
+      // Anonymous on a protected path → bounce to login. Without this, tapping Chiqish in Profil clears
+      // tokens but leaves the user stranded on /home/profile with the next API call 401-ing into the void.
+      const publicPaths = {'/', '/auth/login'};
       if (!loggedIn && !publicPaths.contains(loc)) {
-        return '/role-pick';
+        return '/auth/login';
       }
       return null;
     },
     routes: [
       GoRoute(path: '/', builder: (ctx, st) => const LanguagePickerScreen()),
-      GoRoute(path: '/role-pick', builder: (ctx, st) => const RolePickerScreen()),
-      GoRoute(path: '/auth/phone', builder: (ctx, st) => const PhoneEntryScreen()),
-      GoRoute(path: '/auth/otp', builder: (ctx, gs) {
-        final extra = (gs.extra as Map<String, dynamic>?) ?? const {};
-        return OtpEntryScreen(
-          phone: extra['phone'] as String? ?? '',
-          verificationId: extra['verificationId'] as String? ?? '',
-        );
-      }),
-      // v3.9.15 — dedicated courier email+password login. Distinct from the phone-OTP path because
-      // courier accounts are admin-provisioned (no self-registration flow).
-      GoRoute(path: '/auth/courier', builder: (ctx, st) => const CourierLoginScreen()),
-      // Onboarding wizards — dispatched by role from roleDraftProvider. Qassob = 8 pages, Supplier = 7.
-      GoRoute(path: '/onboarding', builder: (ctx, gs) {
-        final extra = (gs.extra as Map<String, dynamic>?) ?? const {};
-        final phone = extra['phone'] as String? ?? '';
-        // We can't read providers here cleanly; route to a tiny dispatcher widget.
-        return _WizardDispatcher(phone: phone);
-      }),
+      // v3.9.16 — single credential login for all partner roles (supplier / qassob / courier).
+      GoRoute(path: '/auth/login', builder: (ctx, st) => const LoginScreen()),
+      // Profile-setup wizard — dispatched by role from roleDraftProvider (set by LoginScreen at login).
+      // Reached post-login when a supplier/qassob account has no profile yet. Qassob = 8 pages, Supplier = 7.
+      GoRoute(path: '/onboarding', builder: (ctx, gs) => const _WizardDispatcher()),
       // KYC upload — reachable from the verification banner + Profile tab.
       GoRoute(path: '/kyc', builder: (ctx, st) => const KycUploadScreen()),
       // Sharhlar (Reviews) — pushed from Profile tab. Empty state shows "no reviews yet" when partner
@@ -133,17 +114,15 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 }
 
 
-/// Reads roleDraftProvider and dispatches to the right wizard.
+/// Reads roleDraftProvider (set by LoginScreen from the account's role) and dispatches to the right wizard.
 class _WizardDispatcher extends ConsumerWidget {
-  final String phone;
-  const _WizardDispatcher({required this.phone});
+  const _WizardDispatcher();
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(roleDraftProvider);
-    if (role == UserRole.qassob) return QassobWizardScreen(phone: phone);
-    if (role == UserRole.supplier) return SupplierWizardScreen(phone: phone);
-    // Fallback — shouldn't happen since role-pick is a hard gate before phone/OTP, but a friendly UX
-    // for ghost states.
+    if (role == UserRole.qassob) return const QassobWizardScreen();
+    if (role == UserRole.supplier) return const SupplierWizardScreen();
+    // Fallback — role draft should be set at login; friendly UX for ghost states.
     return Scaffold(
       appBar: AppBar(),
       body: const Center(child: Text('No role selected — please restart')),

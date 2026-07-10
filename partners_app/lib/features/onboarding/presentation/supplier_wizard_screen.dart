@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_core/shared_core.dart';
 import '../../../shared/widgets/image_source_picker.dart';
 
 import '../../../core/auth/partner_auth_notifier.dart';
@@ -23,8 +24,7 @@ import 'one_question_scaffold.dart';
 ///   5 Self-delivery + vehicle
 ///   6 Photo + submit
 class SupplierWizardScreen extends ConsumerStatefulWidget {
-  final String phone;
-  const SupplierWizardScreen({super.key, required this.phone});
+  const SupplierWizardScreen({super.key});
   @override
   ConsumerState<SupplierWizardScreen> createState() => _SupplierWizardScreenState();
 }
@@ -48,16 +48,16 @@ class _SupplierWizardScreenState extends ConsumerState<SupplierWizardScreen> {
     final draft = ref.read(onboardingDraftProvider);
     final router = GoRouter.of(context);
     try {
-      final user = await ref.read(firebaseBridgeProvider).phoneRegister(
-        phone: widget.phone, fullName: draft.fullName,
-        businessName: draft.companyName, roleOverride: 'SUPPLIER');
+      // v3.9.16 — the supplier is already logged in (admin-issued phone + password); this wizard is the
+      // one-time profile SETUP, not registration. So we just write the profile, then refresh the user.
       final api = ref.read(apiClientProvider);
-      // First POST creates SupplierProfile if missing; subsequent edits are PATCH.
+      // First POST creates/fills SupplierProfile; if it already exists the backend PATCHes it.
       final post = await api.dio.post('/suppliers/me/', data: draft.toSupplierPayload());
       if (post.statusCode != 200 && post.statusCode != 201) {
         await api.dio.patch('/suppliers/me/', data: draft.toSupplierPayload());
       }
-      ref.read(partnerAuthProvider.notifier).setAuthenticated(user);
+      final me = await api.dio.get('/auth/me/');
+      ref.read(partnerAuthProvider.notifier).setAuthenticated(User.fromJson(me.data as Map<String, dynamic>));
       await ref.read(onboardingDraftProvider.notifier).clear();
       if (mounted) router.go('/home');
     } catch (e) {

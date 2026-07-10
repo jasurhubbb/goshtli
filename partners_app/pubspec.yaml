@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  # Shared cross-app code (ApiClient, models, theme, locale, firebase bridge)
+  # Shared cross-app code (ApiClient, models, theme, locale, auth bridge)
   shared_core:
     path: ../packages/shared_core
   cupertino_icons: ^1.0.8
@@ -25,9 +25,9 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.3.2
 
-  # Firebase — phone auth + push notifications
+  # Firebase — push notifications only. v3.9.16 removed firebase_auth (phone SMS); partners now log in
+  # with an admin-issued phone + password. firebase_core stays because firebase_messaging needs it.
   firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
   firebase_messaging: ^15.1.3
 
   # Location + maps + media

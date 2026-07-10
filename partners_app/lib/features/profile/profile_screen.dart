@@ -168,8 +168,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   /// Chiqish — two-step (Ha/Yo'q) because logout is destructive (tokens wiped, signin required to
-   /// return). Clears the role draft too so the next signup starts fresh on /role-pick; the router
-   /// redirect rule then bounces the now-anonymous user off /home/profile to /role-pick automatically.
+   /// return). Clears the role draft too; the router redirect rule then bounces the now-anonymous user
+   /// off /home/profile to /auth/login automatically.
   Future<void> _confirmLogout(BuildContext context) async {
     final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(context: context,

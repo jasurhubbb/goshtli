@@ -105,7 +105,7 @@ class _ProfileBody extends ConsumerWidget {
         child: OutlinedButton.icon(
           onPressed: () async {
             await ref.read(partnerAuthProvider.notifier).logout();
-            if (context.mounted) context.go('/role-pick');
+            if (context.mounted) context.go('/auth/login');
           },
           style: OutlinedButton.styleFrom(
               foregroundColor: cs.error, minimumSize: const Size.fromHeight(52),

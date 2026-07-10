@@ -12,8 +12,9 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(tokens: ref.watch(tokenStorageProvider), baseUrl: Env.apiBaseUrl);
 });
 
-/// Firebase phone-auth bridge — used by the OTP screen to exchange Firebase ID token for backend JWT.
-final firebaseBridgeProvider = Provider<FirebasePhoneBridge>((ref) => FirebasePhoneBridge(
+/// v3.9.16 — partner auth bridge. Trades the admin-issued phone + password for a backend JWT pair.
+/// Replaces the Firebase phone-OTP bridge (partners no longer self-register).
+final authBridgeProvider = Provider<AuthBridge>((ref) => AuthBridge(
       dio: ref.watch(apiClientProvider).dio,
       tokens: ref.watch(tokenStorageProvider),
     ));

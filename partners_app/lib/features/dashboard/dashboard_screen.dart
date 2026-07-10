@@ -149,7 +149,6 @@ class _TipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
     return Container(padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: const Color(0xFFFFF4E5),
           borderRadius: BorderRadius.circular(14)),
