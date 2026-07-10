@@ -3,6 +3,6 @@
 class Env {
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://goshtli-production.up.railway.app/api/v1',
+    defaultValue: 'https://goshtli-production1.up.railway.app/api/v1',
   );
 }

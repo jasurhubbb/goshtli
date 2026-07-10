@@ -1,0 +1,16 @@
+993102505 - supplier
+998211382 - buyer
+991283705 - qassob
+
+cd /Users/newaccount/Documents/myprojects/go-sht-bozori
+
+
+./run_prod.sh emulator-5554
+./run_partners_prod.sh R59X2005SEW
+./run_partners_prod.sh emulator-5556
+If you want to verify which is which first:
+
+
+flutter devices
+R59X2005SEW → Samsung SM A245N (physical)
+emulator-5554 → Pixel emulator

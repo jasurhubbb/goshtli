@@ -39,7 +39,7 @@ fi
 ok "Device: $DEVICE_ID"
 
 # Quick health check so a bad deploy fails LOUD instead of every API call silently 5xx-ing.
-PROD_URL="https://goshtli-production.up.railway.app/api/v1/schema/"
+PROD_URL="https://goshtli-production1.up.railway.app/api/v1/schema/"
 info "Pinging $PROD_URL"
 if ! curl -fsS --max-time 5 "$PROD_URL" > /dev/null 2>&1; then
   fail "Production API is not reachable at $PROD_URL. Check Railway dashboard or run_local.sh for local mode."

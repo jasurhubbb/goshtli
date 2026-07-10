@@ -2,7 +2,7 @@
 # run_partners_prod.sh — launch the PARTNERS Flutter app against the PRODUCTION Railway backend.
 #
 # Same behavior your Samsung gets when it opens the signed build: hits
-# https://goshtli-production.up.railway.app/api/v1 (the defaultValue baked into env.dart). No local
+# https://goshtli-production1.up.railway.app/api/v1 (the defaultValue baked into env.dart). No local
 # Postgres/Redis/Django needed — your laptop just runs Flutter, the API is hosted.
 #
 # Use this when you want emulator + physical phone to share the same data set. To go back to a local
@@ -36,7 +36,7 @@ fi
 ok "Device: $DEVICE_ID"
 
 # Quick health check so a bad deploy fails LOUD instead of silently 5xx-ing all calls.
-PROD_URL="https://goshtli-production.up.railway.app/api/v1/schema/"
+PROD_URL="https://goshtli-production1.up.railway.app/api/v1/schema/"
 info "Pinging $PROD_URL"
 if ! curl -fsS --max-time 5 "$PROD_URL" > /dev/null 2>&1; then
   fail "Production API is not reachable at $PROD_URL. Check Railway dashboard or run_partners_local.sh for local mode."
