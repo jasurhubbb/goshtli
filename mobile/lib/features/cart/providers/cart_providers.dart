@@ -53,6 +53,13 @@ class CartState {
   bool get isEmpty => items.isEmpty;
   bool get isNotEmpty => items.isNotEmpty;
 
+  /// v3.9.16 — the cart holds at most ONE product at a time (each product is its own order). This is the
+  /// listing id currently in the cart, or null when empty.
+  int? get soleListingId => items.isEmpty ? null : items.keys.first;
+
+  /// True if adding [listingId] would put a SECOND, different product in the cart — which we disallow.
+  bool conflictsWith(int listingId) => items.isNotEmpty && !items.containsKey(listingId);
+
   CartState copyWith({Map<int, CartItem>? items, String? shopNote}) =>
       CartState(items: items ?? this.items, shopNote: shopNote ?? this.shopNote);
 }
@@ -69,6 +76,10 @@ class CartNotifier extends StateNotifier<CartState> {
   /// Subsequent calls on an already-present row bump by the listing's `stepKg` (5kg for raw meat, 1 head
   /// for live-by-head).
   void add(Listing listing) {
+    // v3.9.16 — one product per cart. Refuse to add a second, DIFFERENT listing. The UI shows a replace
+    // dialog (addToCartOrPrompt) before calling this for a conflicting product, so this is a safety net
+    // that preserves the single-product invariant even if a new call site forgets the guard.
+    if (state.conflictsWith(listing.id)) return;
     final existing = state.items[listing.id];
     final next = Map<int, CartItem>.of(state.items);
     if (existing == null) {
@@ -116,6 +127,13 @@ class CartNotifier extends StateNotifier<CartState> {
 
   /// Free-form note that ships with the order ("Eshikni 3 marta taqillating", "Pichoq qoshmang", etc.).
   void setShopNote(String text) => state = state.copyWith(shopNote: text);
+
+  /// v3.9.16 — single-product cart. Replace whatever is in the cart with a fresh line for [listing]. Called
+  /// by the "Almashtirish" action when the buyer confirms switching products in the one-at-a-time dialog.
+  void replaceWith(Listing listing) {
+    state = const CartState.empty();
+    add(listing);
+  }
 
   /// Wipe after a successful checkout. Also used by the "empty cart" gesture in the Savat screen.
   void clear() => state = const CartState.empty();

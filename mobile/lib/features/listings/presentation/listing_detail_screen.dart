@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/models/listing.dart';
 import '../../../shared/utils/format.dart';
-import '../../cart/providers/cart_providers.dart';
+import '../../cart/presentation/cart_actions.dart';
 import '../providers/listings_providers.dart';
 
 
@@ -93,10 +93,11 @@ class ListingDetailScreen extends ConsumerWidget {
         child: SizedBox(width: double.infinity, height: 52, child: FilledButton(
           style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-          onPressed: () {
+          onPressed: () async {
             HapticFeedback.lightImpact();
-            ref.read(cartProvider.notifier).add(l);
-            if (context.canPop()) context.pop();
+            // v3.9.16 — single-product cart: prompts to replace if a different product is already in it.
+            final added = await addToCartOrPrompt(context, ref, l);
+            if (added && context.mounted && context.canPop()) context.pop();
           },
           child: Text("Savatga qo'shish",
             style: tt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w700))))))

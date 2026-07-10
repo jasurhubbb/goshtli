@@ -112,6 +112,12 @@ class DeliveryQuoteView(APIView):
 
         # Fetch listings — used to figure out which vehicle types are eligible and to compute distance.
         listing_ids = [item["listing"] for item in d["items"]]
+        # v3.9.16 — one product per order. The buyer app enforces a single-product cart; we reject a quote
+        # for more than one distinct listing here too (defense in depth) so the invariant also holds
+        # server-side. An Order is structurally one listing already (orders.Order.listing is a single FK).
+        if len(set(listing_ids)) > 1:
+            return Response({"detail": "Bir vaqtda faqat bitta mahsulot buyurtma qilinadi."},
+                            status=status.HTTP_400_BAD_REQUEST)
         listings = list(Listing.objects.filter(pk__in=listing_ids).select_related("market"))
         if not listings:
             return Response({"detail": "No matching listings."}, status=status.HTTP_400_BAD_REQUEST)

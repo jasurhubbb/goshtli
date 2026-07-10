@@ -17,6 +17,7 @@ import '../../../shared/models/listing.dart';
 import '../../../shared/utils/format.dart';
 import '../../addresses/presentation/address_sheet.dart';
 import '../../addresses/providers/addresses_providers.dart';
+import '../../cart/presentation/cart_actions.dart';
 import '../../cart/presentation/qty_editor_sheet.dart';
 import '../../cart/providers/cart_providers.dart';
 import '../../chats/presentation/chat_icon_with_badge.dart';
@@ -545,7 +546,7 @@ class _ProductCard extends ConsumerWidget {
                   ]))),
                 const SizedBox(width: 6),
                 qty == 0
-                    ? _AddPill(onTap: () { HapticFeedback.lightImpact(); ref.read(cartProvider.notifier).add(listing); })
+                    ? _AddPill(onTap: () { HapticFeedback.lightImpact(); addToCartOrPrompt(context, ref, listing); })
                     : _CardStepper(qty: qty,
                         // PRD §1 step rule: stepper +/- bumps by 5kg (raw meat) or 1 head (live-by-head).
                         // The notifier knows the right amount from the listing's saleType; we just trigger.
