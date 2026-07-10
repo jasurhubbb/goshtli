@@ -17,6 +17,10 @@ urlpatterns = [
     path("api/v1/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),       # Redoc reading view
 
     path("api/v1/auth/", include("apps.accounts.urls")),            # register, login, refresh, me, account delete
+    # v3.9.16 — Telegram phone verification: auth/telegram/start + verify (app) and telegram/webhook (Telegram).
+    # Mounted at the version root so the app-facing routes sit under /auth/telegram/ and the bot webhook at
+    # /telegram/webhook/ (see apps.telegram_auth.urls).
+    path("api/v1/", include("apps.telegram_auth.urls")),
     path("api/v1/suppliers/", include("apps.suppliers.urls")),      # supplier profile + dashboard
     path("api/v1/buyers/", include("apps.buyers.urls")),            # buyer profile + dashboard
     path("api/v1/listings/", include("apps.listings.urls")),        # listing CRUD + browse + my + photos

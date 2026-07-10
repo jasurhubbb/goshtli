@@ -2,8 +2,9 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import (AdminUnlockView, FirebasePhoneLoginView, MeView, PhoneCheckView,
-                    PhoneLoginView, PhoneRegisterView, RegisterView)
+from .views import (AdminProvisionPartnerView, AdminUnlockView, FirebasePhoneLoginView, MeView,
+                    PhoneCheckView, PhoneLoginView, PhonePasswordLoginView, PhoneRegisterView,
+                    RegisterView)
 
 # Two coexisting auth families:
 #   • Email + password (legacy v2)  — /register, /login, /refresh — kept for Django Admin staff + backwards compat
@@ -19,6 +20,11 @@ urlpatterns = [
     path("phone-check/", PhoneCheckView.as_view(), name="auth-phone-check"),
     path("phone-login/", PhoneLoginView.as_view(), name="auth-phone-login"),
     path("phone-register/", PhoneRegisterView.as_view(), name="auth-phone-register"),
+
+    # v3.9.16 — partner credential login (admin-issued phone + password) for supplier / qassob / courier,
+    # and the admin-only provisioning endpoint that mints those accounts (mirrors couriers/admin/provision/).
+    path("phone-password-login/", PhonePasswordLoginView.as_view(), name="auth-phone-password-login"),
+    path("admin/provision-partner/", AdminProvisionPartnerView.as_view(), name="auth-provision-partner"),
 
     # v3.3 admin gate — password → admin JWT pair (auto-bootstraps bootstrap admin user on first hit)
     path("admin-unlock/", AdminUnlockView.as_view(), name="auth-admin-unlock"),

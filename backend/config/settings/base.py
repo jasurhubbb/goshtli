@@ -43,7 +43,10 @@ LOCAL_APPS = ["apps.common", "apps.accounts", "apps.suppliers", "apps.buyers",
               # in the partner app + apps.partner respectively; this app owns just the models.
               # Full app config (not the string "apps.couriers") so AppConfig.ready() wires the
               # auto-assignment signal on Order.post_save.
-              "apps.couriers.apps.CouriersConfig"]
+              "apps.couriers.apps.CouriersConfig",
+              # v3.9.16 — Telegram-bot phone verification (buyer signup). Owns TelegramVerification +
+              # the bot webhook; replaces the Firebase SMS OTP path.
+              "apps.telegram_auth"]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # CORS middleware must be near the top so preflight responses are handled before auth/CSRF
@@ -203,7 +206,11 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",
                                 "rest_framework.filters.SearchFilter", "rest_framework.filters.OrderingFilter"),
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema"}  # required by drf-spectacular for OpenAPI 3 generation
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",  # required by drf-spectacular for OpenAPI 3 generation
+    # v3.9.16 — scoped throttles for the anonymous Telegram phone-verification endpoints. Per-IP guards on
+    # top of the per-phone limits enforced in the views (60s resend cooldown + 5 sends/hr/phone). Keeps a
+    # single IP from spraying start/verify calls to brute-force codes or enumerate.
+    "DEFAULT_THROTTLE_RATES": {"telegram_start": "20/hour", "telegram_verify": "30/hour"}}
 
 # OpenAPI / Swagger metadata — keep minimal; full docs live in /docs/api-plan.md and the rendered Swagger UI
 SPECTACULAR_SETTINGS = {
@@ -226,6 +233,19 @@ SIMPLE_JWT = {
     # a B2B buyer app (every refresh rotates and `BLACKLIST_AFTER_ROTATION=False` doesn't accumulate DB rows).
     "REFRESH_TOKEN_LIFETIME": timedelta(days=config("REFRESH_TOKEN_LIFETIME_DAYS", default=30, cast=int)),
     "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": False, "AUTH_HEADER_TYPES": ("Bearer",)}
+
+# ----- Telegram phone verification (v3.9.16) -----
+# The bot replaces Firebase SMS OTP for buyer signup. All four are set in Railway env:
+#   TELEGRAM_BOT_TOKEN     — from @BotFather; used to call the Bot API (sendMessage/setWebhook).
+#   TELEGRAM_BOT_USERNAME  — bot's @username (no @); baked into the t.me deep link the app opens.
+#   TELEGRAM_WEBHOOK_SECRET— random [A-Za-z0-9_-] string echoed in the X-Telegram-Bot-Api-Secret-Token header;
+#                            the webhook rejects any POST whose header doesn't match (blocks forged updates).
+#   TELEGRAM_OTP_PEPPER    — secret mixed into every code hash (falls back to SECRET_KEY if unset). Keep it
+#                            separate from SECRET_KEY so rotating it doesn't invalidate JWT signatures.
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_BOT_USERNAME = config("TELEGRAM_BOT_USERNAME", default="")
+TELEGRAM_WEBHOOK_SECRET = config("TELEGRAM_WEBHOOK_SECRET", default="")
+TELEGRAM_OTP_PEPPER = config("TELEGRAM_OTP_PEPPER", default="")
 
 # ----- Celery (async tasks: image resize, future cache warming + daily reports) -----
 #

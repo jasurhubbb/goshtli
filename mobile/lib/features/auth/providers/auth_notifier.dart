@@ -6,7 +6,6 @@
 // v2 Milestone E.5 hook: on successful login/register/resume we ask the OS for notification permission and
 // register this device's FCM token with the backend so push events reach the right user.
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/token_storage.dart';
@@ -146,33 +145,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // /admin while logged in as a buyer keeps the buyer session intact; leaving /admin returns the user to
   // their previous state untouched.
 
-  /// v3.4 Firebase phone-auth bridge. The OTP screen already did the Firebase SMS-challenge dance and
-  /// has a verified ID token; we trade it for our JWT pair via /auth/firebase-phone-login/. Returns the
-  /// repo's tri-state record so the OTP screen knows whether to land on '/' (existing user) or push
+  /// v3.9.16 Telegram phone-verification bridge. The code screen collected the 6-digit code the user got
+  /// from the bot; we trade it (+ the start session token) for our JWT pair via /auth/telegram/verify/.
+  /// Returns the repo's tri-state record so the screen knows whether to land on '/' (existing user) or push
   /// to '/auth/details' (new user) for name entry.
   ///
-  /// v3.4 hardening: catches every exception (not just AuthException). The earlier version left state in
-  /// AuthLoading forever when DioException leaked through, which made Profile tab spin and never resolve.
-  Future<({User? user, bool isNew, String phone})> firebasePhoneLogin(String firebaseIdToken) async {
-    debugPrint('[AuthNotifier.firebasePhoneLogin] starting; state → AuthLoading');
+  /// Catches every exception (not just AuthException) so a DioException can't leave state stuck in
+  /// AuthLoading (which would spin the Profile tab forever).
+  Future<({User? user, bool isNew, String phone})> telegramVerify(String sessionToken, String code) async {
     state = const AuthLoading();
     try {
-      final result = await _repo.firebasePhoneLogin(firebaseIdToken);
+      final result = await _repo.telegramVerify(sessionToken, code);
       if (result.isNew) {
-        // Hold in AuthAnonymous — the user isn't fully signed up until /auth/details + phoneRegister.
-        // Returning to Anonymous (not staying in Loading) keeps the router happy if the user pops back.
-        debugPrint('[AuthNotifier.firebasePhoneLogin] new user → state = AuthAnonymous; OTP pushes /auth/details');
+        // Hold in AuthAnonymous — not fully signed up until /auth/details + phoneRegister.
         state = const AuthAnonymous();
       } else {
-        debugPrint('[AuthNotifier.firebasePhoneLogin] existing user → state = AuthAuthenticated(${result.user!.id})');
         state = AuthAuthenticated(result.user!);
         _registerPushQuietly();
       }
       return result;
     } catch (e) {
-      // Reset state on ANY failure so the rest of the app doesn't get stuck staring at a spinner. The
-      // caller (OTP screen) already does its own error display via on FirebaseAuthException / on AuthException.
-      debugPrint('[AuthNotifier.firebasePhoneLogin] FAILED: $e → state = AuthAnonymous');
+      // Reset state on ANY failure so the app doesn't get stuck on a spinner. The caller (code screen)
+      // shows its own error via on AuthException.
       state = const AuthAnonymous();
       rethrow;
     }

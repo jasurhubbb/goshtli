@@ -52,3 +52,27 @@ class UserManager(BaseUserManager):
         user.set_unusable_password()  # password-less account; logins go through PhoneLoginView, not /auth/login/
         user.save(using=self._db)
         return user
+
+    def provision_partner(self, phone, full_name, role, password, **extra_fields):
+        """v3.9.16 — admin-issued partner account (SUPPLIER / QASSOB / COURIER). Unlike create_user_from_phone
+        these get a REAL (usable) password so they sign in via PhonePasswordLoginView with the phone + password
+        we hand them. If a user with this phone already exists we update it in place (idempotent re-provision),
+        so re-running with a new password rotates it rather than 409-ing.
+
+        Returns (user, created). Raises no IntegrityError for the happy path — phone collisions resolve to update.
+        """
+        if not phone: raise ValueError(_("Phone is required"))
+        if not password: raise ValueError(_("Password is required"))
+        user = self.filter(phone=phone).first()
+        created = user is None
+        if created:
+            synthetic_email = f"{phone.lstrip('+')}@phone.goshtli.local"
+            user = self.model(email=synthetic_email, phone=phone)
+        user.full_name = full_name or user.full_name
+        user.role = role
+        user.is_active = True
+        user.is_staff = False
+        user.is_superuser = False
+        user.set_password(password)  # hashed via PBKDF2 — a real, usable password
+        user.save(using=self._db)
+        return user, created

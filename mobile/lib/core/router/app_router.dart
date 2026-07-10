@@ -124,18 +124,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       // pushes /auth/details with the phone in `extra` if it's a new account.
       GoRoute(path: '/auth/phone', name: 'auth-phone', builder: (_, _) => const PhoneEntryScreen()),
       GoRoute(path: '/auth/otp', name: 'auth-otp',
-        // OTP screen needs the phone (display) and Firebase's verificationId (opaque session id) — both
-        // passed via go_router `extra`. Direct deep-links without that payload bounce back to /auth/phone.
+        // v3.9.16 — Telegram code screen needs the phone (display), the start-session token, and the bot
+        // deep-link URL, all passed via go_router `extra`. Direct deep-links without that payload bounce
+        // back to /auth/phone (where a session gets opened).
         redirect: (_, gs) {
           final extra = gs.extra as Map<String, dynamic>?;
-          final hasPayload = extra != null && extra['phone'] is String && extra['verificationId'] is String;
+          final hasPayload = extra != null && extra['phone'] is String
+              && extra['sessionToken'] is String && extra['botUrl'] is String;
           return hasPayload ? null : '/auth/phone';
         },
         builder: (_, gs) {
           final extra = gs.extra as Map<String, dynamic>;
           return OtpEntryScreen(
             phone: extra['phone'] as String,
-            initialVerificationId: extra['verificationId'] as String,
+            sessionToken: extra['sessionToken'] as String,
+            botUrl: extra['botUrl'] as String,
           );
         }),
       GoRoute(path: '/auth/details', name: 'auth-details',

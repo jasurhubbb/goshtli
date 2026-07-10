@@ -124,6 +124,39 @@ class PhoneLoginView(APIView):
         return Response(_jwt_for(user))
 
 
+@extend_schema(
+    request={"type": "object", "properties": {"phone": {"type": "string"}, "password": {"type": "string"}},
+             "required": ["phone", "password"]},
+    responses={200: {"type": "object", "properties": {"access": {"type": "string"},
+                                                       "refresh": {"type": "string"}}},
+               401: None, 403: None},
+    description="POST {phone, password}. Login for admin-issued PARTNER accounts (supplier / qassob / courier). "
+                "Partners receive a phone + password from the platform (see provision_supplier / provision_qassob / "
+                "provision_courier); this trades them for a JWT pair. Generic 401 on any credential mismatch.")
+class PhonePasswordLoginView(APIView):
+    """POST /api/v1/auth/phone-password-login/ — v3.9.16 credential login by phone + password.
+
+    Django's authenticate() keys on email (USERNAME_FIELD), so we resolve the phone → user ourselves and
+    verify the password with check_password. One generic 401 whether the phone is unknown or the password is
+    wrong, so the endpoint can't be used to enumerate which phones have accounts."""
+    permission_classes = (permissions.AllowAny,)
+
+    _BAD = {"detail": "Telefon raqami yoki parol noto'g'ri."}
+
+    def post(self, request):
+        phone = (request.data.get("phone") or "").strip()
+        password = request.data.get("password") or ""
+        if not phone or not password:
+            return Response(self._BAD, status=status.HTTP_401_UNAUTHORIZED)
+        user = User.objects.filter(phone=phone).first()
+        if user is None or not user.check_password(password):
+            return Response(self._BAD, status=status.HTTP_401_UNAUTHORIZED)
+        if not user.is_active:
+            return Response({"detail": "Hisob o'chirilgan. Qo'llab-quvvatlashga murojaat qiling."},
+                            status=status.HTTP_403_FORBIDDEN)
+        return Response(_jwt_for(user))
+
+
 # ---------- Firebase Phone Auth (v3.4) ----------
 
 @extend_schema(
@@ -280,3 +313,40 @@ class AdminUnlockView(APIView):
             user.is_active = True
             user.save(update_fields=["is_active"])
         return Response(_jwt_for(user))
+
+
+# ---------- Partner provisioning (v3.9.16) ----------
+
+@extend_schema(
+    request={"type": "object", "properties": {
+        "role": {"type": "string", "enum": ["SUPPLIER", "QASSOB", "COURIER"]},
+        "phone": {"type": "string"}, "full_name": {"type": "string"},
+        "password": {"type": "string"}, "business_name": {"type": "string"}}, "required": ["role", "phone"]},
+    responses={201: {"type": "object", "properties": {"phone": {"type": "string"},
+                     "password": {"type": "string"}, "role": {"type": "string"},
+                     "created": {"type": "boolean"}}}, 400: None, 403: None},
+    description="POST {role, phone, full_name?, password?, business_name?}. ADMIN-only. Creates (or re-provisions) "
+                "a partner account with a usable phone+password and its minimal profile. Returns the password to "
+                "hand to the partner. If password is omitted, one is generated. Mirrors couriers/admin/provision/.")
+class AdminProvisionPartnerView(APIView):
+    """POST /api/v1/auth/admin/provision-partner/ — admin-issued supplier / qassob / courier accounts."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        if not getattr(request.user, "is_admin_role", False):
+            return Response({"detail": "Admin only."}, status=status.HTTP_403_FORBIDDEN)
+        role = (request.data.get("role") or "").strip().upper()
+        phone = (request.data.get("phone") or "").strip()
+        if not phone:
+            return Response({"detail": "phone is required."}, status=status.HTTP_400_BAD_REQUEST)
+        # Import here (not at module top) to keep the accounts↔partner-apps dependency lazy.
+        from .provisioning import provision_partner_account
+        try:
+            user, password, created = provision_partner_account(
+                phone=phone, full_name=(request.data.get("full_name") or "").strip(), role=role,
+                password=(request.data.get("password") or "").strip(),
+                business_name=(request.data.get("business_name") or "").strip())
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"phone": user.phone, "password": password, "role": user.role, "created": created},
+                        status=status.HTTP_201_CREATED)
