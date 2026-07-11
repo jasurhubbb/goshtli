@@ -36,6 +36,10 @@ class ListingFilter(filters.FilterSet):
     is_live_animal = filters.BooleanFilter(field_name="is_live_animal")
     breed = filters.CharFilter(field_name="breed_type", lookup_expr="iexact")
 
+    # v3.9.16 — one supplier's catalog (?supplier=<user_id>). Feeds the buyer-app supplier profile page's
+    # "active listings" popup. Public browse already restricts to ACTIVE, so this returns only live products.
+    supplier = filters.NumberFilter(field_name="supplier_id")
+
     def filter_text_search(self, queryset, name, value):
         """Match query against both name_uz and name_ru — buyers searching in either language hit results."""
         if not value:
@@ -45,4 +49,4 @@ class ListingFilter(filters.FilterSet):
     class Meta:
         model = Listing
         fields = ("category", "market", "region", "status", "price_min", "price_max", "q",
-                  "is_live_animal", "breed")
+                  "is_live_animal", "breed", "supplier")

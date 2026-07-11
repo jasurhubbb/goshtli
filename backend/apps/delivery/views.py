@@ -137,7 +137,7 @@ class DeliveryQuoteView(APIView):
         # transport for the animal itself; once butchered, we need a refrigerator for the finished meat.)
         chorva_taxi_available = has_live and not butcher_requested
         chorva_taxi_reason = "" if chorva_taxi_available else (
-            "Tayyor go'sht uchun refrigerator kerak" if not has_live else "Qassob xizmati so'ralganda refrigerator ishlatiladi"
+            "Tayyor go'sht uchun muzlatgichli furgon kerak" if not has_live else "Qassob xizmati so'ralganda refrigerator ishlatiladi"
         )
 
         # Refrigerator: when ANY raw meat is in the cart, OR live animal with butcher (because the animal

@@ -12,6 +12,11 @@ import '../../shared/widgets/image_source_picker.dart';
 import '../profile/animals_supported_sheet.dart';
 
 
+/// Bilingual (UZ + RU) inline text — English is deliberately not supported per the project's UZ+RU scope.
+String _t(BuildContext c, String uz, String ru) =>
+    Localizations.localeOf(c).languageCode == 'ru' ? ru : uz;
+
+
 /// Full-page "Yangi tovar qo'shish".
 ///
 /// Bootstrap fetches three things in parallel:
@@ -35,8 +40,11 @@ class NewListingScreen extends ConsumerStatefulWidget {
 class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   final _name = TextEditingController();
   final _qty = TextEditingController();
-  final _price = TextEditingController();
-  String? _form;                                  // null until user taps a chip — no RAW_CUT default
+  final _price = TextEditingController();          // Tayyor go'sht — single so'm/kg
+  final _priceMin = TextEditingController();       // Tirik — per-head price RANGE lower bound (so'm/bosh)
+  final _priceMax = TextEditingController();       // Tirik — per-head price RANGE upper bound
+  String? _form;                                  // 'RAW_CUT' | 'LIVE'; null until the user taps a chip
+  int _headCount = 1;                             // live-animal count — used when _form == 'LIVE' (in place of kg)
   File? _photo;
   // v3.9.15 — supplier opts in to self-delivery for THIS listing. Default false → the courier
   // auto-assignment signal picks a courier when the order enters IN_TRANSIT. When true the supplier
@@ -69,6 +77,7 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   @override
   void dispose() {
     _name.dispose(); _qty.dispose(); _price.dispose();
+    _priceMin.dispose(); _priceMax.dispose();
     super.dispose();
   }
 
@@ -206,10 +215,37 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   bool get _valid {
     if (_submitting || !_ready) return false;
     if (_name.text.trim().length < 2) return false;
-    if (double.tryParse(_qty.text) == null) return false;
-    if (double.tryParse(_price.text) == null) return false;
     if (_marketId == null || _categoryId == null || _form == null) return false;
+    if (_form == 'RAW_CUT') {
+      // Tayyor go'sht → kg amount + single so'm/kg price.
+      if (double.tryParse(_qty.text) == null) return false;
+      if (double.tryParse(_price.text) == null) return false;
+    } else if (_form == 'LIVE') {
+      // Tirik → head count (stepper, always >= 1) + a per-head price RANGE where min <= max.
+      if (_headCount < 1) return false;
+      final lo = double.tryParse(_priceMin.text);
+      final hi = double.tryParse(_priceMax.text);
+      if (lo == null || hi == null || lo <= 0 || hi < lo) return false;
+    }
     return true;
+  }
+
+  /// Type-in editor for the live-animal head count (the stepper's "edit" affordance).
+  Future<void> _editHeadCount() async {
+    final ctrl = TextEditingController(text: '$_headCount');
+    final v = await showDialog<int>(context: context, builder: (ctx) => AlertDialog(
+      backgroundColor: Colors.white,
+      title: Text(_t(context, "Nechta bosh?", "Сколько голов?"),
+          style: const TextStyle(color: Color(0xFF1A1A1A), fontWeight: FontWeight.w900)),
+      content: TextField(controller: ctrl, autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(border: OutlineInputBorder())),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_t(context, 'Bekor', 'Отмена'))),
+        FilledButton(onPressed: () => Navigator.pop(ctx, int.tryParse(ctrl.text.trim())),
+            child: Text(_t(context, 'Saqlash', 'Сохранить'))),
+      ]));
+    if (v != null && v >= 1 && mounted) setState(() => _headCount = v);
   }
 
   Future<void> _submit() async {
@@ -218,10 +254,20 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
     try {
       final api = ref.read(apiClientProvider);
       final today = DateTime.now();
+      // Tirik (LIVE) → sold per head with a PRICE RANGE: quantity carries the head count, price_min/price_max
+      // hold the per-head range, and price_per_kg mirrors price_min as the order-total baseline.
+      // Tayyor go'sht (RAW_CUT) → sold by weight: quantity is kg, single price_per_kg (so'm/kg).
+      final isLive = _form == 'LIVE';
       final r = await api.dio.post('/listings/', data: {
         'market_id': _marketId, 'category_id': _categoryId,
         'name_uz': _name.text.trim(), 'name_ru': _name.text.trim(),
-        'quantity_kg': _qty.text.trim(), 'price_per_kg': _price.text.trim(),
+        'quantity_kg': isLive ? '$_headCount' : _qty.text.trim(),
+        'price_per_kg': isLive ? _priceMin.text.trim() : _price.text.trim(),
+        'sale_type': isLive ? 'BY_HEAD' : 'BY_WEIGHT',
+        'is_live_animal': isLive,
+        if (isLive) 'head_count': _headCount,
+        if (isLive) 'price_min': _priceMin.text.trim(),
+        if (isLive) 'price_max': _priceMax.text.trim(),
         'location': 'Tashkent',
         'available_from': '${today.year}-${today.month.toString().padLeft(2, "0")}-${today.day.toString().padLeft(2, "0")}',
         'status': 'ACTIVE', 'animal_form': _form,
@@ -318,18 +364,62 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
                 onChanged: (_) => setState(() {}),
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(labelText: 'Nomi *', hintText: 'Barra go\'shti')),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextField(controller: _qty,
-                    onChanged: (_) => setState(() {}),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Miqdor (kg) *'))),
-                const SizedBox(width: 12),
-                Expanded(child: TextField(controller: _price,
-                    onChanged: (_) => setState(() {}),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: "Narx so'm/kg *"))),
+              const SizedBox(height: 18),
+              // Mahsulot shakli — moved right after the name. Choosing it decides whether quantity is entered
+              // as kilograms (Tayyor go'sht) or a head count (Tirik). No "Ikkalasi" — a listing is one or the other.
+              Text(_t(context, "Mahsulot shakli *", "Форма товара *"),
+                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _FormChip(label: _t(context, "Tayyor go'sht", "Готовое мясо"), selected: _form == 'RAW_CUT',
+                            onTap: () => setState(() => _form = 'RAW_CUT')),
+                _FormChip(label: _t(context, "Tirik", "Живой скот"), selected: _form == 'LIVE',
+                            onTap: () => setState(() => _form = 'LIVE')),
               ]),
+              const SizedBox(height: 16),
+              // Quantity + price — shape depends on the product form.
+              if (_form == 'LIVE') ...[
+                Text(_t(context, "Nechta bosh? *", "Сколько голов? *"),
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                _CountStepper(count: _headCount,
+                    onDec: () => setState(() { if (_headCount > 1) _headCount--; }),
+                    onInc: () => setState(() => _headCount++),
+                    onEdit: _editHeadCount),
+                const SizedBox(height: 16),
+                // Live animals are priced as a per-head RANGE (size varies) — its own row: [min] — [max].
+                Text(_t(context, "Narx oralig'i (so'm/bosh) *", "Ценовой диапазон (сум/голова) *"),
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: TextField(controller: _priceMin,
+                      onChanged: (_) => setState(() {}),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: _t(context, "Eng past", "Минимум")))),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('—', style: tt.titleLarge?.copyWith(color: cs.onSurfaceVariant))),
+                  Expanded(child: TextField(controller: _priceMax,
+                      onChanged: (_) => setState(() {}),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: _t(context, "Eng yuqori", "Максимум")))),
+                ]),
+              ] else if (_form == 'RAW_CUT') ...[
+                Row(children: [
+                  Expanded(child: TextField(controller: _qty,
+                      onChanged: (_) => setState(() {}),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                          labelText: _t(context, "Miqdor (kg) *", "Количество (кг) *")))),
+                  const SizedBox(width: 12),
+                  Expanded(child: TextField(controller: _price,
+                      onChanged: (_) => setState(() {}),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                          labelText: _t(context, "Narx so'm/kg *", "Цена сум/кг *")))),
+                ]),
+              ] else
+                Text(_t(context, "Yuqorida mahsulot shaklini tanlang", "Выберите форму товара выше"),
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
               const SizedBox(height: 18),
               Row(children: [
                 Text("Go'sht turi *", style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
@@ -375,18 +465,6 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
                   // Trailing dashed "+ Qo'shish" chip — add more meat types right where the chips are.
                   _AddChip(onTap: _openAddMeatTypes),
                 ]),
-              const SizedBox(height: 18),
-              Text("Mahsulot shakli *",
-                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                _FormChip(label: 'Tayyor go\'sht', selected: _form == 'RAW_CUT',
-                            onTap: () => setState(() => _form = 'RAW_CUT')),
-                _FormChip(label: 'Tirik', selected: _form == 'LIVE',
-                            onTap: () => setState(() => _form = 'LIVE')),
-                _FormChip(label: 'Ikkalasi', selected: _form == 'BOTH',
-                            onTap: () => setState(() => _form = 'BOTH')),
-              ]),
               const SizedBox(height: 22),
               // v3.9.15 — self-delivery opt-in. Suppliers who have their own driver skip courier
               // auto-assignment for this listing; when off, the platform picks a courier when the
@@ -428,6 +506,38 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
                     : Text(t.save)),
             ])),
     );
+  }
+}
+
+
+/// Head-count stepper for live animals: [ − ] {N ✎} [ + ]. Tapping the number opens the type-in editor.
+class _CountStepper extends StatelessWidget {
+  final int count;
+  final VoidCallback onDec;
+  final VoidCallback onInc;
+  final VoidCallback onEdit;
+  const _CountStepper({required this.count, required this.onDec, required this.onInc, required this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(color: Colors.white,
+          borderRadius: BorderRadius.circular(12), border: Border.all(color: cs.outlineVariant)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        IconButton(onPressed: count > 1 ? onDec : null, icon: const Icon(Icons.remove_rounded),
+            visualDensity: VisualDensity.compact),
+        InkWell(onTap: onEdit, borderRadius: BorderRadius.circular(8),
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text('$count', style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(width: 4),
+              Icon(Icons.edit_outlined, size: 14, color: cs.onSurfaceVariant),
+            ]))),
+        IconButton(onPressed: onInc, icon: const Icon(Icons.add_rounded),
+            visualDensity: VisualDensity.compact),
+      ]));
   }
 }
 

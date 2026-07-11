@@ -1,5 +1,5 @@
 993102505 - supplier
-998211382 - qassob
+998211382 - qassob, +998991111111
 991283705 - buyer
 +998998888888 - courier
 cd /Users/newaccount/Documents/myprojects/go-sht-bozori

@@ -105,6 +105,12 @@ class Listing(TimeStampedModel):
                                       validators=[MinValueValidator(Decimal("0.00"))])
     price_per_kg = models.DecimalField(_("price per kg"), max_digits=10, decimal_places=2,
                                        validators=[MinValueValidator(Decimal("0.01"))])
+    # v3.9.16 — per-head PRICE RANGE for live animals (Tirik). A live animal's price varies by size, so the
+    # supplier enters a min–max instead of one figure; the buyer sees "X – Y so'm/bosh". Null for raw meat
+    # (which uses the single price_per_kg). For live listings price_per_kg mirrors price_min so order-total
+    # math still has a concrete baseline.
+    price_min = models.DecimalField(_("price range min"), max_digits=12, decimal_places=2, null=True, blank=True)
+    price_max = models.DecimalField(_("price range max"), max_digits=12, decimal_places=2, null=True, blank=True)
     location = models.CharField(_("location"), max_length=200, blank=True, db_index=True,
                                 help_text=_("Per-listing location override; usually inherits from market.address"))
     available_from = models.DateField(_("available from"))

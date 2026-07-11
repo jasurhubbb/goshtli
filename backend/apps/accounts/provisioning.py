@@ -26,8 +26,9 @@ def _ensure_profile(user, role: str, *, full_name: str, business_name: str = "")
             user=user, defaults={"business_name": business_name or full_name or "", "full_name": full_name})
     elif role == User.Role.QASSOB:
         from apps.qassobs.models import QassobProfile
+        # years_experience is NOT NULL with no default — must be supplied or the create raises IntegrityError.
         QassobProfile.objects.get_or_create(
-            user=user, defaults={"full_name": full_name, "region": "", "address": ""})
+            user=user, defaults={"full_name": full_name, "years_experience": 0, "region": "", "address": ""})
     elif role == User.Role.COURIER:
         from apps.couriers.models import CourierProfile
         CourierProfile.objects.get_or_create(user=user, defaults={"full_name": full_name})

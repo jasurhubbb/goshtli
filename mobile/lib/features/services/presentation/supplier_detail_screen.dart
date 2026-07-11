@@ -3,8 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../shared/models/listing.dart';
+import '../../../shared/utils/format.dart';
 import '../../auth/providers/auth_providers.dart' show apiClientProvider;
+import '../../cart/presentation/cart_actions.dart';
+import '../../listings/providers/listings_providers.dart';
 import '../data/supplier_public.dart';
+
+
+/// Bilingual (UZ + RU) inline text — English is deliberately not supported per the project's UZ+RU scope.
+String _t(BuildContext c, String uz, String ru) =>
+    Localizations.localeOf(c).languageCode == 'ru' ? ru : uz;
 
 
 /// Full-page supplier profile for the buyer app. Reached from the listing detail's "Sotuvchi
@@ -75,8 +84,15 @@ class SupplierDetailScreen extends ConsumerWidget {
           value: s.region.isNotEmpty ? s.region : "Ma'lumot yo'q"),
       if (s.address.isNotEmpty)
         _InfoRow(icon: Icons.map_rounded, label: 'Manzil', value: s.address),
-      _InfoRow(icon: Icons.inventory_2_rounded, label: 'Faol tovarlar',
-          value: '${s.listingsCount} ta'),
+      // Tappable — opens a popup of this supplier's active listings with add-to-cart, instead of only
+      // showing the count. Chevron + primary color signal it's interactive.
+      _InfoRow(icon: Icons.inventory_2_rounded,
+          label: _t(context, 'Faol tovarlar', 'Активные товары'),
+          value: _t(context, "${s.listingsCount} ta · ko'rish", '${s.listingsCount} · смотреть'),
+          valueColor: cs.primary,
+          onTap: s.listingsCount == 0
+              ? null
+              : () => _showSupplierListings(context, s.userId)),
       if (s.phone.isNotEmpty)
         _InfoRow(icon: Icons.phone_rounded, label: 'Telefon',
             value: s.phone,
@@ -128,6 +144,116 @@ class _InfoRow extends StatelessWidget {
                   fontWeight: FontWeight.w800)),
           if (onTap != null) Padding(padding: const EdgeInsets.only(left: 6),
               child: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant)),
+        ])));
+  }
+}
+
+
+// ---------- Supplier active-listings popup ----------
+
+/// One supplier's ACTIVE listings (public browse is ACTIVE-only). autoDispose so it frees when the sheet closes.
+final _supplierListingsProvider = FutureProvider.autoDispose.family<List<Listing>, int>((ref, supplierId) async {
+  final page = await ref.read(listingsRepositoryProvider).browse(supplierId: supplierId);
+  return page.results;
+});
+
+
+void _showSupplierListings(BuildContext context, int supplierId) {
+  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+    builder: (_) => _SupplierListingsSheet(supplierId: supplierId));
+}
+
+
+class _SupplierListingsSheet extends ConsumerWidget {
+  final int supplierId;
+  const _SupplierListingsSheet({required this.supplierId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final async = ref.watch(_supplierListingsProvider(supplierId));
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7, minChildSize: 0.4, maxChildSize: 0.92, expand: false,
+      builder: (ctx, scrollCtrl) => Container(
+        decoration: const BoxDecoration(color: Color(0xFFFFFBF7),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+        child: Column(children: [
+          const SizedBox(height: 10),
+          Container(width: 40, height: 4,
+              decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2))),
+          Padding(padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+            child: Row(children: [
+              Expanded(child: Text(_t(context, 'Faol tovarlar', 'Активные товары'),
+                  style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w900,
+                      color: const Color(0xFF1A1A1A)))),
+              IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded)),
+            ])),
+          Expanded(child: async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(24),
+                child: Text(_t(context, "Yuklab bo'lmadi", 'Не удалось загрузить'),
+                    style: TextStyle(color: cs.error)))),
+            data: (items) {
+              if (items.isEmpty) {
+                return Center(child: Text(_t(context, "Faol tovarlar yo'q", 'Нет активных товаров'),
+                    style: TextStyle(color: cs.onSurfaceVariant)));
+              }
+              return ListView.separated(controller: scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (_, i) => _SupplierListingCard(listing: items[i]));
+            },
+          )),
+        ])));
+  }
+}
+
+
+/// Compact product card in the supplier-listings popup: photo, name, price/kg, and a "+" that adds to the
+/// cart through the single-product guard. Tapping the card opens the full product detail.
+class _SupplierListingCard extends ConsumerWidget {
+  final Listing listing;
+  const _SupplierListingCard({required this.listing});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final lang = Localizations.localeOf(context).languageCode;
+    final name = lang == 'ru' && listing.nameRu.isNotEmpty ? listing.nameRu : listing.nameUz;
+    final photo = listing.primaryPhotoUrl;
+    final unit = listing.isByHead ? _t(context, "so'm/bosh", 'сум/голова') : _t(context, "so'm/kg", 'сум/кг');
+    return InkWell(onTap: () => context.push('/listings/${listing.id}'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: Colors.white,
+            borderRadius: BorderRadius.circular(16), border: Border.all(color: cs.outlineVariant)),
+        child: Row(children: [
+          ClipRRect(borderRadius: BorderRadius.circular(12),
+            child: SizedBox(width: 64, height: 64,
+              child: (photo == null || photo.isEmpty)
+                  ? Container(color: cs.surfaceContainerHighest,
+                      child: Icon(Icons.image_outlined, color: cs.onSurfaceVariant))
+                  : Image.network(photo, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: cs.surfaceContainerHighest,
+                          child: Icon(Icons.broken_image_outlined, color: cs.onSurfaceVariant))))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1A1A1A))),
+            const SizedBox(height: 4),
+            Text('${formatSoum(listing.pricePerKg.round())} $unit',
+                style: tt.bodyMedium?.copyWith(color: cs.primary, fontWeight: FontWeight.w800)),
+          ])),
+          const SizedBox(width: 8),
+          Material(color: cs.primary, shape: const CircleBorder(),
+            child: InkWell(customBorder: const CircleBorder(),
+              onTap: () => addToCartOrPrompt(context, ref, listing),
+              child: const Padding(padding: EdgeInsets.all(8),
+                  child: Icon(Icons.add_rounded, color: Colors.white)))),
         ])));
   }
 }

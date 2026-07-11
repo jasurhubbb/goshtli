@@ -31,29 +31,30 @@ class QassobMeView(generics.GenericAPIView):
     serializer_class = QassobMeSerializer
     parser_classes = (parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser)
 
-    def _get_or_none(self, request):
-        try: return QassobProfile.objects.get(user=request.user)
-        except QassobProfile.DoesNotExist: return None
+    def _get_or_create(self, request):
+        # v3.9.16 — auto-create the profile so /me/ is ALWAYS 200, mirroring SupplierMeView. Qassobs are now
+        # admin-provisioned; a User created via the Django-admin "Add user" form (or any path that skips the
+        # provisioning helper) has no profile, and the app's tabs would 404 ("profil topilmadi") without this.
+        # The setup wizard then fills the empty fields. is_verified=True matches the legacy POST behavior.
+        profile, _ = QassobProfile.objects.get_or_create(
+            user=request.user,
+            defaults={"full_name": request.user.full_name or "", "years_experience": 0,
+                      "region": "", "address": "", "is_verified": True})
+        return profile
 
     def get(self, request):
-        profile = self._get_or_none(request)
-        if not profile:
-            return Response({"detail": "Qassob profile not created yet."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(self.get_serializer(profile).data)
+        return Response(self.get_serializer(self._get_or_create(request)).data)
 
     def post(self, request):
-        if self._get_or_none(request) is not None:
-            return Response({"detail": "Already exists — use PATCH to edit."}, status=status.HTTP_409_CONFLICT)
-        s = self.get_serializer(data=request.data); s.is_valid(raise_exception=True)
-        # v3.8.2: auto-verify on creation — see suppliers/signals.py for rationale (KYC review queue
-        # deferred). Keeping IsVerifiedQassob in the permission class for future re-enable.
-        profile = QassobProfile.objects.create(user=request.user, is_verified=True, **s.validated_data)
-        return Response(self.get_serializer(profile).data, status=status.HTTP_201_CREATED)
+        # Upsert — GET now auto-creates the profile, so the wizard's submit finds an existing row; update it
+        # rather than 409-ing. Kept as POST for back-compat with the wizard's submit call.
+        profile = self._get_or_create(request)
+        s = self.get_serializer(profile, data=request.data, partial=True); s.is_valid(raise_exception=True)
+        s.save()
+        return Response(self.get_serializer(profile).data)
 
     def patch(self, request):
-        profile = self._get_or_none(request)
-        if not profile:
-            return Response({"detail": "Create the profile first via POST."}, status=status.HTTP_404_NOT_FOUND)
+        profile = self._get_or_create(request)
         s = self.get_serializer(profile, data=request.data, partial=True); s.is_valid(raise_exception=True)
         s.save()
         return Response(s.data)

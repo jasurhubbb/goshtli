@@ -117,6 +117,8 @@ class ListingSerializer(serializers.ModelSerializer):
                   "market", "category", "market_id", "category_id",
                   "name_uz", "name_ru", "description_uz", "description_ru",
                   "quantity_kg", "price_per_kg", "location", "available_from", "status",
+                  # v3.9.16 — per-head price range for live animals (null for raw meat). Read+write.
+                  "price_min", "price_max",
                   # v3.6 live animal fields per PRD v2 §2 — exposed in BOTH read+write so admins manage live
                   # animal listings from the same supplier dashboard; buyers branch UI on `is_live_animal`.
                   "is_live_animal", "sale_type", "estimated_meat_yield_pct",

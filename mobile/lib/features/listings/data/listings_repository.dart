@@ -32,6 +32,7 @@ class ListingsRepository {
     double? priceMax,
     String? q,              // free-text search across name_uz + name_ru
     String? ordering,       // e.g. "price_per_kg" or "-created_at"
+    int? supplierId,        // one supplier's catalog (User.id) — supplier profile "active listings" popup
     int page = 1,
   }) async {
     final r = await _api.dio.get('/listings/', queryParameters: {
@@ -44,6 +45,7 @@ class ListingsRepository {
       if (priceMax != null) 'price_max': priceMax,
       if (q != null && q.isNotEmpty) 'q': q,
       if (ordering != null && ordering.isNotEmpty) 'ordering': ordering,
+      if (supplierId != null) 'supplier': supplierId,
     });
     if (r.statusCode == 200) {
       return Paginated.fromJson(r.data as Map<String, dynamic>, Listing.fromJson);

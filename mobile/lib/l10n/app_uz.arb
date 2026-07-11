@@ -414,7 +414,7 @@
   "deliveryDistanceLabel": "Masofa: {km} km",
   "@deliveryDistanceLabel": { "placeholders": { "km": { "type": "String" } } },
   "deliveryVehicleSection": "Transport turi",
-  "deliveryVehicleRefrigerator": "Refrijerator",
+  "deliveryVehicleRefrigerator": "Muzlatgichli furgon",
   "deliveryVehicleRefrigeratorHint": "Sovuqlik zanjiri • 0°C dan +4°C",
   "deliveryVehicleChorvaTaxi": "Chorva-Taksi",
   "deliveryVehicleChorvaTaxiHint": "Tirik chorva uchun maxsus transport",

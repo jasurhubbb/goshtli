@@ -1021,7 +1021,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get deliveryVehicleSection => 'Transport turi';
 
   @override
-  String get deliveryVehicleRefrigerator => 'Refrijerator';
+  String get deliveryVehicleRefrigerator => 'Muzlatgichli furgon';
 
   @override
   String get deliveryVehicleRefrigeratorHint =>
