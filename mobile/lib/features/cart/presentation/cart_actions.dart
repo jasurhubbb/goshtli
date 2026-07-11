@@ -25,6 +25,13 @@ Future<bool> addToCartOrPrompt(BuildContext context, WidgetRef ref, Listing list
   final replace = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
+      // Explicit white surface + dark text: the app's cream/off-white theme was rendering the default
+      // dialog text too light against a near-white surface, so the message was hard to read.
+      backgroundColor: Colors.white,
+      titleTextStyle: const TextStyle(
+          color: Color(0xFF1A1A1A), fontSize: 18, fontWeight: FontWeight.w900),
+      contentTextStyle: const TextStyle(
+          color: Color(0xFF2A2A2A), fontSize: 15, height: 1.35),
       title: const Text('Bir vaqtda bitta mahsulot'),
       content: Text(current == null
           ? "Savatingizda boshqa mahsulot bor. Har bir buyurtma faqat bitta mahsulotdan iborat. Uni almashtirasizmi?"
