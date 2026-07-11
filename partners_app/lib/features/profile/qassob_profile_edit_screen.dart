@@ -9,6 +9,7 @@ import 'package:shared_core/shared_core.dart';
 
 import '../../core/auth/partner_auth_notifier.dart';
 import '../../core/network/providers.dart';
+import '../../shared/utils/upload.dart';
 import '../../shared/widgets/image_source_picker.dart';
 import '../servisim/servisim_screen.dart' show qassobMeProvider;
 
@@ -98,8 +99,7 @@ class _QassobProfileEditScreenState extends ConsumerState<QassobProfileEditScree
       // 3) Avatar — three states: new file (multipart upload), explicit remove, or no change.
       if (_newAvatarFile != null) {
         final form = FormData.fromMap({
-          'photo': await MultipartFile.fromFile(_newAvatarFile!.path,
-              filename: _newAvatarFile!.path.split('/').last),
+          'photo': await multipartFromPath(_newAvatarFile!.path),
         });
         await api.dio.patch('/qassobs/me/', data: form,
             options: Options(contentType: 'multipart/form-data'));

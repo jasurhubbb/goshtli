@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_core/shared_core.dart' show ApiClient;
 
+import '../../../shared/utils/upload.dart';
 import 'courier_models.dart';
 
 
@@ -75,8 +76,7 @@ class CourierRepository {
   /// as an optional attachment after DELIVERED for dispute defense.
   Future<DeliveryDetail> uploadProof(int id, String filePath) async {
     final form = FormData.fromMap({
-      'proof_photo': await MultipartFile.fromFile(filePath,
-          filename: filePath.split('/').last),
+      'proof_photo': await multipartFromPath(filePath),
     });
     final r = await _api.dio.post('/couriers/me/deliveries/$id/proof/', data: form,
         options: Options(contentType: 'multipart/form-data'));

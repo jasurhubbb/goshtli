@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/providers.dart';
+import '../../shared/utils/upload.dart';
 import '../../shared/widgets/image_source_picker.dart';
 
 
@@ -171,8 +172,7 @@ class _ServisimScreenState extends ConsumerState<ServisimScreen> {
     setState(() => _saving = true);
     try {
       final form = FormData.fromMap({
-        'image': await MultipartFile.fromFile(pickedPath,
-            filename: pickedPath.split('/').last),
+        'image': await multipartFromPath(pickedPath),
       });
       final r = await ref.read(apiClientProvider).dio.post('/qassobs/me/photos/', data: form);
       final ok = (r.statusCode != null && r.statusCode! >= 200 && r.statusCode! < 300);

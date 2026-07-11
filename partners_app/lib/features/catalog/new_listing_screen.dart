@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/utils/upload.dart';
 import '../../shared/widgets/image_source_picker.dart';
 import '../profile/animals_supported_sheet.dart';
 
@@ -239,8 +240,7 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
       if (id != null && _photo != null) {
         try {
           final form = FormData.fromMap({
-            'image': await MultipartFile.fromFile(_photo!.path,
-                filename: _photo!.path.split('/').last),
+            'image': await multipartFromPath(_photo!.path),
           });
           await api.dio.post('/listings/$id/photos/', data: form);
         } catch (_) {}

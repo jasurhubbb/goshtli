@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/utils/upload.dart';
 import 'kyc_providers.dart';
 
 
@@ -69,8 +70,7 @@ class _KycRowState extends ConsumerState<_KycRow> {
       final api = ref.read(apiClientProvider);
       final form = FormData.fromMap({
         'kind': widget.kind,
-        'image': await MultipartFile.fromFile(file.path,
-            filename: file.path.split('/').last),
+        'image': await multipartFromPath(file.path),
       });
       final r = await api.dio.post('/kyc/', data: form);
       if (r.statusCode == 200 || r.statusCode == 201) {

@@ -22,6 +22,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../shared/models/supplier_profile.dart';
+import '../../../shared/utils/upload.dart';
 import '../../listings/data/listings_repository.dart';
 import 'admin_api_client.dart';
 import 'admin_models.dart';
@@ -162,7 +163,7 @@ class AdminRepository {
   /// means we can attach photos to any listing once createListing has returned the new id.
   Future<void> uploadListingPhoto(int listingId, String filePath) async {
     final form = FormData.fromMap({
-      'image': await MultipartFile.fromFile(filePath, filename: filePath.split('/').last),
+      'image': await multipartFromPath(filePath),
     });
     final r = await _api.dio.post('/listings/$listingId/photos/', data: form);
     if (r.statusCode != 201) throw _toErr(r);

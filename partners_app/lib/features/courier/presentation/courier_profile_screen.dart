@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:dio/dio.dart';
 
 import '../../../core/auth/partner_auth_notifier.dart';
 import '../data/courier_models.dart';
 import '../providers/courier_providers.dart';
 import '../../../shared/utils/format.dart';
+import '../../../shared/utils/upload.dart';
 
 
 /// Profil tab — vehicle + plate + phone + photo + lifetime stats + logout.
@@ -131,7 +131,7 @@ class _ProfileBody extends ConsumerWidget {
     final file = await picker.pickImage(source: ImageSource.gallery,
         maxWidth: 1280, imageQuality: 80);
     if (file == null) return;
-    final multi = await MultipartFile.fromFile(file.path, filename: file.name);
+    final multi = await multipartFromPath(file.path, filename: file.name);
     try {
       await ref.read(courierRepoProvider).updateMe({'photo': multi});
       ref.invalidate(courierMeProvider);
