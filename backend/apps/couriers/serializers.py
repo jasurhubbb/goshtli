@@ -68,8 +68,17 @@ class DeliveryListSerializer(serializers.ModelSerializer):
         except Exception: return None
 
     def get_pickup_address(self, obj):
+        # Supplier's market address. Fall back to region + market name when the street address is blank,
+        # and finally to the market name, so the courier sees SOMETHING useful (a supplier who never set a
+        # street address still shows e.g. "Toshkent · Sarvarbek go'sht") instead of an empty pickup line.
         m = self._market(obj)
-        return getattr(m, "address", "") if m else ""
+        if not m:
+            return ""
+        addr = (m.address or "").strip()
+        if addr:
+            return addr
+        parts = [p for p in ((m.region or "").strip(), (getattr(m, "name_uz", "") or "").strip()) if p]
+        return " · ".join(parts)
 
     def get_pickup_lat(self, obj):
         m = self._market(obj)

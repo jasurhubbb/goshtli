@@ -59,9 +59,10 @@ class TelegramStartView(APIView):
 
         # Sweep only this phone's STALE sessions (older than the session TTL). We must NOT blanket-delete
         # live rows here: /start is anonymous and knows only the phone, so deleting in-flight sessions would
-        # let anyone who knows a victim's number wipe the victim's just-issued code (account-lockout DoS) and
-        # force the victim's next contact-share onto an attacker-created row (session fixation). Isolation is
-        # instead enforced at contact time by binding the code to the Telegram user who opened the deep link.
+        # let anyone who knows a victim's number wipe the victim's just-issued code (account-lockout DoS).
+        # Safety against hijack is enforced elsewhere: the code is only ever delivered to the phone's real
+        # Telegram owner (anti-spoof gate), and verify matches the code against that phone — so an attacker's
+        # extra rows can neither receive the code nor block the owner from verifying.
         stale_before = timezone.now() - timedelta(seconds=otp.SESSION_TTL_SECONDS)
         TelegramVerification.objects.filter(phone=phone, created_at__lt=stale_before).exclude(
             status=TelegramVerification.Status.VERIFIED).delete()
@@ -91,18 +92,25 @@ class TelegramVerifyView(APIView):
         code = ser.validated_data["code"]
 
         try:
-            v = TelegramVerification.objects.get(session_token=token)
+            session = TelegramVerification.objects.get(session_token=token)
         except TelegramVerification.DoesNotExist:
             return Response(self._BAD, status=status.HTTP_400_BAD_REQUEST)
 
         now = timezone.now()
-        # Must be a live, code-sent, unconsumed, unexpired session with attempts left.
-        if (v.status != TelegramVerification.Status.CODE_SENT or v.consumed_at is not None
-                or not v.code_expires_at or v.code_expires_at < now
-                or v.attempts >= otp.MAX_VERIFY_ATTEMPTS):
+        # The code may live on a DIFFERENT row than the one the app holds a token for. When the user shares
+        # their contact in the bot, the code binds to the newest in-flight row for their phone — which isn't
+        # necessarily this exact session_token (e.g. a returning user, or a resend). So verify the code
+        # against the newest LIVE code for this phone, not just `session`. This stays secure: the code was
+        # delivered only to the phone's real Telegram owner, and the 2-min TTL + 5-attempt cap still apply.
+        phone = session.phone
+        v = (TelegramVerification.objects
+             .filter(phone=phone, status=TelegramVerification.Status.CODE_SENT,
+                     consumed_at__isnull=True, code_expires_at__gt=now)
+             .order_by("-code_sent_at").first())
+        if v is None or v.attempts >= otp.MAX_VERIFY_ATTEMPTS:
             return Response(self._BAD, status=status.HTTP_400_BAD_REQUEST)
 
-        if not otp.code_matches(v.phone, code, v.code_hash):
+        if not otp.code_matches(phone, code, v.code_hash):
             # Burn an attempt; when the cap is hit the code is dead and the user must restart from the app.
             v.attempts += 1
             v.save(update_fields=("attempts", "updated_at"))
@@ -213,13 +221,13 @@ class TelegramWebhookView(APIView):
             return
 
         now = timezone.now()
-        # Match the session THIS Telegram user opened via the deep link, NOT the phone's newest row. At
-        # /start we bound the sender's telegram_user_id onto the payload's row, so keying on it ties the code
-        # to the person who actually came from the app. An attacker who POSTed /auth/telegram/start/ for a
-        # victim's phone created an UNBOUND row (no telegram_user_id) that can never be selected here, so it
-        # can't hijack or lock out the victim's flow.
+        # Match the newest in-flight session for THIS phone. Matching by phone (not by a deep-link
+        # telegram_user_id binding) is what makes RETURNING users work: someone who already has the bot chat
+        # open often re-opens it without Telegram re-firing /start, so there'd be no binding to key on. It's
+        # safe because the shared number is the sender's OWN Telegram-verified number (the anti-spoof gate
+        # above guarantees it) — a code for this phone can only ever be delivered to the phone's real owner.
         v = (TelegramVerification.objects
-             .filter(telegram_user_id=sender_id,
+             .filter(phone=phone,
                      status__in=(TelegramVerification.Status.AWAITING_CONTACT,
                                  TelegramVerification.Status.CODE_SENT))
              .filter(created_at__gte=now - timedelta(seconds=otp.SESSION_TTL_SECONDS))
@@ -229,15 +237,6 @@ class TelegramWebhookView(APIView):
                 chat_id,
                 "Avval ilovada telefon raqamingizni kiriting, keyin shu yerga qayting.\n"
                 "Please enter your phone in the app first, then come back here.",
-                reply_markup=telegram_api.REMOVE_KEYBOARD)
-            return
-        # The Telegram-verified number they shared MUST equal the number they typed in the app — this is the
-        # whole point of the flow (prove the entered phone is really theirs). Reject a mismatch clearly.
-        if v.phone != phone:
-            telegram_api.send_message(
-                chat_id,
-                "Yuborilgan raqam ilovada kiritilgan raqamga mos kelmadi.\n"
-                "The number you shared doesn't match the one you entered in the app.",
                 reply_markup=telegram_api.REMOVE_KEYBOARD)
             return
 

@@ -1,11 +1,12 @@
 993102505 - supplier
 998211382 - qassob
 991283705 - buyer
-
++998998888888 - courier
 cd /Users/newaccount/Documents/myprojects/go-sht-bozori
 
 
 ./run_prod.sh emulator-5554
+./run_prod.sh R59X2005SEW
 ./run_partners_prod.sh R59X2005SEW
 ./run_partners_prod.sh emulator-5556
 If you want to verify which is which first:

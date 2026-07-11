@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
@@ -89,6 +90,7 @@ String _statusLabel(String s) {
     case 'AWAITING_QASSOB': return 'Qassob kutilmoqda';
     case 'PROCESSING_BUTCHER': return 'Qassob ishlamoqda';
     case 'IN_TRANSIT': return "Yo'lda";
+    case 'DELIVERED_PENDING_CONFIRMATION': return "Yetkazildi — tasdiq kutilmoqda";
     case 'DELIVERED': return 'Yetkazildi';
     case 'CANCELLED': return 'Bekor qilindi';
   }
@@ -96,17 +98,42 @@ String _statusLabel(String s) {
 }
 
 
-/// Next status for the supplier's forward-advance button. Returns null for terminal states + states
-/// owned by the qassob, in which case we hide the advance button. Mirrors the backend
-/// SUPPLIER_TRANSITIONS table in apps/orders/services.py — keep the two in sync if the state machine
-/// grows new edges.
+/// Next status for the supplier's forward-advance button. Returns null for terminal states + states the
+/// supplier no longer drives (once IN_TRANSIT, a platform courier delivers — see the card logic). Mirrors
+/// the backend SUPPLIER_TRANSITIONS in apps/orders/services.py. Note IN_TRANSIT advances to
+/// DELIVERED_PENDING_CONFIRMATION (buyer then confirms), NOT straight to DELIVERED — and only a
+/// self-delivering supplier ever taps it (courier-delivered orders show the courier card, no button).
 String? _nextStatusForSupplier(String current) {
   switch (current) {
     case 'CONFIRMED': return 'PROCESSING';
     case 'PROCESSING': return 'IN_TRANSIT';
-    case 'IN_TRANSIT': return 'DELIVERED';
+    case 'IN_TRANSIT': return 'DELIVERED_PENDING_CONFIRMATION';
   }
   return null;
+}
+
+
+/// "2026-07-11T14:30:00Z" → "11.07.2026 · 14:30" in the device's local time. Small inline formatter to
+/// avoid pulling intl into this screen for one date.
+String _fmtDate(String? iso) {
+  if (iso == null || iso.isEmpty) return '';
+  final dt = DateTime.tryParse(iso)?.toLocal();
+  if (dt == null) return '';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(dt.day)}.${two(dt.month)}.${dt.year} · ${two(dt.hour)}:${two(dt.minute)}';
+}
+
+
+/// Uzbek label for a courier's vehicle kind (mirrors the courier profile screen).
+String _vehicleLabel(String kind) {
+  switch (kind) {
+    case 'BIKE': return 'Velosiped/motor';
+    case 'CAR': return 'Yengil avtomobil';
+    case 'VAN': return 'Furgon';
+    case 'REFRIGERATOR': return 'Refrijerator';
+    case 'CHORVA_TAXI': return 'Chorva taksi';
+  }
+  return kind;
 }
 
 
@@ -114,7 +141,8 @@ String? _nextStatusForSupplier(String current) {
 /// for cancelled.
 Color _statusBg(String s) {
   switch (s) {
-    case 'PENDING': case 'AWAITING_QASSOB': return const Color(0xFFFFF4E5);
+    case 'PENDING': case 'AWAITING_QASSOB': case 'DELIVERED_PENDING_CONFIRMATION':
+      return const Color(0xFFFFF4E5);
     case 'CANCELLED': return const Color(0xFFFEE7E5);
     case 'DELIVERED': return const Color(0xFFE8F5E9);
     default: return const Color(0xFFE3F2FD);
@@ -123,7 +151,8 @@ Color _statusBg(String s) {
 
 Color _statusFg(String s) {
   switch (s) {
-    case 'PENDING': case 'AWAITING_QASSOB': return const Color(0xFF8A4F00);
+    case 'PENDING': case 'AWAITING_QASSOB': case 'DELIVERED_PENDING_CONFIRMATION':
+      return const Color(0xFF8A4F00);
     case 'CANCELLED': return const Color(0xFFB71C1C);
     case 'DELIVERED': return const Color(0xFF1B5E20);
     default: return const Color(0xFF0D47A1);
@@ -212,6 +241,14 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
     final status = (r['status'] as String?) ?? '';
     final next = _nextStatusForSupplier(status);
     final orderId = (r['id'] as num).toInt();
+    final courier = r['courier'] as Map<String, dynamic>?;
+    final courierMode = courier?['mode'] as String?;
+    final isInTransit = status == 'IN_TRANSIT';
+    final isDpc = status == 'DELIVERED_PENDING_CONFIRMATION';
+    // The supplier advances CONFIRMED/PROCESSING normally. Once IN_TRANSIT, a platform courier delivers —
+    // so we only keep the advance button for a SELF-delivering supplier; otherwise we show the courier card.
+    final showAdvance = widget.bucket == 'active' && next != null
+        && (!isInTransit || courierMode == 'self');
     return Container(padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -229,6 +266,16 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
         Text(r['delivery_address'] as String? ?? '',
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             maxLines: 1, overflow: TextOverflow.ellipsis),
+        // Order date — shown for every status so the supplier knows when it came in.
+        if (_fmtDate(r['created_at'] as String?).isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Row(children: [
+            Icon(Icons.schedule_rounded, size: 13, color: cs.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(_fmtDate(r['created_at'] as String?),
+                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+          ]),
+        ],
         // Status pill — always visible so the supplier sees where each order sits at a glance.
         const SizedBox(height: 10),
         Align(alignment: Alignment.centerLeft,
@@ -252,10 +299,9 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
               child: Text(widget.isQassob ? t.jobsClaim : t.ordersAccept))),
           ]),
         ],
-        // Active bucket — show advance button when there's a forward edge. Qassob-owned states
-        // (AWAITING_QASSOB, PROCESSING_BUTCHER) intentionally have no button on the supplier side
-        // because the qassob drives those transitions from their own inbox.
-        if (widget.bucket == 'active' && next != null) ...[
+        // Active bucket — forward-advance button when the supplier still drives the state (CONFIRMED /
+        // PROCESSING, or IN_TRANSIT when self-delivering). Qassob-owned states have no button here.
+        if (showAdvance) ...[
           const SizedBox(height: 10),
           SizedBox(width: double.infinity, child: FilledButton(
             onPressed: _busy ? null : () => _advance(orderId, next,
@@ -263,8 +309,142 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
             child: _busy
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(
                     strokeWidth: 2.2, color: Colors.white))
-                : Text('${t.ordersAdvance} → ${_statusLabel(next)}'))),
+                : Text(isInTransit ? 'Yetkazdim' : '${t.ordersAdvance} → ${_statusLabel(next)}'))),
+        ]
+        // IN_TRANSIT + platform courier → no advance button; a courier is delivering. Show a non-clickable
+        // banner + a tappable "Kuryer haqida" that opens the courier's contact sheet (with call).
+        else if (widget.bucket == 'active' && isInTransit) ...[
+          const SizedBox(height: 10),
+          _CourierDeliveringBanner(courier: courier),
+        ]
+        // Delivered, waiting for the buyer to tap confirm — informational only.
+        else if (widget.bucket == 'active' && isDpc) ...[
+          const SizedBox(height: 10),
+          Container(width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(color: const Color(0xFFFFF4E5),
+                borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              const Icon(Icons.hourglass_bottom_rounded, size: 18, color: Color(0xFF8A4F00)),
+              const SizedBox(width: 8),
+              Expanded(child: Text("Yetkazildi — mijoz tasdiqlashini kutmoqda",
+                  style: tt.bodySmall?.copyWith(color: const Color(0xFF8A4F00),
+                      fontWeight: FontWeight.w700))),
+            ])),
         ],
       ]));
+  }
+}
+
+
+/// "Kuryer yetkazmoqda" banner shown on an IN_TRANSIT order that a platform courier is delivering. The
+/// banner itself isn't a button; the "Kuryer haqida" link opens a contact sheet with a call button.
+class _CourierDeliveringBanner extends StatelessWidget {
+  final Map<String, dynamic>? courier;
+  const _CourierDeliveringBanner({required this.courier});
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final mode = courier?['mode'] as String?;
+    final pending = mode == 'pending' || courier == null;
+    return Container(width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(color: const Color(0xFFE3F2FD),
+          borderRadius: BorderRadius.circular(12)),
+      child: Row(children: [
+        const Icon(Icons.delivery_dining_rounded, size: 20, color: Color(0xFF0D47A1)),
+        const SizedBox(width: 8),
+        Expanded(child: Text(pending ? 'Kuryer tayinlanmoqda…' : 'Kuryer yetkazmoqda',
+            style: tt.bodyMedium?.copyWith(color: const Color(0xFF0D47A1),
+                fontWeight: FontWeight.w800))),
+        if (!pending)
+          TextButton(onPressed: () => _showCourierSheet(context, courier!),
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8),
+                visualDensity: VisualDensity.compact),
+            child: const Text('Kuryer haqida', style: TextStyle(fontWeight: FontWeight.w800))),
+      ]));
+  }
+}
+
+
+/// Courier contact sheet — name, vehicle, rating, phone, and a big "call" button that hands off to the
+/// phone's dialer (tel:), exactly like production delivery apps.
+void _showCourierSheet(BuildContext context, Map<String, dynamic> courier) {
+  final name = (courier['name'] as String?) ?? 'Kuryer';
+  final phone = (courier['phone'] as String?) ?? '';
+  final vehicleKind = (courier['vehicle_kind'] as String?) ?? '';
+  final plate = (courier['vehicle_plate'] as String?) ?? '';
+  final ratingCount = (courier['rating_count'] as num?)?.toInt() ?? 0;
+  final ratingAvg = double.tryParse('${courier['rating_avg'] ?? 0}') ?? 0;
+  showModalBottomSheet(context: context, isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+    builder: (ctx) {
+      final cs = Theme.of(ctx).colorScheme;
+      final tt = Theme.of(ctx).textTheme;
+      return SafeArea(top: false, child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(child: Container(width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: cs.outlineVariant,
+                    borderRadius: BorderRadius.circular(2)))),
+            Row(children: [
+              CircleAvatar(radius: 26, backgroundColor: cs.primary.withValues(alpha: 0.12),
+                  child: Icon(Icons.delivery_dining_rounded, color: cs.primary)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                Text('Kuryer', style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              ])),
+              if (ratingCount > 0)
+                Row(children: [
+                  const Icon(Icons.star_rounded, size: 16, color: Color(0xFFEF9A00)),
+                  const SizedBox(width: 2),
+                  Text('${ratingAvg.toStringAsFixed(1)} ($ratingCount)',
+                      style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w800)),
+                ]),
+            ]),
+            if (vehicleKind.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _CourierRow(icon: Icons.directions_car_rounded,
+                  text: plate.isNotEmpty ? '${_vehicleLabel(vehicleKind)} · $plate'
+                                          : _vehicleLabel(vehicleKind)),
+            ],
+            if (phone.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _CourierRow(icon: Icons.phone_rounded, text: phone),
+            ],
+            const SizedBox(height: 18),
+            SizedBox(height: 52, child: FilledButton.icon(
+              onPressed: phone.isEmpty ? null : () async {
+                Navigator.pop(ctx);
+                await launchUrl(Uri(scheme: 'tel', path: phone));
+              },
+              style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              icon: const Icon(Icons.call_rounded),
+              label: const Text('Kuryerga qo\'ng\'iroq qilish',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)))),
+          ])));
+    });
+}
+
+
+class _CourierRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _CourierRow({required this.icon, required this.text});
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(children: [
+      Icon(icon, size: 18, color: cs.onSurfaceVariant),
+      const SizedBox(width: 10),
+      Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyLarge
+          ?.copyWith(fontWeight: FontWeight.w700))),
+    ]);
   }
 }

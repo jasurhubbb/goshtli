@@ -54,9 +54,12 @@ class InboxView(APIView):
             if bucket == "new":
                 qs = base.filter(status=Order.Status.PENDING)
             elif bucket == "active":
+                # DELIVERED_PENDING_CONFIRMATION stays in ACTIVE so the supplier can watch an order through
+                # to the buyer's confirmation (courier marked it delivered; buyer hasn't tapped confirm yet).
                 qs = base.filter(status__in=(Order.Status.CONFIRMED, Order.Status.PROCESSING,
                                               Order.Status.PROCESSING_BUTCHER, Order.Status.AWAITING_QASSOB,
-                                              Order.Status.IN_TRANSIT))
+                                              Order.Status.IN_TRANSIT,
+                                              Order.Status.DELIVERED_PENDING_CONFIRMATION))
             else:
                 qs = base.filter(status__in=(Order.Status.DELIVERED, Order.Status.CANCELLED))
         elif u.is_qassob:
@@ -79,7 +82,9 @@ class InboxView(APIView):
                                             status__in=(Order.Status.DELIVERED, Order.Status.CANCELLED))
         else:
             qs = Order.objects.none()
-        qs = qs.select_related("buyer", "listing", "listing__market").order_by("-created_at")[:50]
+        qs = (qs.select_related("buyer", "listing", "listing__market",
+                                "delivery", "delivery__courier", "delivery__courier__courier_profile")
+                .order_by("-created_at")[:50])
         data = [{
             "id": o.id, "status": o.status, "payment_status": o.payment_status,
             "buyer_name": o.buyer.full_name or o.buyer.email,
@@ -90,8 +95,38 @@ class InboxView(APIView):
             "butcher_service": o.butcher_service_requested,
             "is_live_animal": o.listing.is_live_animal,
             "created_at": o.created_at.isoformat(),
+            # v3.9.16 — who's delivering, so the supplier UI shows "courier is delivering" + a contact card
+            # once the order is dispatched (null before IN_TRANSIT).
+            "courier": _courier_info(o),
         } for o in qs]
         return Response({"bucket": bucket, "count": len(data), "results": data})
+
+
+def _courier_info(order):
+    """Delivery/courier summary for the supplier inbox once an order is dispatched (IN_TRANSIT onward).
+    None before dispatch. `mode`:
+      • 'self'    — the supplier is delivering it themselves (listing.supplier_delivers)
+      • 'courier' — a platform courier is delivering it (name/phone/vehicle/rating included)
+      • 'pending' — dispatched but no real courier assigned yet (ops will reassign the fallback stub)
+    """
+    delivery = getattr(order, "delivery", None)
+    if delivery is None:
+        return None
+    c = delivery.courier
+    if c is not None and c.id == order.listing.supplier_id:
+        return {"mode": "self", "name": c.full_name or "Yetkazib beruvchi", "phone": c.phone or "",
+                "delivery_status": delivery.status}
+    if c is not None and c.is_courier:
+        cp = getattr(c, "courier_profile", None)
+        return {"mode": "courier",
+                "name": (cp.full_name if cp and cp.full_name else "") or c.full_name or "Kuryer",
+                "phone": c.phone or "",
+                "vehicle_kind": getattr(cp, "vehicle_kind", "") if cp else "",
+                "vehicle_plate": getattr(cp, "vehicle_plate", "") if cp else "",
+                "rating_avg": float(cp.rating_avg) if cp and cp.rating_count else 0.0,
+                "rating_count": cp.rating_count if cp else 0,
+                "delivery_status": delivery.status}
+    return {"mode": "pending"}
 
 
 # ----------------------- Accept / Reject / Advance -----------------------
