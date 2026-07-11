@@ -5,6 +5,7 @@
 //   PENDING/CONFIRMED/PROCESSING → CANCELLED                    (supplier or, for PENDING-only, buyer)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
@@ -119,9 +120,29 @@ class _Body extends ConsumerWidget {
             if (isBuyer && order.status == model.OrderStatus.pending)
               OutlinedButton.icon(icon: const Icon(Icons.cancel_outlined), label: Text(t.orderCancelButton),
                 onPressed: () => _confirmAndCancel(context, ref, asBuyer: true)),
-            // v3.9.14 — buyer confirms receipt after courier marked arrival. Full-width, primary
-            // color, generous padding — this is THE action that closes the order lifecycle.
-            if (isBuyer && order.status == model.OrderStatus.deliveredPendingConfirmation)
+            // v3.9.14 — buyer confirms receipt after courier marked arrival. v3.9.16 adds the courier's
+            // drop-off proof photo above it, and a "didn't arrive" escalation (call courier / admin) below.
+            if (isBuyer && order.status == model.OrderStatus.deliveredPendingConfirmation) ...[
+              if (order.deliveryProofUrl.isNotEmpty) ...[
+                Align(alignment: Alignment.centerLeft,
+                  child: Text("Kuryer yuborgan rasm",
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700))),
+                const SizedBox(height: 6),
+                ClipRRect(borderRadius: BorderRadius.circular(12),
+                  child: Image.network(order.deliveryProofUrl, width: double.infinity, height: 200,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (c, w, p) => p == null ? w
+                          : Container(height: 200, alignment: Alignment.center,
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              child: const CircularProgressIndicator()),
+                      errorBuilder: (_, __, ___) => Container(height: 120, alignment: Alignment.center,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: Icon(Icons.broken_image_outlined,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant)))),
+                const SizedBox(height: 12),
+              ],
               SizedBox(width: double.infinity, child: FilledButton.icon(
                 icon: const Icon(Icons.check_circle_rounded),
                 label: const Text("Buyurtmani qabul qildim",
@@ -129,6 +150,17 @@ class _Body extends ConsumerWidget {
                 style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14)),
                 onPressed: () => _confirmDelivery(context, ref, order.id))),
+              const SizedBox(height: 10),
+              // "Buyurtmani kelmadi" — yellow escalation. Opens a sheet to call the courier or the admin.
+              SizedBox(width: double.infinity, child: FilledButton.icon(
+                icon: const Icon(Icons.report_gmailerrorred_rounded, color: Color(0xFF6B5200)),
+                label: const Text("Buyurtmani kelmadi",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF6B5200))),
+                style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFC107),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                onPressed: () => _showNotArrivedSheet(context, order.courierName, order.courierPhone))),
+            ],
             // Buyer-side review — only on DELIVERED orders. Backend rejects double-review at the DB-level.
             if (isBuyer && order.status == model.OrderStatus.delivered)
               FilledButton.icon(icon: const Icon(Icons.star_outline),
@@ -254,6 +286,42 @@ class _Body extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
+  }
+
+  /// v3.9.16 — "Buyurtmani kelmadi" escalation sheet. If the order hasn't arrived, the buyer can call the
+  /// courier directly or the platform admin. Both open the phone's dialer (tel:).
+  void _showNotArrivedSheet(BuildContext context, String courierName, String courierPhone) {
+    const adminPhone = '+998941210773';
+    showModalBottomSheet(context: context, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        final tt = Theme.of(ctx).textTheme;
+        return SafeArea(top: false, child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(2)))),
+              Text("Buyurtma kelmadimi?",
+                  style: tt.titleLarge?.copyWith(color: const Color(0xFF1A1A1A),
+                      fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              Text("Kuryer yoki adminga qo'ng'iroq qiling.",
+                  style: tt.bodyMedium?.copyWith(color: const Color(0xFF444444))),
+              const SizedBox(height: 18),
+              if (courierPhone.isNotEmpty) ...[
+                _CallTile(icon: Icons.delivery_dining_rounded,
+                    title: courierName.isNotEmpty ? courierName : 'Kuryer',
+                    subtitle: courierPhone,
+                    onTap: () { Navigator.pop(ctx); launchUrl(Uri(scheme: 'tel', path: courierPhone)); }),
+                const SizedBox(height: 10),
+              ],
+              _CallTile(icon: Icons.support_agent_rounded, title: 'Admin', subtitle: adminPhone,
+                  onTap: () { Navigator.pop(ctx); launchUrl(Uri(scheme: 'tel', path: adminPhone)); }),
+            ])));
+      });
   }
 
   void _refreshAll(WidgetRef ref) {
@@ -421,5 +489,39 @@ class _GroupedList extends StatelessWidget {
               color: cs.outlineVariant.withValues(alpha: 0.5)),
         ],
       ]));
+  }
+}
+
+
+/// One tappable "call X" row in the "Buyurtmani kelmadi" sheet — icon + name + phone, opens the dialer.
+class _CallTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _CallTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(14),
+      child: Container(padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: cs.outlineVariant)),
+        child: Row(children: [
+          CircleAvatar(radius: 22, backgroundColor: cs.primary.withValues(alpha: 0.12),
+              child: Icon(icon, color: cs.primary)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: tt.titleSmall?.copyWith(
+                color: const Color(0xFF1A1A1A), fontWeight: FontWeight.w800)),
+            Text(subtitle, style: tt.bodyMedium?.copyWith(color: const Color(0xFF444444))),
+          ])),
+          Container(width: 44, height: 44,
+            decoration: const BoxDecoration(color: Color(0xFF1B9E4B), shape: BoxShape.circle),
+            child: const Icon(Icons.call_rounded, color: Colors.white)),
+        ])));
   }
 }

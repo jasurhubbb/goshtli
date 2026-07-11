@@ -64,6 +64,11 @@ class Order {
   @JsonKey(name: 'payment_status', defaultValue: OrderPaymentStatus.unpaid) final OrderPaymentStatus paymentStatus;
   @JsonKey(name: 'payment_url', defaultValue: '') final String paymentUrl;
   @JsonKey(name: 'created_at') final String createdAt;
+  // v3.9.16 — courier delivery info for the buyer's confirm-order page: the proof photo the courier
+  // uploaded at drop-off + the delivery person's name/phone (empty until a courier is delivering).
+  @JsonKey(name: 'delivery_proof_url', defaultValue: '') final String deliveryProofUrl;
+  @JsonKey(name: 'courier_name', defaultValue: '') final String courierName;
+  @JsonKey(name: 'courier_phone', defaultValue: '') final String courierPhone;
 
   const Order({required this.id, required this.buyerEmail, required this.supplierEmail, required this.supplierUserId,
                this.buyerName = '', this.buyerPhone = '',
@@ -73,7 +78,8 @@ class Order {
                required this.listingPricePerKg, required this.quantityKg, required this.totalPrice,
                required this.deliveryAddress, required this.notes, required this.status,
                this.paymentStatus = OrderPaymentStatus.unpaid, this.paymentUrl = '',
-               required this.createdAt});
+               required this.createdAt,
+               this.deliveryProofUrl = '', this.courierName = '', this.courierPhone = ''});
 
   /// Buyer-facing seller name. Defaults to the Uzbek market name; falls back to Russian, then to the
   /// supplier email when no market was attached (legacy rows). Use this on the order detail "Kimdan" row.

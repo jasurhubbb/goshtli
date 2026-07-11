@@ -34,6 +34,9 @@ Order _$OrderFromJson(Map<String, dynamic> json) => Order(
       OrderPaymentStatus.unpaid,
   paymentUrl: json['payment_url'] as String? ?? '',
   createdAt: json['created_at'] as String,
+  deliveryProofUrl: json['delivery_proof_url'] as String? ?? '',
+  courierName: json['courier_name'] as String? ?? '',
+  courierPhone: json['courier_phone'] as String? ?? '',
 );
 
 Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
@@ -59,6 +62,9 @@ Map<String, dynamic> _$OrderToJson(Order instance) => <String, dynamic>{
   'payment_status': _$OrderPaymentStatusEnumMap[instance.paymentStatus]!,
   'payment_url': instance.paymentUrl,
   'created_at': instance.createdAt,
+  'delivery_proof_url': instance.deliveryProofUrl,
+  'courier_name': instance.courierName,
+  'courier_phone': instance.courierPhone,
 };
 
 const _$OrderStatusEnumMap = {

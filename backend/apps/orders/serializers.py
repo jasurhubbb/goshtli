@@ -30,6 +30,44 @@ class OrderReadSerializer(serializers.ModelSerializer):
     buyer_phone = serializers.CharField(source="buyer.phone", read_only=True, default="")
     buyer_email = serializers.EmailField(source="buyer.email", read_only=True)
     supplier_email = serializers.EmailField(source="listing.supplier.email", read_only=True)
+    # v3.9.16 — delivery/courier info for the buyer's confirm-order page: the proof photo the courier
+    # uploaded + the delivery person's name/phone (so the buyer can view the drop-off shot and call them).
+    # Empty until an order is dispatched (a Delivery exists with a real courier or a self-delivering supplier).
+    delivery_proof_url = serializers.SerializerMethodField()
+    courier_name = serializers.SerializerMethodField()
+    courier_phone = serializers.SerializerMethodField()
+
+    def _delivery(self, obj):
+        return getattr(obj, "delivery", None)
+
+    def _delivery_contact(self, obj):
+        d = self._delivery(obj)
+        if not d or d.courier is None:
+            return None
+        c = d.courier
+        # The person delivering: a real platform courier, or a self-delivering supplier. The admin fallback
+        # stub (neither) is treated as "not assigned yet" → no contact shown.
+        if c.id == obj.listing.supplier_id or getattr(c, "is_courier", False):
+            cp = getattr(c, "courier_profile", None)
+            name = (cp.full_name if cp and cp.full_name else "") or c.full_name or "Kuryer"
+            return {"name": name, "phone": c.phone or ""}
+        return None
+
+    def get_delivery_proof_url(self, obj):
+        d = self._delivery(obj)
+        if not d or not d.proof_photo:
+            return ""
+        request = self.context.get("request")
+        url = d.proof_photo.url
+        return request.build_absolute_uri(url) if request else url
+
+    def get_courier_name(self, obj):
+        info = self._delivery_contact(obj)
+        return info["name"] if info else ""
+
+    def get_courier_phone(self, obj):
+        info = self._delivery_contact(obj)
+        return info["phone"] if info else ""
 
     class Meta:
         model = Order
@@ -51,6 +89,8 @@ class OrderReadSerializer(serializers.ModelSerializer):
                   # v3.9.15 — expose both qassob FKs so the buyer's order detail can render "Sizning
                   # tanlagan qassob: <name>" (preferred) and "Qabul qilgan qassob: <name>" (assigned).
                   "preferred_qassob", "assigned_qassob",
+                  # v3.9.16 — courier proof photo + delivery-person contact for the confirm-order page.
+                  "delivery_proof_url", "courier_name", "courier_phone",
                   "created_at", "updated_at")
         read_only_fields = fields  # read serializer — no field is writable here
 

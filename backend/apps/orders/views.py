@@ -68,13 +68,17 @@ class MyOrdersView(generics.ListAPIView):
     def get_queryset(self):
         # During schema generation request.user is anonymous; return an empty qs so spectacular can introspect the model.
         if getattr(self, "swagger_fake_view", False): return Order.objects.none()
-        return Order.objects.filter(buyer=self.request.user).select_related("listing", "listing__supplier", "buyer")
+        return Order.objects.filter(buyer=self.request.user).select_related(
+            "listing", "listing__supplier", "buyer",
+            "delivery", "delivery__courier", "delivery__courier__courier_profile")
 
 
 class OrderDetailView(generics.RetrieveAPIView):
     """GET /api/v1/orders/{id}/ — readable by the buyer who placed it OR the supplier whose listing it's on."""
     serializer_class = OrderReadSerializer
-    queryset = Order.objects.select_related("listing", "listing__supplier", "buyer")
+    queryset = Order.objects.select_related(
+        "listing", "listing__supplier", "buyer",
+        "delivery", "delivery__courier", "delivery__courier__courier_profile")
 
     def get_object(self):
         order = super().get_object()
