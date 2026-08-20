@@ -13,22 +13,24 @@ class UserAdmin(DjangoUserAdmin):
     create phone-first partner accounts without an email; only admins who need Django-admin login type one."""
     add_form = AdminUserCreationForm
     ordering = ("-created_at",)
-    list_display = ("email", "full_name", "role", "is_active", "is_staff", "created_at")
-    list_filter = ("role", "is_active", "is_staff", "is_superuser")
+    list_display = ("email", "full_name", "role", "is_internal_catalog_operator",
+                    "is_active", "is_staff", "created_at")
+    list_filter = ("role", "is_internal_catalog_operator", "is_active", "is_staff", "is_superuser")
     search_fields = ("email", "full_name", "phone")
     readonly_fields = ("created_at", "updated_at", "last_login")
 
     # Edit form layout — grouped by concern: identity, role, permissions, audit timestamps
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Profile", {"fields": ("full_name", "phone", "role")}),
+        ("Profile", {"fields": ("full_name", "phone", "role", "is_internal_catalog_operator")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Audit", {"fields": ("last_login", "created_at", "updated_at")}),
     )
     # Add-form layout — minimal fields needed at creation; rest can be filled in afterward
     add_fieldsets = (
         (None, {"classes": ("wide",),
-                "fields": ("email", "full_name", "phone", "role", "password1", "password2", "is_staff", "is_superuser")}),
+                "fields": ("email", "full_name", "phone", "role", "is_internal_catalog_operator",
+                           "password1", "password2", "is_staff", "is_superuser")}),
     )
 
 

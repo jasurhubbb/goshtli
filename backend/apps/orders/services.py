@@ -51,7 +51,8 @@ SUPPLIER_TRANSITIONS = {
     # Buyer confirms: DELIVERED_PENDING_CONFIRMATION → DELIVERED. Supplier can still cancel from
     # IN_TRANSIT (rare — refused at doorstep) but not once buyer confirmed.
     Order.Status.IN_TRANSIT: {Order.Status.DELIVERED_PENDING_CONFIRMATION, Order.Status.CANCELLED},
-    Order.Status.DELIVERED_PENDING_CONFIRMATION: {Order.Status.DELIVERED, Order.Status.CANCELLED},
+    # Only the buyer can make the final DELIVERED transition, through /confirm-delivery/.
+    Order.Status.DELIVERED_PENDING_CONFIRMATION: {Order.Status.CANCELLED},
     # DELIVERED + CANCELLED are terminal — no key here
 }
 BUYER_CANCELLABLE_FROM = {Order.Status.PENDING}  # buyer's only allowed transition is PENDING → CANCELLED
@@ -139,16 +140,18 @@ def cancel_order(*, order_id: int, by_user) -> Order:
     order = Order.objects.select_for_update().select_related("listing").get(pk=order_id)
     listing = Listing.objects.select_for_update().get(pk=order.listing_id)
 
-    # Authorization + state check — buyer can only cancel own PENDING; supplier can cancel anything still cancellable on their listing
+    # Authorization + state check — buyers can cancel their own PENDING orders. A marked internal catalog
+    # operator can cancel any platform order, including historical orders whose listing still points at an old
+    # SUPPLIER row. Raw ownership is deliberately not an authorization signal anymore.
     is_buyer = (order.buyer_id == by_user.id)
-    is_supplier = (listing.supplier_id == by_user.id)
-    if not (is_buyer or is_supplier): raise CancellationNotAllowed("You don't own this order.")
+    is_catalog_operator = bool(getattr(by_user, "is_catalog_operator", False))
+    if not (is_buyer or is_catalog_operator): raise CancellationNotAllowed("You don't own this order.")
     if order.is_terminal: raise CancellationNotAllowed(f"Order is already {order.status}.")
-    if is_buyer and not is_supplier and order.status not in BUYER_CANCELLABLE_FROM:
+    if is_buyer and not is_catalog_operator and order.status not in BUYER_CANCELLABLE_FROM:
         raise CancellationNotAllowed("Buyers can only cancel PENDING orders.")
-    if is_supplier and order.status not in SUPPLIER_TRANSITIONS or \
-       (is_supplier and Order.Status.CANCELLED not in SUPPLIER_TRANSITIONS.get(order.status, set())):
-        # Supplier can cancel from PENDING/CONFIRMED/PROCESSING but not from IN_TRANSIT (already shipped)
+    if is_catalog_operator and (order.status not in SUPPLIER_TRANSITIONS or
+                                Order.Status.CANCELLED not in SUPPLIER_TRANSITIONS.get(order.status, set())):
+        # Catalog staff can cancel only from states where the fulfillment state machine permits it.
         if not is_buyer: raise CancellationNotAllowed(f"Cannot cancel from status {order.status}.")
 
     order.status = Order.Status.CANCELLED
@@ -164,13 +167,13 @@ def cancel_order(*, order_id: int, by_user) -> Order:
 
 @transaction.atomic
 def transition_order_status(*, order_id: int, new_status: str, by_user) -> Order:
-    """Supplier-driven state transitions (CONFIRMED, PROCESSING, IN_TRANSIT, DELIVERED). CANCELLED routes through cancel_order to restore stock."""
+    """Platform catalog-operator state transition. CANCELLED restores stock through cancel_order()."""
     if new_status == Order.Status.CANCELLED:
         return cancel_order(order_id=order_id, by_user=by_user)  # delegate so stock-restore logic isn't duplicated
 
     order = Order.objects.select_for_update().select_related("listing").get(pk=order_id)
-    if order.listing.supplier_id != by_user.id:
-        raise InvalidStatusTransition("Only the listing's supplier can transition this order.")
+    if not getattr(by_user, "is_catalog_operator", False):
+        raise InvalidStatusTransition("Catalog operator access required.")
     allowed = SUPPLIER_TRANSITIONS.get(order.status, set())
     if new_status not in allowed:
         raise InvalidStatusTransition(f"Cannot move from {order.status} to {new_status}. Allowed: {sorted(allowed) or 'none (terminal)'}")

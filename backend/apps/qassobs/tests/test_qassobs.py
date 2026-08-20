@@ -66,19 +66,19 @@ class TestQassobMe:
         r = c.post(self.URL, _wizard_payload(), format="json")
         assert r.status_code == 403
 
-    def test_qassob_post_creates_profile(self, qassob_client, qassob_user):
+    def test_qassob_post_upserts_profile(self, qassob_client, qassob_user):
         r = qassob_client.post(self.URL, _wizard_payload(), format="json")
-        assert r.status_code == 201
+        assert r.status_code == 200
         assert r.data["full_name"] == "Anvar Karimov"
         assert r.data["years_experience"] == 10
-        assert r.data["is_verified"] is False
+        assert r.data["is_verified"] is True
         assert r.data["animals_supported"] == ["MOL", "QOY"]
         assert QassobProfile.objects.filter(user=qassob_user).exists()
 
-    def test_double_post_409(self, qassob_client):
+    def test_double_post_is_idempotent(self, qassob_client):
         qassob_client.post(self.URL, _wizard_payload(), format="json")
         r = qassob_client.post(self.URL, _wizard_payload(), format="json")
-        assert r.status_code == 409
+        assert r.status_code == 200
 
     def test_patch_edits(self, qassob_client):
         qassob_client.post(self.URL, _wizard_payload(), format="json")
@@ -94,9 +94,10 @@ class TestQassobMe:
         assert r.status_code == 200
         assert r.data["full_name"] == "Anvar Karimov"
 
-    def test_get_404_before_create(self, qassob_client):
+    def test_get_auto_creates_missing_profile(self, qassob_client, qassob_user):
         r = qassob_client.get(self.URL)
-        assert r.status_code == 404
+        assert r.status_code == 200
+        assert QassobProfile.objects.filter(user=qassob_user).exists()
 
     def test_bad_animal_code_rejected(self, qassob_client):
         payload = _wizard_payload()
@@ -134,6 +135,7 @@ class TestQassobList:
 
     def test_unverified_hidden(self, api, qassob_client):
         qassob_client.post("/api/v1/qassobs/me/", _wizard_payload(), format="json")
+        QassobProfile.objects.update(is_verified=False)
         r = api.get(self.URL)
         assert r.status_code == 200
         assert r.data == []                                  # is_verified=False → hidden

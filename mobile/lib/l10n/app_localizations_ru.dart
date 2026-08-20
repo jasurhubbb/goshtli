@@ -60,9 +60,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get roleBuyer => 'Покупатель';
 
   @override
-  String get roleSupplier => 'Поставщик';
-
-  @override
   String get roleAdmin => 'Администратор';
 
   @override
@@ -70,9 +67,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get buyerHome => 'Главная покупателя';
-
-  @override
-  String get supplierHome => 'Главная поставщика';
 
   @override
   String get profile => 'Профиль';
@@ -121,13 +115,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deleteAccountConfirmBody =>
-      'Профиль, объявления и история заказов будут удалены навсегда. Это действие нельзя отменить.';
+      'Профиль и история заказов будут удалены навсегда. Это действие нельзя отменить.';
 
   @override
   String get deleteAccountConfirmYes => 'Да, удалить';
-
-  @override
-  String get becomeSeller => 'Стать продавцом';
 
   @override
   String get halal => 'Халяль';
@@ -430,9 +421,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get buyerProfileTitle => 'Профиль покупателя';
 
   @override
-  String get supplierProfileTitle => 'Профиль поставщика';
-
-  @override
   String get profileFieldBusinessName => 'Название компании';
 
   @override
@@ -499,7 +487,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get onbLocationBody =>
-      'Мы используем ваше местоположение, чтобы показать ближайших продавцов мяса. Это необязательно — можно изменить позже в Профиле.';
+      'Мы используем ваше местоположение, чтобы показать доступные в вашем регионе товары. Это необязательно — можно изменить позже в Профиле.';
 
   @override
   String get onbDetectLocation => 'Определить местоположение';
@@ -834,16 +822,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get adminTabManage => 'Управление';
 
   @override
-  String get adminNewListingPickSupplier => 'Выберите поставщика';
-
-  @override
   String get adminNewListingSubmit => 'Сохранить объявление';
 
   @override
   String get adminManageListings => 'Объявления';
-
-  @override
-  String get adminManageSuppliers => 'Поставщики';
 
   @override
   String get adminManageCategories => 'Категории';

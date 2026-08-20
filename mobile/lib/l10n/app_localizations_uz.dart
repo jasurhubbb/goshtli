@@ -60,9 +60,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get roleBuyer => 'Xaridor';
 
   @override
-  String get roleSupplier => 'Yetkazib beruvchi';
-
-  @override
   String get roleAdmin => 'Administrator';
 
   @override
@@ -70,9 +67,6 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get buyerHome => 'Xaridor bosh sahifasi';
-
-  @override
-  String get supplierHome => 'Yetkazib beruvchi bosh sahifasi';
 
   @override
   String get profile => 'Profil';
@@ -121,13 +115,10 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get deleteAccountConfirmBody =>
-      'Profil, e\'lonlar va buyurtmalar tarixi butunlay o\'chiriladi. Bu amalni qaytarib bo\'lmaydi.';
+      'Profil va buyurtmalar tarixi butunlay o\'chiriladi. Bu amalni qaytarib bo\'lmaydi.';
 
   @override
   String get deleteAccountConfirmYes => 'Ha, o\'chirish';
-
-  @override
-  String get becomeSeller => 'Sotuvchi bo\'lish';
 
   @override
   String get halal => 'Halol';
@@ -432,9 +423,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get buyerProfileTitle => 'Xaridor profili';
 
   @override
-  String get supplierProfileTitle => 'Yetkazib beruvchi profili';
-
-  @override
   String get profileFieldBusinessName => 'Korxona nomi';
 
   @override
@@ -501,7 +489,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get onbLocationBody =>
-      'Yaqin atrofdagi go\'sht sotuvchilarini ko\'rsatish uchun joylashuvingizdan foydalanamiz. Bu ixtiyoriy — keyinroq Profil sahifasidan o\'zgartirishingiz mumkin.';
+      'Hududingizda mavjud mahsulotlarni ko\'rsatish uchun joylashuvingizdan foydalanamiz. Bu ixtiyoriy — keyinroq Profil sahifasidan o\'zgartirishingiz mumkin.';
 
   @override
   String get onbDetectLocation => 'Joylashuvni aniqlash';
@@ -838,16 +826,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get adminTabManage => 'Boshqarish';
 
   @override
-  String get adminNewListingPickSupplier => 'Yetkazib beruvchini tanlang';
-
-  @override
   String get adminNewListingSubmit => 'E\'lonni saqlash';
 
   @override
   String get adminManageListings => 'E\'lonlar';
-
-  @override
-  String get adminManageSuppliers => 'Yetkazib beruvchilar';
 
   @override
   String get adminManageCategories => 'Kategoriyalar';

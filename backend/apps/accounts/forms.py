@@ -22,7 +22,8 @@ class AdminUserCreationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ("email", "full_name", "phone", "role", "is_staff", "is_superuser")
+        fields = ("email", "full_name", "phone", "role", "is_internal_catalog_operator",
+                  "is_staff", "is_superuser")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

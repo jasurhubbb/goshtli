@@ -11,8 +11,8 @@ v3.3 admin-unlock:
     authority, not just UI access. Password is a build-time constant for now — gate behind env var when this
     leaves dev.
 
-Security note: phone-login without OTP is acceptable for the v3 buyer-only MVP because worst-case risk is
-account-squatting on a known phone. When we re-open suppliers / payments we'll gate via Twilio / Eskiz OTP.
+Partner and internal-catalog accounts are never admitted through buyer auth endpoints. They use the
+credential-gated partner login instead.
 """
 from django.conf import settings
 from django.db import IntegrityError
@@ -21,16 +21,18 @@ from drf_spectacular.utils import extend_schema
 from django.contrib.auth.hashers import check_password as _check_password, make_password as _make_password
 from django.utils.crypto import constant_time_compare
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.buyers.models import BuyerProfile
 from apps.notifications.fcm import _ensure_initialized as _ensure_firebase_initialized
 from .models import User
-from .serializers import (PhoneCheckSerializer, PhoneRegisterSerializer,
-                          RegisterSerializer, UserSerializer)
+from .serializers import (BuyerTokenObtainPairSerializer, PhoneCheckSerializer,
+                          PhoneRegisterSerializer, RegisterSerializer, UserSerializer)
 
 
 # v3.9.16 SECURITY — the admin-unlock password now comes ONLY from settings.ADMIN_UNLOCK_PASSWORD (read
@@ -56,7 +58,7 @@ def _jwt_for(user):
 
 
 class RegisterView(generics.CreateAPIView):
-    """POST /api/v1/auth/register/ — public; creates a SUPPLIER or BUYER. Admins are created via createsuperuser only."""
+    """POST /api/v1/auth/register/ — legacy public buyer registration."""
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = (permissions.AllowAny,)
@@ -66,6 +68,12 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class BuyerTokenObtainPairView(TokenObtainPairView):
+    """POST /api/v1/auth/login/ — legacy email/password login for BUYER accounts only."""
+
+    serializer_class = BuyerTokenObtainPairSerializer
 
 
 @extend_schema(methods=["DELETE"], responses={204: None, 409: None},
@@ -78,7 +86,13 @@ class MeView(generics.RetrieveUpdateDestroyAPIView):
     # PUT excluded — full-replace doesn't make sense for /me; PATCH is the intended write path
     http_method_names = ("get", "patch", "delete", "head", "options")
 
-    def get_object(self): return self.request.user
+    def get_object(self):
+        user = self.request.user
+        # A pre-deployment access token must not let a former external supplier bootstrap either app.
+        # SUPPLIER survives only as a historical wire role; the explicit internal flag is authoritative.
+        if user.role == User.Role.SUPPLIER and not user.is_catalog_operator:
+            raise PermissionDenied("This account no longer has application access.")
+        return user
 
     def destroy(self, request, *args, **kwargs):
         # Cascade deletes the user + their profiles + their buyer-orders. Listings with order rows are PROTECTed,
@@ -131,6 +145,9 @@ class PhoneLoginView(APIView):
         if not user.is_active:
             return Response({"detail": "Account is disabled. Contact support."},
                             status=status.HTTP_403_FORBIDDEN)
+        if not user.is_buyer:
+            return Response({"detail": "This account is not available in the buyer app."},
+                            status=status.HTTP_403_FORBIDDEN)
         return Response(_jwt_for(user))
 
 
@@ -140,9 +157,9 @@ class PhoneLoginView(APIView):
     responses={200: {"type": "object", "properties": {"access": {"type": "string"},
                                                        "refresh": {"type": "string"}}},
                401: None, 403: None},
-    description="POST {phone, password}. Login for admin-issued PARTNER accounts (supplier / qassob / courier). "
-                "Partners receive a phone + password from the platform (see provision_supplier / provision_qassob / "
-                "provision_courier); this trades them for a JWT pair. Generic 401 on any credential mismatch.")
+    description="POST {phone, password}. Login for admin-issued work accounts (internal catalog / qassob / "
+                "courier). Accounts receive credentials from the platform (see provision_catalog_operator / "
+                "provision_qassob / provision_courier). Generic 401 on any credential mismatch.")
 class PhonePasswordLoginView(APIView):
     """POST /api/v1/auth/phone-password-login/ — v3.9.16 credential login by phone + password.
 
@@ -173,6 +190,10 @@ class PhonePasswordLoginView(APIView):
         if not user.is_active:
             return Response({"detail": "Hisob o'chirilgan. Qo'llab-quvvatlashga murojaat qiling."},
                             status=status.HTTP_403_FORBIDDEN)
+        # This endpoint belongs to the partner app. In particular, the legacy SUPPLIER role now
+        # represents the platform's private catalog team; buyer/admin accounts must not enter here.
+        if not user.is_partner:
+            return Response(self._BAD, status=status.HTTP_401_UNAUTHORIZED)
         return Response(_jwt_for(user))
 
 
@@ -262,6 +283,9 @@ class FirebasePhoneLoginView(APIView):
             if not user.is_active:
                 return Response({"detail": "Account is disabled. Contact support."},
                                 status=status.HTTP_403_FORBIDDEN)
+            if not user.is_buyer:
+                return Response({"detail": "This account is not available in the buyer app."},
+                                status=status.HTTP_403_FORBIDDEN)
             return Response({**_jwt_for(user), "new_user": False})
         except User.DoesNotExist:
             # New user — bounce the client to /auth/details to collect name + optional business. The phone
@@ -285,19 +309,13 @@ class PhoneRegisterView(APIView):
         phone = ser.validated_data["phone"]
         full_name = ser.validated_data["full_name"]
         business_name = ser.validated_data.get("business_name", "")
-        # v3.8.3: pass role through. create_user_from_phone honors it via **extra_fields (setdefault
-        # only fires if the key is absent, so an explicit SUPPLIER / QASSOB sticks). Without this,
-        # partner-app signups were silently created as BUYER.
-        role = ser.validated_data.get("role", "BUYER")
         try:
-            user = User.objects.create_user_from_phone(phone=phone, full_name=full_name, role=role)
+            user = User.objects.create_user_from_phone(
+                phone=phone, full_name=full_name, role=User.Role.BUYER)
         except IntegrityError:
             return Response({"detail": "An account with this phone already exists. Try logging in instead."},
                             status=status.HTTP_409_CONFLICT)
-        # business_name lives on BuyerProfile only — for SUPPLIER/QASSOB the wizard sets equivalent
-        # fields on their own profile, so we skip the write for non-buyer roles to avoid creating an
-        # orphan BuyerProfile.
-        if business_name and role == "BUYER":
+        if business_name:
             BuyerProfile.objects.filter(user=user).update(business_name=business_name)
         return Response(_jwt_for(user), status=status.HTTP_201_CREATED)
 
@@ -358,7 +376,7 @@ class AdminUnlockView(APIView):
                 "a partner account with a usable phone+password and its minimal profile. Returns the password to "
                 "hand to the partner. If password is omitted, one is generated. Mirrors couriers/admin/provision/.")
 class AdminProvisionPartnerView(APIView):
-    """POST /api/v1/auth/admin/provision-partner/ — admin-issued supplier / qassob / courier accounts."""
+    """Admin-issued work accounts; SUPPLIER is the internal-catalog compatibility value."""
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):

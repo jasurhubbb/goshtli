@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Go\'sht Bozori Partners';
+  String get appTitle => 'Go\'sht Bozori Team';
 
   @override
   String get languagePickerTitle => 'Choose your language';
@@ -66,12 +66,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleQassobBody => 'Slaughter and cut live animals';
 
   @override
-  String get roleSupplierTitle => 'I sell meat';
-
-  @override
-  String get roleSupplierBody => 'Ready meat or live animals';
-
-  @override
   String get phoneEntryTitle => 'Your phone number';
 
   @override
@@ -103,9 +97,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingWelcomeQassob => 'Welcome! Quick sign-up';
 
   @override
-  String get onboardingWelcomeSupplier => 'Welcome!';
-
-  @override
   String get onboardingExperience => 'How many years of experience?';
 
   @override
@@ -122,9 +113,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingAnimalsTitleQassob => 'Which animals can you cut?';
-
-  @override
-  String get onboardingAnimalsTitleSupplier => 'Which animals do you sell?';
 
   @override
   String get onboardingAnimalsHint => 'Choose one or more';
@@ -162,9 +150,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingPhoto => 'Workplace photo (optional)';
-
-  @override
-  String get onboardingPhotoSupplier => 'Business photo (optional)';
 
   @override
   String get onboardingTakePhoto => 'Take photo';
@@ -304,10 +289,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get jobsEmpty => 'No new offers';
 
   @override
-  String get catalogTitle => 'My products';
+  String get loginTitle => 'Sign in to the work panel';
 
   @override
-  String get catalogAddNew => 'Add new product';
+  String get loginSubtitle => 'For the platform team, butchers, and couriers';
+
+  @override
+  String get loginPassword => 'Password';
+
+  @override
+  String get loginAction => 'Sign in';
+
+  @override
+  String get loginHelp =>
+      'The platform administrator issues your sign-in details.';
+
+  @override
+  String get internalCatalogTitle => 'Platform listings';
+
+  @override
+  String get internalAccountTitle => 'Account';
+
+  @override
+  String get internalTeamBadge => 'Internal team';
+
+  @override
+  String get logoutConfirmation =>
+      'Log out of the work account on this device?';
+
+  @override
+  String get catalogTitle => 'Platform listings';
+
+  @override
+  String get catalogAddNew => 'New listing';
 
   @override
   String get catalogQuickPriceTitle => 'Change price';
@@ -318,7 +332,38 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get catalogEmpty => 'No products yet';
+  String catalogHeadCount(String count) {
+    return 'Available: $count heads';
+  }
+
+  @override
+  String get catalogEmpty => 'There are no platform listings yet';
+
+  @override
+  String get catalogNoMatches => 'No listings match the search or filter';
+
+  @override
+  String get catalogSearchHint => 'Search by name, category, or ID';
+
+  @override
+  String get catalogFilterAll => 'All';
+
+  @override
+  String get catalogFilterActive => 'Active';
+
+  @override
+  String get catalogFilterOutOfStock => 'Out of stock';
+
+  @override
+  String get catalogFilterArchived => 'Archived';
+
+  @override
+  String get catalogPriceUpdated => 'Price updated';
+
+  @override
+  String catalogTotal(int count) {
+    return '$count';
+  }
 
   @override
   String get scheduleTitle => 'Capacity schedule';

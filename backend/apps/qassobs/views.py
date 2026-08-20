@@ -6,6 +6,7 @@ sahifa toggles + Servisim CRUD (v3.9).
 import math
 
 from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
+from django.db import connection
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import generics, parsers, permissions, status
@@ -91,7 +92,15 @@ class QassobFilterSet(filters.FilterSet):
 
     def filter_animal(self, qs, name, value):
         # animals_supported is a JSON list; Postgres `JSONField`'s contains lookup matches arrays.
-        return qs.filter(animals_supported__contains=[value]) if value else qs
+        if not value:
+            return qs
+        if connection.features.supports_json_field_contains:
+            return qs.filter(animals_supported__contains=[value])
+        # SQLite's JSON backend (used by the hermetic local suite) cannot compile `contains`.
+        # Keep the endpoint portable without changing the efficient PostgreSQL path.
+        matching_ids = [pk for pk, animals in qs.values_list("pk", "animals_supported")
+                        if value in (animals or [])]
+        return qs.filter(pk__in=matching_ids)
 
     def filter_service(self, qs, name, value):
         return qs.filter(is_slaughterhouse=True) if value == "slaughter" else qs

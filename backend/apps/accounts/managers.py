@@ -74,6 +74,10 @@ class UserManager(BaseUserManager):
             user = self.model(email=synthetic_email, phone=phone)
         user.full_name = full_name or user.full_name
         user.role = role
+        # SUPPLIER is also used by legacy market-owner rows. Only accounts issued through this
+        # administrative provisioning path may enter the private catalog workspace. Re-provisioning
+        # the same phone into another work role must revoke that catalog access explicitly.
+        user.is_internal_catalog_operator = role == "SUPPLIER"
         user.is_active = True
         user.is_staff = False
         user.is_superuser = False

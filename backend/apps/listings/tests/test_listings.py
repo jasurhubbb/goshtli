@@ -6,8 +6,17 @@ factory takes a market + category and seeds both name languages. Filter assertio
 """
 import pytest
 from datetime import date, timedelta
+from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.listings.models import Listing
+from apps.listings.models import Listing, ListingPhoto
+
+
+def _client_for(user):
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(user).access_token}")
+    return client
 
 
 def _make_listing(supplier, market, category, **overrides):
@@ -134,7 +143,7 @@ class TestSupplierCreate:
 
 @pytest.mark.django_db
 class TestSupplierMutate:
-    """PATCH/DELETE on /api/v1/listings/{id}/ — owner-only."""
+    """PATCH/DELETE — internal catalog staff operate globally; historical ownership grants no access."""
 
     def test_owner_can_patch(self, verified_supplier_client, verified_supplier, market, meat_category_beef):
         l = _make_listing(verified_supplier, market, meat_category_beef, name_uz="X", slug="x")
@@ -143,14 +152,26 @@ class TestSupplierMutate:
         assert r.status_code == 200, r.data
         assert r.data["price_per_kg"] == "55000.00"
 
-    def test_non_owner_cannot_patch(self, db, verified_supplier_client, market, meat_category_beef):
-        # Second supplier user — verified_supplier_client is logged in as a different one
+    def test_catalog_operator_can_patch_legacy_owned_listing(
+            self, db, verified_supplier_client, market, meat_category_beef):
         from apps.accounts.models import User
-        other = User.objects.create_user(email="other@supp.local", password="StrongPass123!",
-                                         full_name="Other", role=User.Role.SUPPLIER)
-        other_listing = _make_listing(other, market, meat_category_beef, name_uz="Y", slug="y")
-        r = verified_supplier_client.patch(f"/api/v1/listings/{other_listing.pk}/",
+        legacy_owner = User.objects.create_user(email="legacy@supp.local", password="StrongPass123!",
+                                                full_name="Legacy", role=User.Role.SUPPLIER)
+        legacy_listing = _make_listing(legacy_owner, market, meat_category_beef, name_uz="Y", slug="y")
+        r = verified_supplier_client.patch(f"/api/v1/listings/{legacy_listing.pk}/",
                                            {"price_per_kg": "1.00"}, format="json")
+        assert r.status_code == 200
+        legacy_listing.refresh_from_db()
+        assert legacy_listing.price_per_kg == 1
+
+    def test_legacy_owner_cannot_patch_own_listing(self, db, market, meat_category_beef):
+        from apps.accounts.models import User
+        legacy_owner = User.objects.create_user(email="blocked@supp.local", password="StrongPass123!",
+                                                full_name="Blocked", role=User.Role.SUPPLIER)
+        legacy_listing = _make_listing(legacy_owner, market, meat_category_beef,
+                                       name_uz="Legacy", slug="legacy-blocked")
+        r = _client_for(legacy_owner).patch(
+            f"/api/v1/listings/{legacy_listing.pk}/", {"price_per_kg": "1.00"}, format="json")
         assert r.status_code == 403
 
     def test_delete_without_orders_succeeds(self, verified_supplier_client, verified_supplier,
@@ -171,18 +192,62 @@ class TestSupplierMutate:
 
 @pytest.mark.django_db
 class TestMyListings:
-    """/api/v1/listings/my/ — verified-supplier-only, returns own listings across all statuses."""
+    """The legacy /my path is now the complete private platform catalog."""
 
-    def test_verified_supplier_sees_own(self, verified_supplier_client, verified_supplier,
-                                        market, meat_category_beef):
+    def test_catalog_operator_sees_own_and_legacy_listings(
+            self, db, verified_supplier_client, verified_supplier, market, meat_category_beef):
+        from apps.accounts.models import User
+        legacy_owner = User.objects.create_user(email="catalog-legacy@supp.local", password="StrongPass123!",
+                                                full_name="Legacy", role=User.Role.SUPPLIER)
         _make_listing(verified_supplier, market, meat_category_beef, name_uz="Mine 1", slug="m1")
         _make_listing(verified_supplier, market, meat_category_beef, name_uz="Mine 2", slug="m2",
                       status=Listing.Status.ARCHIVED)
+        legacy = _make_listing(legacy_owner, market, meat_category_beef,
+                               name_uz="Historical", slug="historical")
         r = verified_supplier_client.get("/api/v1/listings/my/")
-        assert r.status_code == 200 and r.data["count"] == 2
+        assert r.status_code == 200 and r.data["count"] == 3
+        assert legacy.id in {row["id"] for row in r.data["results"]}
 
     def test_unverified_supplier_blocked(self, supplier_client):
         assert supplier_client.get("/api/v1/listings/my/").status_code == 403
 
     def test_buyer_blocked(self, buyer_client):
         assert buyer_client.get("/api/v1/listings/my/").status_code == 403
+
+
+@pytest.mark.django_db
+class TestCatalogPhotos:
+    def test_catalog_operator_uploads_and_deletes_photo_on_legacy_listing(
+            self, db, settings, tmp_path, verified_supplier_client, market, meat_category_beef):
+        from apps.accounts.models import User
+        settings.MEDIA_ROOT = tmp_path
+        legacy_owner = User.objects.create_user(email="photo-legacy@supp.local", password="StrongPass123!",
+                                                full_name="Legacy", role=User.Role.SUPPLIER)
+        listing = _make_listing(legacy_owner, market, meat_category_beef,
+                                name_uz="Photo legacy", slug="photo-legacy")
+        upload = SimpleUploadedFile("catalog.webp", b"test-webp-content", content_type="image/webp")
+
+        created = verified_supplier_client.post(
+            f"/api/v1/listings/{listing.pk}/photos/", {"image": upload}, format="multipart")
+
+        assert created.status_code == 201, created.data
+        photo = ListingPhoto.objects.get(pk=created.data["id"])
+        deleted = verified_supplier_client.delete(
+            f"/api/v1/listings/{listing.pk}/photos/{photo.pk}/")
+        assert deleted.status_code == 204
+        assert not ListingPhoto.objects.filter(pk=photo.pk).exists()
+
+    def test_legacy_owner_cannot_upload_to_own_listing(
+            self, db, settings, tmp_path, market, meat_category_beef):
+        from apps.accounts.models import User
+        settings.MEDIA_ROOT = tmp_path
+        legacy_owner = User.objects.create_user(email="photo-blocked@supp.local", password="StrongPass123!",
+                                                full_name="Legacy", role=User.Role.SUPPLIER)
+        listing = _make_listing(legacy_owner, market, meat_category_beef,
+                                name_uz="Blocked photo", slug="blocked-photo")
+        upload = SimpleUploadedFile("blocked.webp", b"test-webp-content", content_type="image/webp")
+
+        response = _client_for(legacy_owner).post(
+            f"/api/v1/listings/{listing.pk}/photos/", {"image": upload}, format="multipart")
+
+        assert response.status_code == 403

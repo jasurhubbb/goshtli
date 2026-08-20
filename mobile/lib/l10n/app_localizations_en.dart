@@ -60,9 +60,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleBuyer => 'Buyer';
 
   @override
-  String get roleSupplier => 'Supplier';
-
-  @override
   String get roleAdmin => 'Admin';
 
   @override
@@ -70,9 +67,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get buyerHome => 'Buyer home';
-
-  @override
-  String get supplierHome => 'Supplier home';
 
   @override
   String get profile => 'Profile';
@@ -121,13 +115,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteAccountConfirmBody =>
-      'This permanently removes your profile, listings, and order history. This cannot be undone.';
+      'This permanently removes your profile and order history. This cannot be undone.';
 
   @override
   String get deleteAccountConfirmYes => 'Yes, delete';
-
-  @override
-  String get becomeSeller => 'Become a seller';
 
   @override
   String get halal => 'Halal';
@@ -431,9 +422,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buyerProfileTitle => 'Buyer profile';
 
   @override
-  String get supplierProfileTitle => 'Supplier profile';
-
-  @override
   String get profileFieldBusinessName => 'Business name';
 
   @override
@@ -500,7 +488,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onbLocationBody =>
-      'We use your location to show nearby meat sellers. This is optional — you can change it later in Profile.';
+      'We use your location to show products available in your area. This is optional — you can change it later in Profile.';
 
   @override
   String get onbDetectLocation => 'Detect location';
@@ -833,16 +821,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminTabManage => 'Manage';
 
   @override
-  String get adminNewListingPickSupplier => 'Pick a supplier';
-
-  @override
   String get adminNewListingSubmit => 'Save listing';
 
   @override
   String get adminManageListings => 'Listings';
-
-  @override
-  String get adminManageSuppliers => 'Suppliers';
 
   @override
   String get adminManageCategories => 'Categories';

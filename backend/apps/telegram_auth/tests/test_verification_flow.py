@@ -84,6 +84,22 @@ def test_returning_user_matches_by_phone(telegram_env):
     assert "access" in r.data and "refresh" in r.data
 
 
+def test_internal_catalog_account_cannot_enter_buyer_app(telegram_env):
+    """The legacy SUPPLIER role is private catalog staff and must use partner credentials."""
+    client = APIClient()
+    User.objects.create_user(
+        email="catalog-telegram@test.local", password="StrongPass123!", full_name="Catalog operator",
+        phone=PHONE, role=User.Role.SUPPLIER, is_internal_catalog_operator=True)
+
+    session = _start(client)
+    _share_contact(client, PHONE, tg_user_id=556)
+    code = _code_from(telegram_env)
+    r = _verify(client, session, code)
+
+    assert r.status_code == 403
+    assert "access" not in r.data and "refresh" not in r.data
+
+
 def test_new_user_flow(telegram_env):
     client = APIClient()
     session = _start(client)

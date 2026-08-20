@@ -202,12 +202,6 @@ abstract class AppLocalizations {
   /// **'Buyer'**
   String get roleBuyer;
 
-  /// No description provided for @roleSupplier.
-  ///
-  /// In en, this message translates to:
-  /// **'Supplier'**
-  String get roleSupplier;
-
   /// No description provided for @roleAdmin.
   ///
   /// In en, this message translates to:
@@ -225,12 +219,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Buyer home'**
   String get buyerHome;
-
-  /// No description provided for @supplierHome.
-  ///
-  /// In en, this message translates to:
-  /// **'Supplier home'**
-  String get supplierHome;
 
   /// No description provided for @profile.
   ///
@@ -325,7 +313,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteAccountConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently removes your profile, listings, and order history. This cannot be undone.'**
+  /// **'This permanently removes your profile and order history. This cannot be undone.'**
   String get deleteAccountConfirmBody;
 
   /// No description provided for @deleteAccountConfirmYes.
@@ -333,12 +321,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Yes, delete'**
   String get deleteAccountConfirmYes;
-
-  /// No description provided for @becomeSeller.
-  ///
-  /// In en, this message translates to:
-  /// **'Become a seller'**
-  String get becomeSeller;
 
   /// No description provided for @halal.
   ///
@@ -904,12 +886,6 @@ abstract class AppLocalizations {
   /// **'Buyer profile'**
   String get buyerProfileTitle;
 
-  /// No description provided for @supplierProfileTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Supplier profile'**
-  String get supplierProfileTitle;
-
   /// No description provided for @profileFieldBusinessName.
   ///
   /// In en, this message translates to:
@@ -1027,7 +1003,7 @@ abstract class AppLocalizations {
   /// No description provided for @onbLocationBody.
   ///
   /// In en, this message translates to:
-  /// **'We use your location to show nearby meat sellers. This is optional — you can change it later in Profile.'**
+  /// **'We use your location to show products available in your area. This is optional — you can change it later in Profile.'**
   String get onbLocationBody;
 
   /// No description provided for @onbDetectLocation.
@@ -1660,12 +1636,6 @@ abstract class AppLocalizations {
   /// **'Manage'**
   String get adminTabManage;
 
-  /// No description provided for @adminNewListingPickSupplier.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick a supplier'**
-  String get adminNewListingPickSupplier;
-
   /// No description provided for @adminNewListingSubmit.
   ///
   /// In en, this message translates to:
@@ -1677,12 +1647,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Listings'**
   String get adminManageListings;
-
-  /// No description provided for @adminManageSuppliers.
-  ///
-  /// In en, this message translates to:
-  /// **'Suppliers'**
-  String get adminManageSuppliers;
 
   /// No description provided for @adminManageCategories.
   ///

@@ -9,10 +9,19 @@ listing's display name is `name_uz` (not `title`), and SOLD_OUT was renamed OUT_
 import pytest
 from decimal import Decimal
 from datetime import date, timedelta
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.accounts.models import User
 from apps.listings.models import Listing, MeatCategory
 from apps.markets.models import Market
 from apps.orders.models import Order
+
+
+def _client_for(user):
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(user).access_token}")
+    return client
 
 
 @pytest.fixture
@@ -91,13 +100,11 @@ class TestPlaceOrder:
                                                    "delivery_address": "addr"}, format="json")
         assert r.status_code == 400 and "quantity_kg" in r.data
 
-    def test_supplier_can_also_place_orders_v2_unified_user(self, verified_supplier_client, verified_supplier, _ctx):
-        # v2 unified user model: a supplier can also buy from OTHER suppliers' listings (or technically their own — we don't
-        # forbid that at the API level; UI can hide the order button when supplier == self). Used to be 403 in v1.
+    def test_catalog_operator_cannot_use_buyer_checkout(self, verified_supplier_client, verified_supplier, _ctx):
         l = _listing(verified_supplier, _ctx)
         r = verified_supplier_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                                "delivery_address": "addr"}, format="json")
-        assert r.status_code == 201
+        assert r.status_code == 403
 
 
 @pytest.mark.django_db
@@ -136,7 +143,7 @@ class TestCancelOrder:
 
 @pytest.mark.django_db
 class TestSupplierStateMachine:
-    """Supplier-driven status transitions — PENDING → CONFIRMED → PROCESSING → IN_TRANSIT → DELIVERED."""
+    """Catalog fulfillment ends at receipt-pending; only the buyer confirms final delivery."""
 
     @pytest.fixture
     def order_id(self, buyer_client, verified_supplier, _ctx):
@@ -144,17 +151,20 @@ class TestSupplierStateMachine:
         return buyer_client.post("/api/v1/orders/", {"listing": l.pk, "quantity_kg": "10.00",
                                                       "delivery_address": "addr"}, format="json").data["id"]
 
-    def test_full_forward_walk(self, verified_supplier_client, order_id):
-        for s in ["CONFIRMED", "PROCESSING", "IN_TRANSIT", "DELIVERED"]:
+    def test_full_forward_walk(self, verified_supplier_client, buyer_client, order_id):
+        for s in ["CONFIRMED", "PROCESSING", "IN_TRANSIT", "DELIVERED_PENDING_CONFIRMATION"]:
             r = verified_supplier_client.post(f"/api/v1/orders/supplier/{order_id}/status/",
                                               {"status": s}, format="json")
             assert r.status_code == 200 and r.data["status"] == s
+        confirmed = buyer_client.post(f"/api/v1/orders/{order_id}/confirm-delivery/")
+        assert confirmed.status_code == 200 and confirmed.data["status"] == "DELIVERED"
 
-    def test_terminal_state_blocks_transition(self, verified_supplier_client, order_id):
+    def test_terminal_state_blocks_transition(self, verified_supplier_client, buyer_client, order_id):
         # Drive to DELIVERED then try to back-transition; backend returns 403 (PermissionDenied subclass)
-        for s in ["CONFIRMED", "PROCESSING", "IN_TRANSIT", "DELIVERED"]:
+        for s in ["CONFIRMED", "PROCESSING", "IN_TRANSIT", "DELIVERED_PENDING_CONFIRMATION"]:
             verified_supplier_client.post(f"/api/v1/orders/supplier/{order_id}/status/",
                                           {"status": s}, format="json")
+        buyer_client.post(f"/api/v1/orders/{order_id}/confirm-delivery/")
         r = verified_supplier_client.post(f"/api/v1/orders/supplier/{order_id}/status/",
                                           {"status": "CONFIRMED"}, format="json")
         assert r.status_code == 403
@@ -200,3 +210,55 @@ class TestOrderOwnership:
                                                      "delivery_address": "addr"}, format="json").data["id"]
         # Unrelated buyer gets 404 (not 403) — backend returns NotFound to avoid leaking that the order exists
         assert other_client.get(f"/api/v1/orders/{oid}/").status_code == 404
+
+
+@pytest.mark.django_db
+class TestCatalogOperatorGlobalOrders:
+    """Historical listing owners remain data references; the one internal operator fulfills every order."""
+
+    def _legacy_order(self, buyer_user, ctx, *, slug="legacy-order", quantity="10.00"):
+        legacy_owner = User.objects.create_user(
+            email=f"{slug}@supp.local", password="StrongPass123!",
+            full_name="Legacy Supplier", role=User.Role.SUPPLIER)
+        listing = _listing(legacy_owner, ctx, qty="40.00", slug=slug)
+        order = Order.objects.create(
+            buyer=buyer_user, listing=listing, quantity_kg=quantity,
+            total_price="500000.00", delivery_address="addr")
+        return legacy_owner, listing, order
+
+    def test_operator_lists_reads_and_transitions_legacy_owned_order(
+            self, verified_supplier_client, buyer_user, _ctx):
+        legacy_owner, listing, order = self._legacy_order(buyer_user, _ctx)
+
+        listed = verified_supplier_client.get("/api/v1/orders/supplier/")
+        detail = verified_supplier_client.get(f"/api/v1/orders/{order.pk}/")
+        advanced = verified_supplier_client.post(
+            f"/api/v1/orders/supplier/{order.pk}/status/", {"status": "CONFIRMED"}, format="json")
+
+        assert listed.status_code == 200
+        assert order.pk in {row["id"] for row in listed.data["results"]}
+        assert detail.status_code == 200
+        assert advanced.status_code == 200 and advanced.data["status"] == Order.Status.CONFIRMED
+        order.refresh_from_db()
+        assert order.status == Order.Status.CONFIRMED
+        assert order.listing.supplier_id == legacy_owner.id
+
+    def test_legacy_owner_is_blocked_from_legacy_supplier_endpoints_and_detail(
+            self, buyer_user, _ctx):
+        legacy_owner, listing, order = self._legacy_order(
+            buyer_user, _ctx, slug="blocked-legacy-order")
+        client = _client_for(legacy_owner)
+
+        assert client.get("/api/v1/orders/supplier/").status_code == 403
+        assert client.get(f"/api/v1/orders/{order.pk}/").status_code == 404
+        assert client.post(
+            f"/api/v1/orders/supplier/{order.pk}/status/",
+            {"status": "CONFIRMED"}, format="json").status_code == 403
+
+    @pytest.mark.parametrize("role", [User.Role.QASSOB, User.Role.COURIER])
+    def test_other_work_roles_cannot_access_catalog_order_endpoint(self, db, role):
+        user = User.objects.create_user(
+            email=f"isolated-{role.lower()}@test.local", password="StrongPass123!",
+            full_name="Isolated Worker", role=role)
+
+        assert _client_for(user).get("/api/v1/orders/supplier/").status_code == 403

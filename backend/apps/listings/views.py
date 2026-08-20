@@ -1,5 +1,8 @@
-"""Listing views — public browse, owner-scoped CRUD, plus the v2 photo upload + delete endpoints.
-v3.3: admin role bypasses owner / verification checks (see common.permissions) and may set supplier_id on create."""
+"""Listing views — public browse plus platform-catalog CRUD and photo endpoints.
+
+Historical supplier ownership remains in the schema for data integrity, but it does not scope the private catalog
+workspace: a marked catalog operator manages every listing. Admins retain their existing override.
+"""
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework import generics, permissions, status
@@ -110,7 +113,7 @@ class ListingListCreateView(generics.ListCreateAPIView):
 
 
 class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PATCH/DELETE /api/v1/listings/{id}/ — buyers read public listings; owner manages their own."""
+    """GET/PATCH/DELETE /api/v1/listings/{id}/ — public read; platform catalog staff manage every row."""
     serializer_class = ListingSerializer
     queryset = (Listing.objects
                 .select_related("supplier", "market", "category")
@@ -133,7 +136,8 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
         active = instance.orders.filter(status__in=NON_TERMINAL).count()
         if active > 0:
             raise PermissionDenied(
-                f"Bu tovarda {active} ta aktiv buyurtma bor. Avval hammasini yakunlang.")
+                f"Bu tovarda {active} ta aktiv buyurtma bor. Avval hammasini yakunlang "
+                "yoki e'lonni ARCHIVED holatiga o'tkazing.")
         if instance.orders.exists():
             instance.status = Listing.Status.ARCHIVED
             instance.save(update_fields=("status", "updated_at"))
@@ -142,7 +146,7 @@ class ListingDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class MyListingsView(generics.ListAPIView):
-    """GET /api/v1/listings/my/ — owner's listings, all statuses, includes photos."""
+    """GET /api/v1/listings/my/ — the complete platform catalog, all statuses, including photos."""
     serializer_class = ListingSerializer
     permission_classes = (IsVerifiedSupplier,)
     filterset_class = ListingFilter
@@ -150,8 +154,9 @@ class MyListingsView(generics.ListAPIView):
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False): return Listing.objects.none()
-        return (Listing.objects.filter(supplier=self.request.user)
-                .select_related("market", "category").prefetch_related("photos"))
+        return (Listing.objects
+                .select_related("supplier", "market", "category")
+                .prefetch_related("photos"))
 
 
 # ---------- Photo upload + delete (v2) ----------
@@ -161,7 +166,7 @@ class MyListingsView(generics.ListAPIView):
                responses={201: ListingPhotoSerializer},
                parameters=[OpenApiParameter("listing_pk", OpenApiTypes.INT, OpenApiParameter.PATH)])
 class ListingPhotoUploadView(APIView):
-    """POST /api/v1/listings/{listing_pk}/photos/ — owner-only. Multipart form with 'image' file. Returns the photo row.
+    """POST /api/v1/listings/{listing_pk}/photos/ — catalog-operator/admin only. Returns the photo row.
 
     First uploaded photo gets position=0 (= primary thumbnail); subsequent uploads auto-increment so card thumbs stay stable.
     """
@@ -171,9 +176,8 @@ class ListingPhotoUploadView(APIView):
     def post(self, request, listing_pk):
         try: listing = Listing.objects.get(pk=listing_pk)
         except Listing.DoesNotExist: raise NotFound()
-        # v3.3 admin bypass: ADMIN-role users can attach photos to any listing (they own all listings conceptually).
-        if listing.supplier_id != request.user.id and not request.user.is_admin_role:
-            raise PermissionDenied("You don't own this listing.")
+        if not (request.user.is_catalog_operator or request.user.is_admin_role):
+            raise PermissionDenied("Catalog access required.")
         if "image" not in request.FILES:
             return Response({"image": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -187,15 +191,14 @@ class ListingPhotoUploadView(APIView):
 @extend_schema(parameters=[OpenApiParameter("listing_pk", OpenApiTypes.INT, OpenApiParameter.PATH),
                            OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH)])
 class ListingPhotoDeleteView(APIView):
-    """DELETE /api/v1/listings/{listing_pk}/photos/{pk}/ — owner-only. Removes the file + DB row."""
+    """DELETE /api/v1/listings/{listing_pk}/photos/{pk}/ — catalog-operator/admin only."""
     permission_classes = (permissions.IsAuthenticated,)
 
     def delete(self, request, listing_pk, pk):
         try: photo = ListingPhoto.objects.select_related("listing").get(pk=pk, listing_id=listing_pk)
         except ListingPhoto.DoesNotExist: raise NotFound()
-        # v3.3 admin bypass — see ListingPhotoUploadView.post.
-        if photo.listing.supplier_id != request.user.id and not request.user.is_admin_role:
-            raise PermissionDenied("You don't own this listing.")
+        if not (request.user.is_catalog_operator or request.user.is_admin_role):
+            raise PermissionDenied("Catalog access required.")
         # Delete the file from storage before the DB row so we never leak orphaned files on partial failure
         photo.image.delete(save=False)
         photo.delete()

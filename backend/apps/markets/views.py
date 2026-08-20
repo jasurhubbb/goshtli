@@ -8,7 +8,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsAdminRole
+from apps.common.permissions import IsAdminRole, IsSupplier
 from .models import Market
 from .serializers import MarketSerializer
 
@@ -64,7 +64,8 @@ class MyMarketView(APIView):
     a 1:1 Market for the supplier on first call, named after their full_name (with slug collision
     handling), and returns it. Subsequent calls return the same row.
     """
-    permission_classes = (permissions.IsAuthenticated,)
+    # SUPPLIER is the private catalog-operator role. Buyers must never auto-create a seller Market.
+    permission_classes = (IsSupplier,)
 
     def get(self, request):
         user = request.user

@@ -38,14 +38,21 @@ def buyer_user(db):
 
 @pytest.fixture
 def supplier_user(db):
-    """Unverified supplier — listing creation should be blocked until is_verified flips True."""
-    return User.objects.create_user(email="supplier@test.local", password="StrongPass123!",
-                                    full_name="Test Supplier", role=User.Role.SUPPLIER)
+    """Unverified internal catalog operator — blocked until its supplier profile is verified."""
+    user = User.objects.create_user(email="supplier@test.local", password="StrongPass123!",
+                                    full_name="Catalog Operator", role=User.Role.SUPPLIER,
+                                    is_internal_catalog_operator=True)
+    # The compatibility signal currently auto-verifies the profile. Gate tests need a real
+    # unverified state, so make it explicit instead of relying on signal defaults.
+    profile = user.supplier_profile
+    profile.is_verified = False
+    profile.save(update_fields=("is_verified", "updated_at"))
+    return user
 
 
 @pytest.fixture
 def verified_supplier(supplier_user):
-    """Supplier with is_verified=True — can create listings. Profile gets auto-created via signal at user save time."""
+    """Verified internal catalog operator — can create and manage platform listings."""
     profile = supplier_user.supplier_profile
     profile.is_verified = True
     profile.save()

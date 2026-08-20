@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In uz, this message translates to:
-  /// **'Go\'sht Bozori Partners'**
+  /// **'Go\'sht Bozori Ishchi'**
   String get appTitle;
 
   /// No description provided for @languagePickerTitle.
@@ -214,18 +214,6 @@ abstract class AppLocalizations {
   /// **'Tirik chorvani so\'yish va bo\'laklash'**
   String get roleQassobBody;
 
-  /// No description provided for @roleSupplierTitle.
-  ///
-  /// In uz, this message translates to:
-  /// **'Go\'sht sotaman'**
-  String get roleSupplierTitle;
-
-  /// No description provided for @roleSupplierBody.
-  ///
-  /// In uz, this message translates to:
-  /// **'Tayyor go\'sht yoki tirik chorva sotuvi'**
-  String get roleSupplierBody;
-
   /// No description provided for @phoneEntryTitle.
   ///
   /// In uz, this message translates to:
@@ -280,12 +268,6 @@ abstract class AppLocalizations {
   /// **'Tabriklaymiz! Tezda ro\'yxatdan o\'tasiz'**
   String get onboardingWelcomeQassob;
 
-  /// No description provided for @onboardingWelcomeSupplier.
-  ///
-  /// In uz, this message translates to:
-  /// **'Tabriklaymiz!'**
-  String get onboardingWelcomeSupplier;
-
   /// No description provided for @onboardingExperience.
   ///
   /// In uz, this message translates to:
@@ -321,12 +303,6 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Qaysi hayvonlarni so\'ya olasiz?'**
   String get onboardingAnimalsTitleQassob;
-
-  /// No description provided for @onboardingAnimalsTitleSupplier.
-  ///
-  /// In uz, this message translates to:
-  /// **'Qaysi hayvonlarni sotasiz?'**
-  String get onboardingAnimalsTitleSupplier;
 
   /// No description provided for @onboardingAnimalsHint.
   ///
@@ -399,12 +375,6 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Ish joyi rasmi (ixtiyoriy)'**
   String get onboardingPhoto;
-
-  /// No description provided for @onboardingPhotoSupplier.
-  ///
-  /// In uz, this message translates to:
-  /// **'Biznes rasmi (ixtiyoriy)'**
-  String get onboardingPhotoSupplier;
 
   /// No description provided for @onboardingTakePhoto.
   ///
@@ -670,16 +640,70 @@ abstract class AppLocalizations {
   /// **'Yangi takliflar yo\'q'**
   String get jobsEmpty;
 
+  /// No description provided for @loginTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ishchi panelga kirish'**
+  String get loginTitle;
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Platforma jamoasi, qassoblar va kuryerlar uchun'**
+  String get loginSubtitle;
+
+  /// No description provided for @loginPassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parol'**
+  String get loginPassword;
+
+  /// No description provided for @loginAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kirish'**
+  String get loginAction;
+
+  /// No description provided for @loginHelp.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kirish ma\'lumotlarini platforma administratori beradi.'**
+  String get loginHelp;
+
+  /// No description provided for @internalCatalogTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Platforma e\'lonlari'**
+  String get internalCatalogTitle;
+
+  /// No description provided for @internalAccountTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisob'**
+  String get internalAccountTitle;
+
+  /// No description provided for @internalTeamBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ichki jamoa'**
+  String get internalTeamBadge;
+
+  /// No description provided for @logoutConfirmation.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ushbu qurilmadagi ishchi hisobdan chiqasizmi?'**
+  String get logoutConfirmation;
+
   /// No description provided for @catalogTitle.
   ///
   /// In uz, this message translates to:
-  /// **'Mening tovarlarim'**
+  /// **'Platforma e\'lonlari'**
   String get catalogTitle;
 
   /// No description provided for @catalogAddNew.
   ///
   /// In uz, this message translates to:
-  /// **'Yangi tovar qo\'shish'**
+  /// **'Yangi e\'lon'**
   String get catalogAddNew;
 
   /// No description provided for @catalogQuickPriceTitle.
@@ -694,11 +718,65 @@ abstract class AppLocalizations {
   /// **'Zaxira: {kg} kg'**
   String catalogStock(String kg);
 
+  /// No description provided for @catalogHeadCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavjud: {count} bosh'**
+  String catalogHeadCount(String count);
+
   /// No description provided for @catalogEmpty.
   ///
   /// In uz, this message translates to:
-  /// **'Hali tovar qo\'shilmagan'**
+  /// **'Katalogda hali e\'lon yo\'q'**
   String get catalogEmpty;
+
+  /// No description provided for @catalogNoMatches.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qidiruv yoki filtrga mos e\'lon topilmadi'**
+  String get catalogNoMatches;
+
+  /// No description provided for @catalogSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nomi, kategoriya yoki ID bo\'yicha qidirish'**
+  String get catalogSearchHint;
+
+  /// No description provided for @catalogFilterAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasi'**
+  String get catalogFilterAll;
+
+  /// No description provided for @catalogFilterActive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol'**
+  String get catalogFilterActive;
+
+  /// No description provided for @catalogFilterOutOfStock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Zaxira tugagan'**
+  String get catalogFilterOutOfStock;
+
+  /// No description provided for @catalogFilterArchived.
+  ///
+  /// In uz, this message translates to:
+  /// **'Arxiv'**
+  String get catalogFilterArchived;
+
+  /// No description provided for @catalogPriceUpdated.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narx yangilandi'**
+  String get catalogPriceUpdated;
+
+  /// No description provided for @catalogTotal.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta'**
+  String catalogTotal(int count);
 
   /// No description provided for @scheduleTitle.
   ///

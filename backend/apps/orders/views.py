@@ -1,4 +1,4 @@
-"""Order views — buyer-side (place, my, cancel) + supplier-side (list, status). All mutations go through the service layer.
+"""Order views — buyer-side actions plus platform-wide catalog-operator fulfillment actions.
 
 Each view carries an @extend_schema decorator so drf-spectacular can document request/response shapes accurately;
 APIView subclasses don't auto-introspect, and ListAPIViews need queryset guards because get_queryset() reads request.user
@@ -74,7 +74,7 @@ class MyOrdersView(generics.ListAPIView):
 
 
 class OrderDetailView(generics.RetrieveAPIView):
-    """GET /api/v1/orders/{id}/ — readable by the buyer who placed it OR the supplier whose listing it's on."""
+    """GET /api/v1/orders/{id}/ — buyer-owned detail or any order for platform catalog staff/admins."""
     serializer_class = OrderReadSerializer
     queryset = Order.objects.select_related(
         "listing", "listing__supplier", "buyer",
@@ -83,7 +83,7 @@ class OrderDetailView(generics.RetrieveAPIView):
     def get_object(self):
         order = super().get_object()
         u = self.request.user
-        if order.buyer_id != u.id and order.listing.supplier_id != u.id:
+        if order.buyer_id != u.id and not (u.is_catalog_operator or u.is_admin_role):
             raise NotFound()  # 404 instead of 403 to avoid leaking that the order exists at all
         return order
 
@@ -136,7 +136,7 @@ class OrderConfirmDeliveryView(APIView):
 # ---------- Supplier-side ----------
 
 class SupplierOrdersView(generics.ListAPIView):
-    """GET /api/v1/orders/supplier/ — orders placed against this supplier's listings; supports ?status= filter."""
+    """GET /api/v1/orders/supplier/ — all platform orders for the internal catalog workspace."""
     serializer_class = OrderReadSerializer
     permission_classes = (IsSupplier,)
     filterset_fields = ("status",)
@@ -144,14 +144,16 @@ class SupplierOrdersView(generics.ListAPIView):
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False): return Order.objects.none()
-        return Order.objects.filter(listing__supplier=self.request.user).select_related("listing", "listing__supplier", "buyer")
+        return Order.objects.select_related(
+            "listing", "listing__supplier", "listing__market", "listing__category", "buyer",
+            "delivery", "delivery__courier", "delivery__courier__courier_profile")
 
 
 @extend_schema(request=OrderStatusUpdateSerializer, responses={200: OrderReadSerializer},
                parameters=[OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH)],
                description="Supplier transitions order through the state machine. CANCELLED routes through cancel_order to restore stock.")
 class SupplierOrderStatusView(APIView):
-    """POST /api/v1/orders/supplier/{id}/status/ — drives the order through the state machine. CANCEL also restores stock."""
+    """POST /api/v1/orders/supplier/{id}/status/ — platform-wide state transition; cancel restores stock."""
     permission_classes = (IsSupplier,)
 
     def post(self, request, pk):

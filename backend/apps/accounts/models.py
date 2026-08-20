@@ -9,18 +9,13 @@ from .managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
-    """Single user table for all roles — role field decides which profile (Supplier/Buyer) and permissions apply."""
+    """Single user table for consumer, internal-catalog, and operational work roles."""
 
     class Role(models.TextChoices):
-        # Five fixed roles. v3.8 added QASSOB (butcher + slaughterhouse); v3.9.14 adds COURIER.
-        # SUPPLIER == "Go'sht yetkazib beruvchi" (wholesale meat seller). ADMIN curates; BUYER orders.
-        # COURIER == the delivery driver. Provisioned in two ways:
-        #   (a) a supplier who ticks "supplier_delivers" on a listing gets an in-app COURIER "hat" —
-        #       same account, extra dashboard tab in the partner app.
-        #   (b) platform-employed couriers get standalone accounts with role=COURIER + a system-
-        #       generated password issued during onboarding.
+        # SUPPLIER is retained as the database/wire value for the private platform catalog workspace;
+        # is_internal_catalog_operator is the actual access grant. QASSOB and COURIER remain work roles.
         ADMIN = "ADMIN", _("Admin")
-        SUPPLIER = "SUPPLIER", _("Supplier")
+        SUPPLIER = "SUPPLIER", _("Catalog operator")
         BUYER = "BUYER", _("Buyer")
         QASSOB = "QASSOB", _("Qassob")
         COURIER = "COURIER", _("Courier")
@@ -35,6 +30,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     full_name = models.CharField(_("full name"), max_length=150)
     phone = models.CharField(_("phone"), max_length=20, blank=True)
     role = models.CharField(_("role"), max_length=10, choices=Role.choices, default=Role.BUYER)
+    is_internal_catalog_operator = models.BooleanField(
+        _("internal catalog operator"),
+        default=False,
+        help_text=_("Grants the legacy SUPPLIER account access to the platform's private catalog workspace."),
+    )
 
     # ---- v3.3 profile settings — Familiya / Ism / Otasining ismi / Tug'ilgan kun / Jins ----
     # All optional so legacy + phone-registered accounts (which only have full_name) keep working untouched.
@@ -71,7 +71,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     @property
     def is_admin_role(self): return self.role == self.Role.ADMIN
     @property
-    def is_supplier(self): return self.role == self.Role.SUPPLIER
+    def is_catalog_operator(self):
+        """Platform catalog staff; legacy external SUPPLIER rows do not pass this gate."""
+        return self.role == self.Role.SUPPLIER and self.is_internal_catalog_operator
+    @property
+    def is_supplier(self): return self.is_catalog_operator
     @property
     def is_buyer(self): return self.role == self.Role.BUYER
     @property
@@ -80,8 +84,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     def is_courier(self): return self.role == self.Role.COURIER
     @property
     def is_partner(self):
-        """Any partner-app role (supplier / qassob / courier). Gates /partner/* endpoints with a single check."""
-        return self.role in (self.Role.SUPPLIER, self.Role.QASSOB, self.Role.COURIER)
+        """Any work-app role; SUPPLIER accounts qualify only when explicitly marked as internal staff."""
+        return self.is_catalog_operator or self.role in (self.Role.QASSOB, self.Role.COURIER)
 
 
 def kyc_upload_path(instance, filename):

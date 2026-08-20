@@ -14,31 +14,37 @@ import '../../../shared/models/user.dart';
 import '../data/auth_repository.dart';
 import 'auth_state.dart';
 
-
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final TokenStorage _tokens;
   final FcmService _fcm;
-  AuthNotifier({required AuthRepository repo, required TokenStorage tokens, required FcmService fcm})
-      : _repo = repo, _tokens = tokens, _fcm = fcm, super(const AuthInitial()) { _resume(); }
+  AuthNotifier({
+    required AuthRepository repo,
+    required TokenStorage tokens,
+    required FcmService fcm,
+  }) : _repo = repo,
+       _tokens = tokens,
+       _fcm = fcm,
+       super(const AuthInitial()) {
+    _resume();
+  }
 
   /// Called once from constructor. v3 pivot:
   ///   • no stored token → AuthAnonymous (browse freely, no login wall)
   ///   • stored token + /me works → AuthAuthenticated
   ///   • stored token but /me fails → tokens were stale → clear + AuthAnonymous
   ///
-  /// v3.3 defense: an admin-role user must NEVER end up in the main app's auth state. The admin gate lives
-  /// in its own parallel stack (AdminAuthNotifier + AdminTokenStorage); if we ever see an ADMIN user here
-  /// it means something leaked an admin token into the main keystore — clear it and revert to anonymous so
-  /// the main app stays clean. (This also self-heals leftover state from earlier builds that wrongly stored
-  /// the admin JWT in the main TokenStorage.)
+  /// Only BUYER sessions belong in the consumer app. Supplier/platform operations live in partners_app,
+  /// while the admin gate has its own token store. Clear any legacy non-buyer session on upgrade.
   Future<void> _resume() async {
     final access = await _tokens.readAccess();
-    if (access == null) { state = const AuthAnonymous(); return; }
+    if (access == null) {
+      state = const AuthAnonymous();
+      return;
+    }
     try {
       final user = await _repo.fetchMe();
-      if (user.role == UserRole.admin) {
-        // Stale admin token leaked into the main keystore — wipe and stay anonymous.
+      if (!user.isBuyer) {
         await _tokens.clear();
         state = const AuthAnonymous();
         return;
@@ -70,33 +76,53 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Called from login screen submit — flips through Loading → Authenticated, or back to Unauthenticated(error)
   /// if the credentials were wrong (so the login screen can show the error inline).
   ///
-  /// v3.3 defense: refuse to log an ADMIN-role user into the main app's session. Admin lives in its own
-  /// auth context; if someone types admin@goshtli.local into the legacy email login form, we drop the
-  /// tokens and pretend the credentials were wrong.
+  /// Refuse legacy supplier/admin credentials: this app is exclusively the buyer experience.
   Future<void> login(String email, String password) async {
     state = const AuthLoading();
     try {
       final user = await _repo.login(email: email, password: password);
-      if (user.role == UserRole.admin) {
+      if (!user.isBuyer) {
         await _repo.logout();
-        state = const AuthUnauthenticated('Invalid credentials');
+        state = const AuthUnauthenticated(
+          'This account is not available in the buyer app',
+        );
         return;
       }
       state = AuthAuthenticated(user);
       _registerPushQuietly();
+    } on AuthException catch (e) {
+      state = AuthUnauthenticated(e.message);
     }
-    on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
   }
 
   /// Called from register screen — registers, then immediately logs in so the user lands on their dashboard without a second tap.
-  Future<void> register({required String email, required String fullName, required String password,
-                         required String phone, required UserRole role}) async {
+  Future<void> register({
+    required String email,
+    required String fullName,
+    required String password,
+    required String phone,
+  }) async {
     state = const AuthLoading();
     try {
-      await _repo.register(email: email, fullName: fullName, password: password, phone: phone, role: role);
-      state = AuthAuthenticated(await _repo.login(email: email, password: password));
+      await _repo.register(
+        email: email,
+        fullName: fullName,
+        password: password,
+        phone: phone,
+      );
+      final user = await _repo.login(email: email, password: password);
+      if (!user.isBuyer) {
+        await _repo.logout();
+        state = const AuthUnauthenticated(
+          'This account is not available in the buyer app',
+        );
+        return;
+      }
+      state = AuthAuthenticated(user);
       _registerPushQuietly();
-    } on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
+    } on AuthException catch (e) {
+      state = AuthUnauthenticated(e.message);
+    }
   }
 
   /// Logout — clears tokens and drops back to anonymous. User keeps browsing without a forced login screen.
@@ -105,7 +131,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _repo.logout();
     state = const AuthAnonymous();
   }
-
 
   // ---------- Phone-based auth (v3.2) ----------
 
@@ -122,22 +147,51 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> phoneLogin(String phone) async {
     state = const AuthLoading();
     try {
-      state = AuthAuthenticated(await _repo.phoneLogin(phone));
+      final user = await _repo.phoneLogin(phone);
+      if (!user.isBuyer) {
+        await _repo.logout();
+        state = const AuthUnauthenticated(
+          'This account is not available in the buyer app',
+        );
+        return;
+      }
+      state = AuthAuthenticated(user);
       _registerPushQuietly();
-    } on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
-    catch (e) { state = AuthUnauthenticated(e.toString()); }
+    } on AuthException catch (e) {
+      state = AuthUnauthenticated(e.message);
+    } catch (e) {
+      state = AuthUnauthenticated(e.toString());
+    }
   }
 
   /// Phone registration — creates the buyer account and logs them in in one shot. Called from the
   /// name-entry screen after phoneCheck returned false.
-  Future<void> phoneRegister({required String phone, required String fullName, String businessName = ''}) async {
+  Future<void> phoneRegister({
+    required String phone,
+    required String fullName,
+    String businessName = '',
+  }) async {
     state = const AuthLoading();
     try {
-      state = AuthAuthenticated(await _repo.phoneRegister(
-          phone: phone, fullName: fullName, businessName: businessName));
+      final user = await _repo.phoneRegister(
+        phone: phone,
+        fullName: fullName,
+        businessName: businessName,
+      );
+      if (!user.isBuyer) {
+        await _repo.logout();
+        state = const AuthUnauthenticated(
+          'This account is not available in the buyer app',
+        );
+        return;
+      }
+      state = AuthAuthenticated(user);
       _registerPushQuietly();
-    } on AuthException catch (e) { state = AuthUnauthenticated(e.message); }
-    catch (e) { state = AuthUnauthenticated(e.toString()); }
+    } on AuthException catch (e) {
+      state = AuthUnauthenticated(e.message);
+    } catch (e) {
+      state = AuthUnauthenticated(e.toString());
+    }
   }
 
   // NOTE: admin unlock is intentionally NOT here. The admin gate lives in its own parallel auth stack
@@ -152,7 +206,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   ///
   /// Catches every exception (not just AuthException) so a DioException can't leave state stuck in
   /// AuthLoading (which would spin the Profile tab forever).
-  Future<({User? user, bool isNew, String phone})> telegramVerify(String sessionToken, String code) async {
+  Future<({User? user, bool isNew, String phone})> telegramVerify(
+    String sessionToken,
+    String code,
+  ) async {
     state = const AuthLoading();
     try {
       final result = await _repo.telegramVerify(sessionToken, code);
@@ -160,7 +217,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // Hold in AuthAnonymous — not fully signed up until /auth/details + phoneRegister.
         state = const AuthAnonymous();
       } else {
-        state = AuthAuthenticated(result.user!);
+        final user = result.user!;
+        if (!user.isBuyer) {
+          await _repo.logout();
+          state = const AuthAnonymous();
+          throw const AuthException(
+            'This account is not available in the buyer app',
+          );
+        }
+        state = AuthAuthenticated(user);
         _registerPushQuietly();
       }
       return result;
@@ -174,17 +239,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Hook called by ApiClient when a refresh attempt fails — keeps the auth state in sync without duplicating clear logic.
   void onAuthExpired() {
-    if (state is AuthAuthenticated) state = const AuthUnauthenticated('Session expired');
+    if (state is AuthAuthenticated)
+      state = const AuthUnauthenticated('Session expired');
   }
 
   /// Lets profile screens push a fresh User into state after PATCH /auth/me/ — avoids stale name/phone on the home screen.
-  void updateUser(User user) { if (state is AuthAuthenticated) state = AuthAuthenticated(user); }
+  void updateUser(User user) {
+    if (state is AuthAuthenticated) state = AuthAuthenticated(user);
+  }
 
   /// Ask for notification permission then register the FCM token. Fire-and-forget — failures don't break auth.
   void _registerPushQuietly() async {
     try {
       await _fcm.requestPermission();
       await _fcm.registerCurrentToken();
-    } catch (_) { /* push is best-effort; in-app notifications still work */ }
+    } catch (_) {
+      /* push is best-effort; in-app notifications still work */
+    }
   }
 }

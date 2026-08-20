@@ -1,10 +1,11 @@
-"""v3.9.16 — one place that mints an admin-issued PARTNER account (SUPPLIER / QASSOB / COURIER) and its
-minimal profile row, so the admin endpoint and the provision_* management commands behave identically.
+"""One place that mints admin-issued work-app accounts.
 
-The partner logs in with the phone + password this returns (PhonePasswordLoginView), then completes their
-business profile via the in-app setup wizard. We create the profile with its completion fields left EMPTY so
-the app's "is my profile complete?" heuristic (empty business_name / region → run the wizard) fires on first
-login; the wizard fills them in.
+SUPPLIER is retained as the wire role for listing ownership. Accounts created here additionally receive
+the explicit internal-catalog marker; legacy external SUPPLIER rows do not. QASSOB and COURIER remain
+external operational roles. The admin endpoint and provision_* commands share this path.
+
+The account logs in with the returned phone + password. Qassobs complete their profile wizard;
+catalog operators and couriers enter their dedicated workspaces directly.
 """
 import secrets
 
@@ -18,12 +19,12 @@ def generate_password() -> str:
 
 
 def _ensure_profile(user, role: str, *, full_name: str, business_name: str = ""):
-    """Create the role's profile row if missing. Lazy imports avoid an accounts→suppliers/qassobs/couriers
-    import cycle at module load. Completion fields stay empty so the setup wizard has something to fill."""
+    """Create the role's profile row if missing. Lazy imports avoid an import cycle."""
     if role == User.Role.SUPPLIER:
         from apps.suppliers.models import SupplierProfile
-        SupplierProfile.objects.get_or_create(
-            user=user, defaults={"business_name": business_name or full_name or "", "full_name": full_name})
+        SupplierProfile.objects.update_or_create(
+            user=user, defaults={"business_name": business_name or "Platform Catalog",
+                                 "full_name": full_name, "is_verified": True})
     elif role == User.Role.QASSOB:
         from apps.qassobs.models import QassobProfile
         # years_experience is NOT NULL with no default — must be supplied or the create raises IntegrityError.

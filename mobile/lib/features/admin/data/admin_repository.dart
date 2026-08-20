@@ -5,8 +5,6 @@
 // stay logged into the main app while admin operates in parallel.
 //
 // Scope (v3.3):
-//   • listSuppliers()         → GET  /suppliers/list/        (kept for future use; not in the UI right now)
-//   • patchSupplier(...)      → PATCH /suppliers/<id>/        (admin can flip is_verified)
 //   • listCategories()        → GET  /categories/?include_inactive=1
 //   • createCategory(...)     → POST /categories/
 //   • patchCategory(...)      → PATCH /categories/<id>/
@@ -21,67 +19,71 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../shared/models/supplier_profile.dart';
 import '../../../shared/utils/upload.dart';
 import '../../listings/data/listings_repository.dart';
 import 'admin_api_client.dart';
 import 'admin_models.dart';
 
-
 class AdminRepository {
   final AdminApiClient _api;
   AdminRepository(this._api);
-
-  // ---------- Suppliers ----------
-
-  Future<List<SupplierProfile>> listSuppliers() async {
-    final r = await _api.dio.get('/suppliers/list/');
-    if (r.statusCode == 200) {
-      // The backend returns a list (no pagination wrapper) — keep parsing simple.
-      final raw = r.data is List ? r.data as List : (r.data['results'] as List? ?? const []);
-      return raw.map((e) => SupplierProfile.fromJson(e as Map<String, dynamic>)).toList();
-    }
-    throw _toErr(r);
-  }
-
-  Future<SupplierProfile> patchSupplier(int id, {String? businessName, String? region,
-      String? address, bool? isVerified}) async {
-    final r = await _api.dio.patch('/suppliers/$id/', data: {
-      'business_name': ?businessName, 'region': ?region, 'address': ?address,
-      'is_verified': ?isVerified,
-    });
-    if (r.statusCode == 200) return SupplierProfile.fromJson(r.data as Map<String, dynamic>);
-    throw _toErr(r);
-  }
 
   // ---------- Categories ----------
 
   Future<List<AdminCategory>> listCategories() async {
     // include_inactive=1 — admin needs to see archived categories so they can flip them back on.
-    final r = await _api.dio.get('/categories/', queryParameters: {'include_inactive': '1'});
+    final r = await _api.dio.get(
+      '/categories/',
+      queryParameters: {'include_inactive': '1'},
+    );
     if (r.statusCode == 200) {
-      final raw = r.data is List ? r.data as List : (r.data['results'] as List? ?? const []);
-      return raw.map((e) => AdminCategory.fromJson(e as Map<String, dynamic>)).toList();
+      final raw = r.data is List
+          ? r.data as List
+          : (r.data['results'] as List? ?? const []);
+      return raw
+          .map((e) => AdminCategory.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     throw _toErr(r);
   }
 
-  Future<AdminCategory> createCategory({required String nameUz, required String nameRu,
-      int displayOrder = 100}) async {
-    final r = await _api.dio.post('/categories/', data: {
-      'name_uz': nameUz, 'name_ru': nameRu, 'display_order': displayOrder, 'is_active': true,
-    });
-    if (r.statusCode == 201) return AdminCategory.fromJson(r.data as Map<String, dynamic>);
+  Future<AdminCategory> createCategory({
+    required String nameUz,
+    required String nameRu,
+    int displayOrder = 100,
+  }) async {
+    final r = await _api.dio.post(
+      '/categories/',
+      data: {
+        'name_uz': nameUz,
+        'name_ru': nameRu,
+        'display_order': displayOrder,
+        'is_active': true,
+      },
+    );
+    if (r.statusCode == 201)
+      return AdminCategory.fromJson(r.data as Map<String, dynamic>);
     throw _toErr(r);
   }
 
-  Future<AdminCategory> patchCategory(int id, {String? nameUz, String? nameRu,
-      int? displayOrder, bool? isActive}) async {
-    final r = await _api.dio.patch('/categories/$id/', data: {
-      'name_uz': ?nameUz, 'name_ru': ?nameRu,
-      'display_order': ?displayOrder, 'is_active': ?isActive,
-    });
-    if (r.statusCode == 200) return AdminCategory.fromJson(r.data as Map<String, dynamic>);
+  Future<AdminCategory> patchCategory(
+    int id, {
+    String? nameUz,
+    String? nameRu,
+    int? displayOrder,
+    bool? isActive,
+  }) async {
+    final r = await _api.dio.patch(
+      '/categories/$id/',
+      data: {
+        'name_uz': ?nameUz,
+        'name_ru': ?nameRu,
+        'display_order': ?displayOrder,
+        'is_active': ?isActive,
+      },
+    );
+    if (r.statusCode == 200)
+      return AdminCategory.fromJson(r.data as Map<String, dynamic>);
     throw _toErr(r);
   }
 
@@ -93,40 +95,72 @@ class AdminRepository {
   // ---------- Markets ----------
 
   Future<List<AdminMarket>> listMarkets() async {
-    final r = await _api.dio.get('/markets/', queryParameters: {'include_inactive': '1'});
+    final r = await _api.dio.get(
+      '/markets/',
+      queryParameters: {'include_inactive': '1'},
+    );
     if (r.statusCode == 200) {
-      final raw = r.data is List ? r.data as List : (r.data['results'] as List? ?? const []);
-      return raw.map((e) => AdminMarket.fromJson(e as Map<String, dynamic>)).toList();
+      final raw = r.data is List
+          ? r.data as List
+          : (r.data['results'] as List? ?? const []);
+      return raw
+          .map((e) => AdminMarket.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     throw _toErr(r);
   }
 
-  Future<AdminMarket> createMarket({required String nameUz, required String nameRu,
-      required String region, required String address, String phone = ''}) async {
-    final r = await _api.dio.post('/markets/', data: {
-      'name_uz': nameUz, 'name_ru': nameRu,
-      'region': region, 'address': address,
-      // phone is optional but always send the key — empty string explicitly clears it on the server side.
-      'phone': phone, 'is_active': true,
-    });
-    if (r.statusCode == 201) return AdminMarket.fromJson(r.data as Map<String, dynamic>);
+  Future<AdminMarket> createMarket({
+    required String nameUz,
+    required String nameRu,
+    required String region,
+    required String address,
+    String phone = '',
+  }) async {
+    final r = await _api.dio.post(
+      '/markets/',
+      data: {
+        'name_uz': nameUz, 'name_ru': nameRu,
+        'region': region, 'address': address,
+        // phone is optional but always send the key — empty string explicitly clears it on the server side.
+        'phone': phone, 'is_active': true,
+      },
+    );
+    if (r.statusCode == 201)
+      return AdminMarket.fromJson(r.data as Map<String, dynamic>);
     throw _toErr(r);
   }
 
-  Future<AdminMarket> patchMarket(int id, {String? nameUz, String? nameRu,
-      String? region, String? address, String? phone, bool? isActive}) async {
-    final r = await _api.dio.patch('/markets/$id/', data: {
-      'name_uz': ?nameUz, 'name_ru': ?nameRu, 'region': ?region, 'address': ?address,
-      'phone': ?phone, 'is_active': ?isActive,
-    });
-    if (r.statusCode == 200) return AdminMarket.fromJson(r.data as Map<String, dynamic>);
+  Future<AdminMarket> patchMarket(
+    int id, {
+    String? nameUz,
+    String? nameRu,
+    String? region,
+    String? address,
+    String? phone,
+    bool? isActive,
+  }) async {
+    final r = await _api.dio.patch(
+      '/markets/$id/',
+      data: {
+        'name_uz': ?nameUz,
+        'name_ru': ?nameRu,
+        'region': ?region,
+        'address': ?address,
+        'phone': ?phone,
+        'is_active': ?isActive,
+      },
+    );
+    if (r.statusCode == 200)
+      return AdminMarket.fromJson(r.data as Map<String, dynamic>);
     throw _toErr(r);
   }
 
   /// GET /markets/<id>/ — single-market read for the Bozor detail screen.
   Future<AdminMarket> getMarket(int id) async {
     final r = await _api.dio.get('/markets/$id/');
-    if (r.statusCode == 200) return AdminMarket.fromJson(r.data as Map<String, dynamic>);
+    if (r.statusCode == 200)
+      return AdminMarket.fromJson(r.data as Map<String, dynamic>);
     throw _toErr(r);
   }
 
@@ -141,20 +175,31 @@ class AdminRepository {
   /// Market.owner_user when the caller (admin) doesn't pass supplier_id explicitly, so the in-app admin
   /// only picks a Market — no separate supplier concept exists in the UI. available_from defaults to
   /// today server-side; the admin form doesn't ask for it.
-  Future<Map<String, dynamic>> createListing({required int marketId, required int categoryId,
-      required String nameUz, required String nameRu,
-      required double quantityKg, required double pricePerKg,
-      String location = '', String descriptionUz = '', String descriptionRu = ''}) async {
-    final r = await _api.dio.post('/listings/', data: {
-      'market_id': marketId, 'category_id': categoryId,
-      'name_uz': nameUz, 'name_ru': nameRu,
-      if (descriptionUz.isNotEmpty) 'description_uz': descriptionUz,
-      if (descriptionRu.isNotEmpty) 'description_ru': descriptionRu,
-      // Backend stores quantity/price as Decimal — pass as strings to avoid float rounding (matches existing wire format)
-      'quantity_kg': quantityKg.toString(), 'price_per_kg': pricePerKg.toString(),
-      'location': location,
-      // available_from omitted — server fills today() via ListingSerializer.validate
-    });
+  Future<Map<String, dynamic>> createListing({
+    required int marketId,
+    required int categoryId,
+    required String nameUz,
+    required String nameRu,
+    required double quantityKg,
+    required double pricePerKg,
+    String location = '',
+    String descriptionUz = '',
+    String descriptionRu = '',
+  }) async {
+    final r = await _api.dio.post(
+      '/listings/',
+      data: {
+        'market_id': marketId, 'category_id': categoryId,
+        'name_uz': nameUz, 'name_ru': nameRu,
+        if (descriptionUz.isNotEmpty) 'description_uz': descriptionUz,
+        if (descriptionRu.isNotEmpty) 'description_ru': descriptionRu,
+        // Backend stores quantity/price as Decimal — pass as strings to avoid float rounding (matches existing wire format)
+        'quantity_kg': quantityKg.toString(),
+        'price_per_kg': pricePerKg.toString(),
+        'location': location,
+        // available_from omitted — server fills today() via ListingSerializer.validate
+      },
+    );
     if (r.statusCode == 201) return r.data as Map<String, dynamic>;
     throw _toErr(r);
   }
@@ -162,9 +207,7 @@ class AdminRepository {
   /// POST /listings/<listing_pk>/photos/ — multipart upload for one image. Admin bypass on the backend
   /// means we can attach photos to any listing once createListing has returned the new id.
   Future<void> uploadListingPhoto(int listingId, String filePath) async {
-    final form = FormData.fromMap({
-      'image': await multipartFromPath(filePath),
-    });
+    final form = FormData.fromMap({'image': await multipartFromPath(filePath)});
     final r = await _api.dio.post('/listings/$listingId/photos/', data: form);
     if (r.statusCode != 201) throw _toErr(r);
   }
@@ -180,22 +223,33 @@ class AdminRepository {
 
   /// PATCH /listings/<id>/ — partial update from the admin edit form. All fields optional; only what the
   /// admin changed is sent. Backend's IsListingOwnerOrReadOnly admin bypass lets us mutate any row.
-  Future<void> patchListing(int id, {
-    int? marketId, int? categoryId,
-    String? nameUz, String? nameRu, String? descriptionUz, String? descriptionRu,
-    double? quantityKg, double? pricePerKg, String? location, String? status,
+  Future<void> patchListing(
+    int id, {
+    int? marketId,
+    int? categoryId,
+    String? nameUz,
+    String? nameRu,
+    String? descriptionUz,
+    String? descriptionRu,
+    double? quantityKg,
+    double? pricePerKg,
+    String? location,
+    String? status,
   }) async {
-    final r = await _api.dio.patch('/listings/$id/', data: {
-      'market_id': ?marketId, 'category_id': ?categoryId,
-      'name_uz': ?nameUz, 'name_ru': ?nameRu,
-      'description_uz': ?descriptionUz, 'description_ru': ?descriptionRu,
-      // Backend stores quantity/price as Decimal — pass as strings to avoid float rounding
-      if (quantityKg != null) 'quantity_kg': quantityKg.toString(),
-      if (pricePerKg != null) 'price_per_kg': pricePerKg.toString(),
-      'location': ?location,
-      // status accepts ACTIVE / OUT_OF_STOCK / ARCHIVED per the Listing.Status enum
-      'status': ?status,
-    });
+    final r = await _api.dio.patch(
+      '/listings/$id/',
+      data: {
+        'market_id': ?marketId, 'category_id': ?categoryId,
+        'name_uz': ?nameUz, 'name_ru': ?nameRu,
+        'description_uz': ?descriptionUz, 'description_ru': ?descriptionRu,
+        // Backend stores quantity/price as Decimal — pass as strings to avoid float rounding
+        if (quantityKg != null) 'quantity_kg': quantityKg.toString(),
+        if (pricePerKg != null) 'price_per_kg': pricePerKg.toString(),
+        'location': ?location,
+        // status accepts ACTIVE / OUT_OF_STOCK / ARCHIVED per the Listing.Status enum
+        'status': ?status,
+      },
+    );
     if (r.statusCode != 200) throw _toErr(r);
   }
 
@@ -223,7 +277,9 @@ class AdminRepository {
     // The old parser only handled `e.value is List`, so when the backend sent {"market_id": "msg"} we
     // silently produced an empty ApiException — UI showed an empty red banner. This handles every shape
     // and always returns a non-empty message; falls back to "HTTP <code>" + raw body when all else fails.
-    debugPrint('[AdminRepository] error body (HTTP ${r.statusCode}): ${r.data}');
+    debugPrint(
+      '[AdminRepository] error body (HTTP ${r.statusCode}): ${r.data}',
+    );
     final data = r.data;
     String? message;
     Map<String, List<String>>? fieldErrors;
@@ -238,16 +294,22 @@ class AdminRepository {
           if (v is List) {
             fieldErrors[e.key] = v.map((x) => x.toString()).toList();
           } else if (v is String) {
-            fieldErrors[e.key] = [v];                      // single-string field error (DRF doesn't always normalize)
+            fieldErrors[e.key] = [
+              v,
+            ]; // single-string field error (DRF doesn't always normalize)
           } else if (v is Map) {
-            fieldErrors[e.key] = [v.toString()];           // nested error — flatten via toString
+            fieldErrors[e.key] = [
+              v.toString(),
+            ]; // nested error — flatten via toString
           } else if (v != null) {
             fieldErrors[e.key] = [v.toString()];
           }
         }
         if (fieldErrors.isNotEmpty) {
           // Per-field "field: msg" lines — admin can tell exactly which field the server rejected.
-          message = fieldErrors.entries.map((e) => '${e.key}: ${e.value.join(", ")}').join('\n');
+          message = fieldErrors.entries
+              .map((e) => '${e.key}: ${e.value.join(", ")}')
+              .join('\n');
         }
       }
     } else if (data is String && data.isNotEmpty) {

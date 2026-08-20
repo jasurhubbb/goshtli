@@ -24,7 +24,7 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsPartner, IsQassob
+from apps.common.permissions import IsPartner, IsQassob, IsSupplier
 from apps.orders.models import Order
 from apps.orders.services import (CancellationNotAllowed, InvalidStatusTransition,
                                     transition_order_status)
@@ -36,8 +36,8 @@ from apps.listings.models import Listing
 class InboxView(APIView):
     """GET /partner/inbox/ — role-routed list of orders the caller can act on.
 
-    SUPPLIER: orders on their listings that are NEW (PENDING), ACTIVE (CONFIRMED/PROCESSING/IN_TRANSIT)
-              or DONE (DELIVERED, CANCELLED). Front-end shows three tabs.
+    Catalog operator: all platform orders, including orders on historical legacy-owned listings, split into
+                      NEW, ACTIVE, and DONE buckets.
     QASSOB: orders matching their `animals_supported` and currently in AWAITING_QASSOB (open offers),
             plus orders assigned to them (their workload).
 
@@ -49,8 +49,8 @@ class InboxView(APIView):
     def get(self, request):
         u = request.user
         bucket = request.query_params.get("bucket", "new")
-        if u.is_supplier:
-            base = Order.objects.filter(listing__supplier=u)
+        if u.is_catalog_operator:
+            base = Order.objects.all()
             if bucket == "new":
                 qs = base.filter(status=Order.Status.PENDING)
             elif bucket == "active":
@@ -151,8 +151,8 @@ class AcceptOrderView(APIView):
     def post(self, request, order_id: int):
         u = request.user
         try:
-            if u.is_supplier:
-                # Use the existing service-layer transition (it checks listing ownership).
+            if u.is_catalog_operator:
+                # The service layer authorizes the internal operator platform-wide.
                 order = transition_order_status(order_id=order_id, new_status=Order.Status.CONFIRMED, by_user=u)
             elif u.is_qassob:
                 # Atomic claim — first qassob to tap Accept wins; later ones get a 409.
@@ -196,9 +196,7 @@ class RejectOrderView(APIView):
             order = Order.objects.select_related("listing").get(pk=order_id)
         except Order.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        if u.is_supplier:
-            if order.listing.supplier_id != u.id:
-                return Response({"detail": "Not your order."}, status=status.HTTP_403_FORBIDDEN)
+        if u.is_catalog_operator:
             try:
                 from apps.orders.services import cancel_order
                 cancel_order(order_id=order.id, by_user=u)
@@ -239,8 +237,8 @@ def _period_window(period: str):
 
 def _partner_orders_qs(user, since=None, until=None):
     """Order queryset filtered to this partner's footprint."""
-    if user.is_supplier:
-        qs = Order.objects.filter(listing__supplier=user)
+    if user.is_catalog_operator:
+        qs = Order.objects.all()
     elif user.is_qassob:
         qs = Order.objects.filter(assigned_qassob=user)
     else:
@@ -269,7 +267,7 @@ class EarningsView(APIView):
         avg_ticket = (total / count) if count else Decimal("0")
         # Top product (SUPPLIER only) — most-ordered listing by qty in the window
         top_product = None
-        if request.user.is_supplier:
+        if request.user.is_catalog_operator:
             top = (qs.values("listing__name_uz")
                      .annotate(qty=Sum("quantity_kg"))
                      .order_by("-qty").first())
@@ -319,17 +317,16 @@ class DashboardView(APIView):
         # a count on the dashboard with nothing in the corresponding tab. PENDING only (= orders that
         # still need accept/reject). CONFIRMED + PROCESSING moved to a separate "active" semantic
         # already counted via the Jarayonda tab when needed. v3.8.6 fix.
-        if u.is_supplier:
-            open_orders = Order.objects.filter(listing__supplier=u,
-                                                  status=Order.Status.PENDING).count()
-            low_stock = Listing.objects.filter(supplier=u, quantity_kg__lt=20).count()
+        if u.is_catalog_operator:
+            open_orders = Order.objects.filter(status=Order.Status.PENDING).count()
+            low_stock = Listing.objects.filter(quantity_kg__lt=20).count()
         else:
             # Qassob: "new" = available offers they could claim. Workload (PROCESSING_BUTCHER) is
             # already in Jadval / Jarayonda, not "new".
             open_orders = Order.objects.filter(status=Order.Status.AWAITING_QASSOB).count()
             low_stock = 0
         # Verification + open/closed snapshot
-        if u.is_supplier and hasattr(u, "supplier_profile"):
+        if u.is_catalog_operator and hasattr(u, "supplier_profile"):
             is_verified = u.supplier_profile.is_verified
             is_open_now = u.supplier_profile.is_open_now
         elif u.is_qassob and hasattr(u, "qassob_profile"):
@@ -491,13 +488,13 @@ class QuickPriceSerializer(serializers.Serializer):
 
 
 class QuickPriceView(APIView):
-    """POST /listings/<id>/quick-price/ — F5 one-tap price edit on the SUPPLIER's catalog."""
-    permission_classes = (IsPartner,)
+    """POST /listings/<id>/quick-price/ — one-tap edit anywhere in the platform catalog."""
+    permission_classes = (IsSupplier,)
 
     def post(self, request, listing_id: int):
-        try: listing = Listing.objects.get(pk=listing_id, supplier=request.user)
+        try: listing = Listing.objects.get(pk=listing_id)
         except Listing.DoesNotExist:
-            return Response({"detail": "Not your listing."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Listing not found."}, status=status.HTTP_404_NOT_FOUND)
         s = QuickPriceSerializer(data=request.data); s.is_valid(raise_exception=True)
         listing.price_per_kg = s.validated_data["price_per_kg"]
         listing.save(update_fields=["price_per_kg", "updated_at"])
@@ -511,8 +508,8 @@ class SupplierAvailabilityView(APIView):
     permission_classes = (IsPartner,)
 
     def post(self, request):
-        if not request.user.is_supplier:
-            return Response({"detail": "Supplier-only."}, status=status.HTTP_403_FORBIDDEN)
+        if not request.user.is_catalog_operator:
+            return Response({"detail": "Catalog operator only."}, status=status.HTTP_403_FORBIDDEN)
         is_open = bool(request.data.get("is_open_now"))
         # Lazy import to avoid a top-level cycle.
         from apps.suppliers.models import SupplierProfile

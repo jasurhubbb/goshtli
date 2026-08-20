@@ -9,10 +9,8 @@ import '../../core/auth/role_draft_provider.dart';
 import '../../core/network/providers.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/dashboard_providers.dart';
-import 'animals_supported_sheet.dart';
 
-
-/// Partner Profil tab.
+/// Qassob profile tab. Internal catalog operators have a separate account-only screen.
 ///
 /// v3.8.1 trimmed sections per product decision:
 ///   * removed "Biznes ma'lumotlari" — covered by Profilni tahrirlash
@@ -25,7 +23,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Map<String, dynamic>? _profile;
 
@@ -35,15 +32,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _loadProfile();
   }
 
-  /// Loads the role-specific profile (qassobs/me or suppliers/me) so we know the current
-  /// phone_visible value to pass to the edit sheet.
+  /// Loads the qassob service profile for its avatar and verification state.
   Future<void> _loadProfile() async {
     final auth = ref.read(partnerAuthProvider);
     if (auth is! AuthAuthenticated) return;
     try {
       final api = ref.read(apiClientProvider);
-      final path = auth.user.isQassob ? '/qassobs/me/' : '/suppliers/me/';
-      final r = await api.dio.get(path);
+      final r = await api.dio.get('/qassobs/me/');
       if (mounted && r.data is Map) {
         setState(() => _profile = Map<String, dynamic>.from(r.data as Map));
       }
@@ -62,61 +57,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = auth is AuthAuthenticated ? auth.user : null;
     final verified = dashboard.value?['is_verified'] == true;
 
-    // v3.9.10 — surface the saved profile photo (qassobs edit theirs via the dedicated Profile
-    // Edit screen; suppliers via the sheet). Falls back to the generic person icon when no photo
-    // is set. `photo_url` comes from /qassobs/me/ or /suppliers/me/ — both serializers now expose it.
+    // Surface the saved service-profile photo, with a generic fallback.
     final photoUrl = (_profile?['photo_url'] as String?) ?? '';
     return ListView(children: [
-      Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: Row(children: [
-          CircleAvatar(radius: 32,
-              backgroundColor: cs.primary.withValues(alpha: 0.12),
-              foregroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-              child: Icon(Icons.person_rounded, color: cs.primary, size: 32)),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(user?.fullName ?? '',
-                style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            Text(user?.phone ?? '',
-                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-            const SizedBox(height: 6),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: verified ? const Color(0xFFD3EDD3) : const Color(0xFFFFE0B2),
-                borderRadius: BorderRadius.circular(999)),
-              child: Text(verified ? t.profileVerifiedBadge : t.profilePendingBadge,
-                  style: tt.labelSmall?.copyWith(
-                      color: verified ? const Color(0xFF1F5E1F) : const Color(0xFF8A4F00),
-                      fontWeight: FontWeight.w800, letterSpacing: 0.4))),
+      Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Row(children: [
+            CircleAvatar(
+                radius: 32,
+                backgroundColor: cs.primary.withValues(alpha: 0.12),
+                foregroundImage:
+                    photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                child: Icon(Icons.person_rounded, color: cs.primary, size: 32)),
+            const SizedBox(width: 14),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(user?.fullName ?? '',
+                      style:
+                          tt.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(user?.phone ?? '',
+                      style:
+                          tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 6),
+                  Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                          color: verified
+                              ? const Color(0xFFD3EDD3)
+                              : const Color(0xFFFFE0B2),
+                          borderRadius: BorderRadius.circular(999)),
+                      child: Text(
+                          verified
+                              ? t.profileVerifiedBadge
+                              : t.profilePendingBadge,
+                          style: tt.labelSmall?.copyWith(
+                              color: verified
+                                  ? const Color(0xFF1F5E1F)
+                                  : const Color(0xFF8A4F00),
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4))),
+                ])),
           ])),
-        ])),
-
-      _Section(label: t.profileSectionEdit,
-        icon: Icons.edit_rounded,
-        onTap: () => _openEdit(context)),
-      // Drives the category-chip filter on Yangi tovar qo'shish. Gated on "not a qassob" rather
-      // than "is a supplier" because a v3.8.2-and-earlier backend bug stored partner-app signups
-      // with role=BUYER (PhoneRegisterView dropped the wizard's role field). For those accounts
-      // user.isSupplier is false but they still operate as suppliers, with an auto-created
-      // SupplierProfile under the hood. Once the v3.8.3 backend deploys, new signups land as
-      // SUPPLIER and the gate becomes redundant — kept as `!isQassob` so it stays correct either way.
-      if (user != null && !user.isQassob)
-        _Section(label: _animalsRowLabel(context),
-          icon: Icons.restaurant_rounded,
-          onTap: () => _openAnimals(context)),
-      _Section(label: t.profileSectionReviews,
-        icon: Icons.star_rounded,
-        onTap: () => context.push('/ratings')),
-      _Section(label: t.profileSectionNotifications,
-        icon: Icons.notifications_rounded,
-        onTap: () => context.push('/notifications')),
-      _Section(label: t.profileSectionLanguage,
-        icon: Icons.language_rounded, onTap: () => _showLanguageSheet(context, ref)),
-      _Section(label: t.profileSectionSupport,
-        icon: Icons.telegram, onTap: () => _openTelegram(t.supportTelegramHandle)),
-      _Section(label: t.profileSectionLogout,
-        icon: Icons.logout_rounded, destructive: true,
-        onTap: () => _confirmLogout(context)),
+      _Section(
+          label: t.profileSectionEdit,
+          icon: Icons.edit_rounded,
+          onTap: () => _openEdit(context)),
+      _Section(
+          label: t.profileSectionReviews,
+          icon: Icons.star_rounded,
+          onTap: () => context.push('/ratings')),
+      _Section(
+          label: t.profileSectionNotifications,
+          icon: Icons.notifications_rounded,
+          onTap: () => context.push('/notifications')),
+      _Section(
+          label: t.profileSectionLanguage,
+          icon: Icons.language_rounded,
+          onTap: () => _showLanguageSheet(context, ref)),
+      _Section(
+          label: t.profileSectionSupport,
+          icon: Icons.telegram,
+          onTap: () => _openTelegram(t.supportTelegramHandle)),
+      _Section(
+          label: t.profileSectionLogout,
+          icon: Icons.logout_rounded,
+          destructive: true,
+          onTap: () => _confirmLogout(context)),
       const SizedBox(height: 24),
     ]);
   }
@@ -125,60 +134,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = (ref.read(partnerAuthProvider) is AuthAuthenticated)
         ? (ref.read(partnerAuthProvider) as AuthAuthenticated).user
         : null;
-    // v3.9.12 — both roles now get a dedicated full-page edit screen so they can manage their
-    // avatar alongside identity fields. The old bottom-sheet path (edit_profile_sheet.dart) is
-    // kept for callers that want a lightweight edit but is no longer wired here.
-    bool saved = false;
-    if (user?.isQassob ?? false) {
-      saved = (await context.push<bool>('/profile/edit-qassob')) ?? false;
-    } else {
-      saved = (await context.push<bool>('/profile/edit-supplier')) ?? false;
-    }
+    if (user == null) return;
+    final saved = (await context.push<bool>('/profile/edit-qassob')) ?? false;
     if (saved) {
       _loadProfile();
       ref.read(dashboardProvider.notifier).refresh();
     }
   }
 
-  /// Locale-aware row label for the animals row. Inlined per-locale string avoids regenerating l10n
-  /// just for one key; "Sotadigan go'shtlar" reads naturally as a Profile row in UZ.
-  String _animalsRowLabel(BuildContext context) {
-    final lang = Localizations.localeOf(context).languageCode;
-    if (lang == 'ru') return 'Какое мясо я продаю';
-    if (lang == 'en') return 'Meat I sell';
-    return 'Sotadigan go\'shtlar';
-  }
-
-  Future<void> _openAnimals(BuildContext context) async {
-    final saved = await showAnimalsSupportedSheet(context);
-    if (saved) _loadProfile();
-  }
-
   Future<void> _showLanguageSheet(BuildContext context, WidgetRef ref) async {
     final t = AppLocalizations.of(context);
     final picked = await showModalBottomSheet<Locale>(
       context: context,
-      builder: (ctx) => SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(title: Text(t.languageUz), onTap: () => Navigator.pop(ctx, const Locale('uz'))),
-        ListTile(title: Text(t.languageRu), onTap: () => Navigator.pop(ctx, const Locale('ru'))),
-        ListTile(title: Text(t.languageEn), onTap: () => Navigator.pop(ctx, const Locale('en'))),
-      ])),
+      builder: (ctx) => SafeArea(
+          top: false,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            ListTile(
+                title: Text(t.languageUz),
+                onTap: () => Navigator.pop(ctx, const Locale('uz'))),
+            ListTile(
+                title: Text(t.languageRu),
+                onTap: () => Navigator.pop(ctx, const Locale('ru'))),
+            ListTile(
+                title: Text(t.languageEn),
+                onTap: () => Navigator.pop(ctx, const Locale('en'))),
+          ])),
     );
-    if (picked != null) await ref.read(localeNotifierProvider.notifier).set(picked);
+    if (picked != null) {
+      await ref.read(localeNotifierProvider.notifier).set(picked);
+    }
   }
 
   /// Chiqish — two-step (Ha/Yo'q) because logout is destructive (tokens wiped, signin required to
-   /// return). Clears the role draft too; the router redirect rule then bounces the now-anonymous user
-   /// off /home/profile to /auth/login automatically.
+  /// return). Clears the role draft too; the router redirect rule then bounces the now-anonymous user
+  /// off /home/profile to /auth/login automatically.
   Future<void> _confirmLogout(BuildContext context) async {
     final t = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t.profileSectionLogout),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t.profileSectionLogout)),
-        ]));
+    final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) =>
+            AlertDialog(title: Text(t.profileSectionLogout), actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(t.cancel)),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(t.profileSectionLogout)),
+            ]));
     if (ok != true) return;
     await ref.read(roleDraftProvider.notifier).clear();
     await ref.read(partnerAuthProvider.notifier).logout();
@@ -191,14 +193,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-
 class _Section extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
   final bool destructive;
-  const _Section({required this.label, required this.icon, required this.onTap,
-                   this.destructive = false});
+  const _Section(
+      {required this.label,
+      required this.icon,
+      required this.onTap,
+      this.destructive = false});
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -206,7 +210,9 @@ class _Section extends StatelessWidget {
     final c = destructive ? cs.error : cs.onSurface;
     return ListTile(
       leading: Icon(icon, color: c),
-      title: Text(label, style: tt.titleSmall?.copyWith(color: c, fontWeight: FontWeight.w600)),
+      title: Text(label,
+          style:
+              tt.titleSmall?.copyWith(color: c, fontWeight: FontWeight.w600)),
       trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
       onTap: onTap,
     );

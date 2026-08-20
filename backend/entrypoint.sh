@@ -25,11 +25,9 @@ exec gosu app sh -c '
   python manage.py migrate --noinput
   python manage.py collectstatic --noinput
 
-  # Seed demo accounts + listings on boot. Idempotent — get_or_create skips already-existing rows. Set
-  # SEED_DEMO=0 in Railway env to disable once youre ready for real users (or just delete the demo
-  # accounts via Django Admin afterward). `|| echo ...` so a bad/incompatible seed run doesnt take the
-  # whole deploy down — the real app still boots and you can debug seed_demo separately.
-  if [ "${SEED_DEMO:-1}" = "1" ]; then
+  # Demo suppliers conflict with the platform-only catalog model. Seeding is opt-in for disposable
+  # development environments. `|| echo ...` keeps a bad seed run from taking the app down.
+  if [ "${SEED_DEMO:-0}" = "1" ]; then
       python manage.py seed_demo || echo "[entrypoint] seed_demo failed; continuing anyway"
   fi
 

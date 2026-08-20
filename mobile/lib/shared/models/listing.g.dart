@@ -74,8 +74,6 @@ Listing _$ListingFromJson(Map<String, dynamic> json) => Listing(
   location: json['location'] as String,
   availableFrom: json['available_from'] as String,
   status: $enumDecode(_$ListingStatusEnumMap, json['status']),
-  supplierId: (json['supplier_id'] as num?)?.toInt() ?? 0,
-  supplierEmail: json['supplier_email'] as String? ?? '',
   isLiveAnimal: json['is_live_animal'] as bool? ?? false,
   saleType:
       $enumDecodeNullable(_$ListingSaleTypeEnumMap, json['sale_type']) ??
@@ -108,8 +106,6 @@ Map<String, dynamic> _$ListingToJson(Listing instance) => <String, dynamic>{
   'location': instance.location,
   'available_from': instance.availableFrom,
   'status': _$ListingStatusEnumMap[instance.status]!,
-  'supplier_id': instance.supplierId,
-  'supplier_email': instance.supplierEmail,
   'is_live_animal': instance.isLiveAnimal,
   'sale_type': _$ListingSaleTypeEnumMap[instance.saleType]!,
   'estimated_meat_yield_pct': instance.estimatedMeatYieldPct,

@@ -9,7 +9,7 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get appTitle => 'Go\'sht Bozori Partners';
+  String get appTitle => 'Команда Go\'sht Bozori';
 
   @override
   String get languagePickerTitle => 'Выберите язык';
@@ -66,12 +66,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get roleQassobBody => 'Забой и разделка живого скота';
 
   @override
-  String get roleSupplierTitle => 'Я продаю мясо';
-
-  @override
-  String get roleSupplierBody => 'Готовое мясо или живой скот';
-
-  @override
   String get phoneEntryTitle => 'Ваш номер телефона';
 
   @override
@@ -103,9 +97,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get onboardingWelcomeQassob => 'Поздравляем! Быстрая регистрация';
 
   @override
-  String get onboardingWelcomeSupplier => 'Поздравляем!';
-
-  @override
   String get onboardingExperience => 'Сколько лет опыта?';
 
   @override
@@ -123,9 +114,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get onboardingAnimalsTitleQassob =>
       'Каких животных можете разделывать?';
-
-  @override
-  String get onboardingAnimalsTitleSupplier => 'Каких животных продаёте?';
 
   @override
   String get onboardingAnimalsHint => 'Можно выбрать несколько';
@@ -163,9 +151,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get onboardingPhoto => 'Фото рабочего места (необязательно)';
-
-  @override
-  String get onboardingPhotoSupplier => 'Фото бизнеса (необязательно)';
 
   @override
   String get onboardingTakePhoto => 'Сделать фото';
@@ -306,10 +291,38 @@ class AppLocalizationsRu extends AppLocalizations {
   String get jobsEmpty => 'Нет новых предложений';
 
   @override
-  String get catalogTitle => 'Мои товары';
+  String get loginTitle => 'Вход в рабочую панель';
 
   @override
-  String get catalogAddNew => 'Добавить товар';
+  String get loginSubtitle => 'Для команды платформы, мясников и курьеров';
+
+  @override
+  String get loginPassword => 'Пароль';
+
+  @override
+  String get loginAction => 'Войти';
+
+  @override
+  String get loginHelp => 'Данные для входа выдаёт администратор платформы.';
+
+  @override
+  String get internalCatalogTitle => 'Объявления платформы';
+
+  @override
+  String get internalAccountTitle => 'Аккаунт';
+
+  @override
+  String get internalTeamBadge => 'Внутренняя команда';
+
+  @override
+  String get logoutConfirmation =>
+      'Выйти из рабочего аккаунта на этом устройстве?';
+
+  @override
+  String get catalogTitle => 'Объявления платформы';
+
+  @override
+  String get catalogAddNew => 'Новое объявление';
 
   @override
   String get catalogQuickPriceTitle => 'Изменить цену';
@@ -320,7 +333,39 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get catalogEmpty => 'Пока нет товаров';
+  String catalogHeadCount(String count) {
+    return 'В наличии: $count голов';
+  }
+
+  @override
+  String get catalogEmpty => 'В каталоге пока нет объявлений';
+
+  @override
+  String get catalogNoMatches =>
+      'Нет объявлений, подходящих под поиск или фильтр';
+
+  @override
+  String get catalogSearchHint => 'Поиск по названию, категории или ID';
+
+  @override
+  String get catalogFilterAll => 'Все';
+
+  @override
+  String get catalogFilterActive => 'Активные';
+
+  @override
+  String get catalogFilterOutOfStock => 'Нет в наличии';
+
+  @override
+  String get catalogFilterArchived => 'Архив';
+
+  @override
+  String get catalogPriceUpdated => 'Цена обновлена';
+
+  @override
+  String catalogTotal(int count) {
+    return '$count';
+  }
 
   @override
   String get scheduleTitle => 'График мощности';

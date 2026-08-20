@@ -126,6 +126,11 @@ class TelegramVerifyView(APIView):
             if not user.is_active:
                 return Response({"detail": "Hisob o'chirilgan. Qo'llab-quvvatlashga murojaat qiling."},
                                 status=status.HTTP_403_FORBIDDEN)
+            # Telegram verification is the buyer-app login. Partner roles (including the private
+            # internal-catalog account stored as SUPPLIER) must use phone + password in the partner app.
+            if not user.is_buyer:
+                return Response({"detail": "Bu hisob xaridorlar ilovasida mavjud emas."},
+                                status=status.HTTP_403_FORBIDDEN)
             return Response({**_jwt_for(user), "new_user": False})
         except User.DoesNotExist:
             # Unknown phone → the app collects the name and calls /auth/phone-register/ next, exactly as before.

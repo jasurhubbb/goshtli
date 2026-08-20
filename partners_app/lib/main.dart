@@ -9,7 +9,6 @@ import 'core/router/app_router.dart';
 import 'core/theme/partner_theme.dart';
 import 'l10n/app_localizations.dart';
 
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // v3.9.12 — PartnerFcmService.initialize() also runs Firebase.initializeApp() + registers the
@@ -19,13 +18,11 @@ Future<void> main() async {
   runApp(const ProviderScope(child: PartnersApp()));
 }
 
-
 class PartnersApp extends ConsumerStatefulWidget {
   const PartnersApp({super.key});
   @override
   ConsumerState<PartnersApp> createState() => _PartnersAppState();
 }
-
 
 class _PartnersAppState extends ConsumerState<PartnersApp> {
   bool _fcmBound = false;
@@ -48,13 +45,14 @@ class _PartnersAppState extends ConsumerState<PartnersApp> {
           await fcm.registerCurrentToken();
           // Ensure the current app-open FCM token subscription is also picked up (handles the
           // case where token rotated between installs).
-          FirebaseMessaging.instance.onTokenRefresh.listen((_) => fcm.registerCurrentToken());
+          FirebaseMessaging.instance.onTokenRefresh
+              .listen((_) => fcm.registerCurrentToken());
         }
       });
     }
 
     return MaterialApp.router(
-      title: "Go'sht Bozori Partners",
+      title: "Go'sht Bozori Team",
       debugShowCheckedModeBanner: false,
       theme: PartnerTheme.light,
       locale: locale,

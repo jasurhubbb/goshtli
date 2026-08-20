@@ -1,6 +1,7 @@
 """DRF serializers for accounts — registration validates inputs + hashes password; UserSerializer is the safe public view."""
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
 
 
@@ -33,11 +34,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """Handles POST /auth/register — validates password against Django's strength rules and creates the user via manager."""
+    """Legacy email registration for buyer accounts.
+
+    Catalog operators are provisioned by an admin and qassob/courier accounts use the partner
+    provisioning flow.  Keeping this public serializer buyer-only prevents a caller from minting
+    what is now an internal catalog account by posting ``role=SUPPLIER``.
+    """
     # write_only ensures the password never appears in the response body
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password], min_length=8)
-    # Only allow self-registration as supplier or buyer; ADMIN is created via createsuperuser (not the public API)
-    role = serializers.ChoiceField(choices=[(User.Role.SUPPLIER, "Supplier"), (User.Role.BUYER, "Buyer")])
+    role = serializers.ChoiceField(
+        choices=[(User.Role.BUYER, "Buyer")], default=User.Role.BUYER)
 
     class Meta:
         model = User
@@ -47,6 +53,23 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Delegate to UserManager so password hashing and email normalization stay in one place
         return User.objects.create_user(**validated_data)
+
+
+class BuyerTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Legacy email/password JWT login, retained only for consumer BUYER accounts.
+
+    Admins enter through admin-unlock and operational roles use phone/password. Keeping the
+    rejection generic avoids turning this endpoint into a role/account-discovery oracle.
+    """
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if not self.user.is_buyer:
+            raise exceptions.AuthenticationFailed(
+                "No active account found with the given credentials",
+                code="no_active_account",
+            )
+        return data
 
 
 # ---------- Phone-based auth (v3.2 buyer flow) ----------
@@ -66,14 +89,13 @@ class PhoneRegisterSerializer(serializers.Serializer):
     """Inbound shape for POST /auth/phone-register/ — phone + name (required) + business_name (optional).
     business_name lands on BuyerProfile via the post-create signal; no separate write needed here.
 
-    v3.8.3: `role` is now accepted (optional, defaults to BUYER) so the partner-app wizard can register
-    its supplier / qassob accounts with the correct role. Previously this field was silently dropped
-    and every phone-registered user landed as BUYER — including partners — which broke the
-    role-conditional UI in the partner app (e.g. "Sotadigan go'shtlar" row hidden for suppliers).
-    Restricted to the three legitimate self-signup roles; ADMIN is provisioned out-of-band only.
+    Only buyers self-register here. Internal catalog operators, qassobs, and couriers are issued
+    credentials through the admin-only partner provisioning endpoint.
     """
     phone = serializers.RegexField(regex=r'^\+[0-9]{10,15}$', max_length=20)
     full_name = serializers.CharField(max_length=150, min_length=1)
     business_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
-    role = serializers.ChoiceField(choices=("BUYER", "SUPPLIER", "QASSOB"),
-                                   default="BUYER", required=False)
+    # Keep accepting an explicit BUYER value for older clients, while rejecting attempts to create
+    # a partner/internal account through the public buyer flow.
+    role = serializers.ChoiceField(choices=(User.Role.BUYER,),
+                                   default=User.Role.BUYER, required=False)

@@ -4,8 +4,8 @@ import '../api/api_exception.dart';
 import 'token_storage.dart';
 import '../models/user.dart';
 
-/// Partner-app auth bridge. v3.9.16 — partners (supplier / qassob / courier) no longer self-register; ops
-/// provisions them a phone + password (see backend provision_supplier / provision_qassob / provision_courier).
+/// Work-app auth bridge. Accounts no longer self-register; ops issue phone/password credentials via
+/// provision_catalog_operator, provision_qassob, or provision_courier on the backend.
 /// This trades those credentials for a backend JWT pair and loads the user. Firebase SMS is gone.
 class AuthBridge {
   final Dio _dio;

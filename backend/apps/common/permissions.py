@@ -1,6 +1,7 @@
-"""Reusable DRF permission classes — v2 uses capability-based gates (any user can buy/sell; verification + ownership
-are the real gates). The legacy IsSupplier/IsBuyer classes still exist for backwards-compat but are functionally
-equivalent to IsAuthenticated in the v2 world; new endpoints should prefer IsVerifiedSupplier / object-level checks.
+"""Reusable DRF permission classes.
+
+BUYER is the consumer-app role. SUPPLIER remains the wire/database name for the platform's private catalog
+operator so existing listing ownership and partner APIs do not need a destructive migration.
 """
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
@@ -14,14 +15,17 @@ class IsAdminRole(BasePermission):
 
 
 class IsSupplier(BasePermission):
-    """v2: any authenticated user can act as a supplier (subject to per-action gates like IsVerifiedSupplier).
-    Kept as a thin alias so existing references compile while we migrate them away."""
-    def has_permission(self, request, view): return bool(request.user and request.user.is_authenticated)
+    """Private platform catalog operators only (legacy wire role: SUPPLIER)."""
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and u.is_catalog_operator)
 
 
 class IsBuyer(BasePermission):
-    """v2: any authenticated user can buy. Same alias treatment as IsSupplier."""
-    def has_permission(self, request, view): return bool(request.user and request.user.is_authenticated)
+    """Consumer-app buyer accounts only."""
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and u.is_buyer)
 
 
 class IsVerifiedSupplier(BasePermission):
@@ -36,19 +40,23 @@ class IsVerifiedSupplier(BasePermission):
         u = request.user
         if not (u and u.is_authenticated): return False
         if u.is_admin_role: return True                                                   # admin override
-        return hasattr(u, "supplier_profile") and u.supplier_profile.is_verified
+        return (u.is_catalog_operator and hasattr(u, "supplier_profile")
+                and u.supplier_profile.is_verified)
 
 
 # ---------- Object-level ownership gates ----------
 
 class IsListingOwnerOrReadOnly(BasePermission):
-    """Anyone can GET; only the listing's owner (the user who created it) can mutate it. Combined with auth at the view level.
-    v3.3: ADMIN-role users can mutate any listing — needed for the in-app admin "Boshqarish" tab.
+    """Anyone can GET; only platform catalog staff or admins can mutate listings.
+
+    The class keeps its legacy name so existing imports remain stable. Ownership is intentionally no longer
+    authoritative: historical listings retain their old SUPPLIER foreign keys, but the private catalog operator
+    must be able to maintain all of them and unmarked legacy suppliers must not regain write access.
     """
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS: return True
-        if request.user.is_authenticated and request.user.is_admin_role: return True      # admin override
-        return obj.supplier_id == request.user.id
+        u = request.user
+        return bool(u.is_authenticated and (u.is_catalog_operator or u.is_admin_role))
 
 
 class IsOrderBuyer(BasePermission):
@@ -57,8 +65,9 @@ class IsOrderBuyer(BasePermission):
 
 
 class IsOrderSupplier(BasePermission):
-    """Object-level — restricts to the supplier whose listing the order is for (used by supplier status updates)."""
-    def has_object_permission(self, request, view, obj): return obj.listing.supplier_id == request.user.id
+    """Legacy name for the platform-wide catalog-order operator object gate."""
+    def has_object_permission(self, request, view, obj):
+        return bool(request.user.is_authenticated and request.user.is_catalog_operator)
 
 
 # ---------- v3.8 partner-app role gates ----------

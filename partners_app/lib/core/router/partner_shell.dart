@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_core/shared_core.dart';
 
-import '../../features/catalog/catalog_screen.dart';
 import '../../features/chats/chats_list_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/earnings/earnings_screen.dart';
@@ -11,14 +9,9 @@ import '../../features/orders_inbox/inbox_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/servisim/servisim_screen.dart';
 import '../../l10n/app_localizations.dart';
-import '../auth/partner_auth_notifier.dart';
 
-
-/// 5-tab home shell. Tab 1 + 2 swap label/icon based on role:
-///   QASSOB   → Ishlar  / Servisim
-///   SUPPLIER → Buyurtmalar / Katalog
-///
-/// v3.9: qassobs' 3rd tab was Jadval (capacity calendar) which conflated capacity planning with the
+/// Qassob-only 5-tab shell. Internal catalog operators use [InternalCatalogShell] instead.
+/// The 3rd tab was Jadval (capacity calendar), which conflated capacity planning with the
 /// concept of "their service offering". The new Servisim screen is the proper home for the qassob's
 /// service-profile CRUD (bio / specialties / hours / prices / certifications / languages / gallery).
 /// Capacity planning still exists as a backend concept but no longer takes a tab slot — when we
@@ -29,78 +22,95 @@ class PartnerShell extends ConsumerStatefulWidget {
   ConsumerState<PartnerShell> createState() => _PartnerShellState();
 }
 
-
 class _PartnerShellState extends ConsumerState<PartnerShell> {
   int _idx = 0;
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final auth = ref.watch(partnerAuthProvider);
-    final isQ = auth is AuthAuthenticated && auth.user.isQassob;
     final pages = <Widget>[
       const DashboardScreen(),
-      InboxScreen(isQassob: isQ),
-      isQ ? const ServisimScreen() : const CatalogScreen(),
+      const InboxScreen(isQassob: true),
+      const ServisimScreen(),
       const EarningsScreen(),
       const ProfileScreen(),
     ];
-    final unread = ref.watch(partnerUnreadChatsTotalProvider).asData?.value ?? 0;
-    // v3.9.13 — chat icon shows for QASSOBS ONLY. Rationale: qassobs offer bespoke butcher
-    // services and buyers routinely need to negotiate specifics (delivery window, cut style,
-    // slaughter method) which is what chat is for. Suppliers sell standardized listings ordered
-    // through the cart — no free-form conversation needed for that flow. Removing the icon for
-    // suppliers cuts noise without losing capability (backend still routes /chats/* if a supplier
-    // ever gets messaged — they'd see it via the notification banner and the /chats route).
+    final unread =
+        ref.watch(partnerUnreadChatsTotalProvider).asData?.value ?? 0;
     return Scaffold(
-      appBar: AppBar(title: Text(_title(t, isQ)),
-        actions: [if (isQ) Stack(clipBehavior: Clip.none, children: [
-          IconButton(onPressed: () => context.push('/chats'),
+      appBar: AppBar(title: Text(_title(t)), actions: [
+        Stack(clipBehavior: Clip.none, children: [
+          IconButton(
+              onPressed: () => context.push('/chats'),
               icon: const Icon(Icons.chat_bubble_outline_rounded)),
-          if (unread > 0) Positioned(top: 6, right: 4, child: IgnorePointer(child: Container(
-            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(color: const Color(0xFFD32F2F),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white, width: 1.5)),
-            child: Center(child: Text(unread > 99 ? '99+' : '$unread',
-                style: const TextStyle(color: Colors.white,
-                    fontSize: 10, fontWeight: FontWeight.w800, height: 1.0)))))),
-        ])]),
+          if (unread > 0)
+            Positioned(
+                top: 6,
+                right: 4,
+                child: IgnorePointer(
+                    child: Container(
+                        constraints:
+                            const BoxConstraints(minWidth: 18, minHeight: 18),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFD32F2F),
+                            borderRadius: BorderRadius.circular(999),
+                            border:
+                                Border.all(color: Colors.white, width: 1.5)),
+                        child: Center(
+                            child: Text(unread > 99 ? '99+' : '$unread',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.0)))))),
+        ])
+      ]),
       body: IndexedStack(index: _idx, children: pages),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _idx,
-        onDestinationSelected: (i) => setState(() => _idx = i),
-        height: 80,
-        destinations: [
-          NavigationDestination(icon: const Icon(Icons.dashboard_outlined),
-              selectedIcon: const Icon(Icons.dashboard_rounded),
-              label: t.tabHome),
-          NavigationDestination(icon: const Icon(Icons.inbox_outlined),
-              selectedIcon: const Icon(Icons.inbox_rounded),
-              label: isQ ? t.tabJobs : t.tabOrders),
-          NavigationDestination(
-              icon: Icon(isQ ? Icons.handyman_outlined : Icons.list_alt_outlined),
-              selectedIcon: Icon(isQ ? Icons.handyman_rounded : Icons.list_alt_rounded),
-              label: isQ ? 'Servisim' : t.tabCatalog),
-          NavigationDestination(icon: const Icon(Icons.bar_chart_outlined),
-              selectedIcon: const Icon(Icons.bar_chart_rounded),
-              label: t.tabEarnings),
-          NavigationDestination(icon: const Icon(Icons.person_outline_rounded),
-              selectedIcon: const Icon(Icons.person_rounded),
-              label: t.tabProfile),
-        ]),
+          selectedIndex: _idx,
+          onDestinationSelected: (i) => setState(() => _idx = i),
+          height: 80,
+          destinations: [
+            NavigationDestination(
+                icon: const Icon(Icons.dashboard_outlined),
+                selectedIcon: const Icon(Icons.dashboard_rounded),
+                label: t.tabHome),
+            NavigationDestination(
+                icon: const Icon(Icons.inbox_outlined),
+                selectedIcon: const Icon(Icons.inbox_rounded),
+                label: t.tabJobs),
+            const NavigationDestination(
+                icon: Icon(Icons.handyman_outlined),
+                selectedIcon: Icon(Icons.handyman_rounded),
+                label: 'Servisim'),
+            NavigationDestination(
+                icon: const Icon(Icons.bar_chart_outlined),
+                selectedIcon: const Icon(Icons.bar_chart_rounded),
+                label: t.tabEarnings),
+            NavigationDestination(
+                icon: const Icon(Icons.person_outline_rounded),
+                selectedIcon: const Icon(Icons.person_rounded),
+                label: t.tabProfile),
+          ]),
     );
   }
 
-  String _title(AppLocalizations t, bool isQ) {
+  String _title(AppLocalizations t) {
     switch (_idx) {
-      case 0: return t.tabHome;
-      case 1: return isQ ? t.tabJobs : t.tabOrders;
-      case 2: return isQ ? 'Servisim' : t.tabCatalog;
-      case 3: return t.tabEarnings;
-      case 4: return t.tabProfile;
-      default: return t.appTitle;
+      case 0:
+        return t.tabHome;
+      case 1:
+        return t.tabJobs;
+      case 2:
+        return 'Servisim';
+      case 3:
+        return t.tabEarnings;
+      case 4:
+        return t.tabProfile;
+      default:
+        return t.appTitle;
     }
   }
 }

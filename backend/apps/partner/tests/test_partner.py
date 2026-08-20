@@ -86,11 +86,23 @@ class TestInbox:
         r = buyer_client.get(self.URL)
         assert r.status_code == 403
 
-    def test_supplier_sees_own_pending(self, supplier_client, supplier_user, buyer_user, _ctx):
-        l = _listing(supplier_user, _ctx)
+    def test_catalog_operator_sees_pending_on_legacy_listing(
+            self, supplier_client, buyer_user, _ctx):
+        legacy = User.objects.create_user(
+            email="legacy-inbox@test.local", password="X", full_name="Legacy",
+            role=User.Role.SUPPLIER)
+        l = _listing(legacy, _ctx)
         _order(buyer_user, l)
         r = supplier_client.get(f"{self.URL}?bucket=new")
         assert r.status_code == 200 and r.data["count"] == 1
+
+    def test_legacy_supplier_cannot_open_partner_inbox(self, buyer_user, _ctx):
+        legacy = User.objects.create_user(
+            email="blocked-inbox@test.local", password="X", full_name="Legacy",
+            role=User.Role.SUPPLIER)
+        _order(buyer_user, _listing(legacy, _ctx))
+
+        assert _client_for(legacy).get(self.URL).status_code == 403
 
     def test_qassob_sees_awaiting_jobs(self, qassob_client, supplier_user, buyer_user, _ctx):
         l = _listing(supplier_user, _ctx, slug="live-1", live=True)
@@ -103,11 +115,31 @@ class TestInbox:
 
 @pytest.mark.django_db
 class TestAccept:
-    def test_supplier_accept(self, supplier_client, supplier_user, buyer_user, _ctx):
-        l = _listing(supplier_user, _ctx)
+    def test_catalog_operator_accepts_legacy_listing_order(
+            self, supplier_client, buyer_user, _ctx):
+        legacy = User.objects.create_user(
+            email="legacy-accept@test.local", password="X", full_name="Legacy",
+            role=User.Role.SUPPLIER)
+        l = _listing(legacy, _ctx)
         o = _order(buyer_user, l)
         r = supplier_client.post(f"/api/v1/partner/orders/{o.id}/accept/")
         assert r.status_code == 200 and r.data["status"] == "CONFIRMED"
+
+    def test_catalog_operator_rejects_legacy_listing_order_and_restores_stock(
+            self, supplier_client, buyer_user, _ctx):
+        legacy = User.objects.create_user(
+            email="legacy-reject@test.local", password="X", full_name="Legacy",
+            role=User.Role.SUPPLIER)
+        listing = _listing(legacy, _ctx, slug="legacy-reject")
+        listing.quantity_kg = Decimal("90")
+        listing.save(update_fields=("quantity_kg", "updated_at"))
+        order = _order(buyer_user, listing)
+
+        response = supplier_client.post(f"/api/v1/partner/orders/{order.id}/reject/")
+
+        assert response.status_code == 200 and response.data["status"] == Order.Status.CANCELLED
+        listing.refresh_from_db()
+        assert listing.quantity_kg == Decimal("100")
 
     def test_qassob_claims_job(self, qassob_client, qassob_user, supplier_user, buyer_user, _ctx):
         l = _listing(supplier_user, _ctx, slug="live-2", live=True)
@@ -136,8 +168,12 @@ class TestAccept:
 
 @pytest.mark.django_db
 class TestEarningsDashboard:
-    def test_supplier_earnings_day(self, supplier_client, supplier_user, buyer_user, _ctx):
-        l = _listing(supplier_user, _ctx)
+    def test_catalog_operator_earnings_include_legacy_listing_orders(
+            self, supplier_client, buyer_user, _ctx):
+        legacy = User.objects.create_user(
+            email="legacy-earnings@test.local", password="X", full_name="Legacy",
+            role=User.Role.SUPPLIER)
+        l = _listing(legacy, _ctx)
         _order(buyer_user, l, paid=True)
         _order(buyer_user, l, paid=True)
         r = supplier_client.get("/api/v1/partner/earnings/?period=day")
@@ -145,12 +181,19 @@ class TestEarningsDashboard:
         assert r.data["order_count"] == 2
         assert Decimal(r.data["total_revenue"]) == Decimal("1000000")
 
-    def test_dashboard_shape(self, supplier_client, supplier_user, _ctx):
-        l = _listing(supplier_user, _ctx)
+    def test_dashboard_counts_platform_wide_catalog(self, supplier_client, buyer_user, _ctx):
+        legacy = User.objects.create_user(
+            email="legacy-dashboard@test.local", password="X", full_name="Legacy",
+            role=User.Role.SUPPLIER)
+        l = _listing(legacy, _ctx)
+        l.quantity_kg = Decimal("10")
+        l.save(update_fields=("quantity_kg", "updated_at"))
+        _order(buyer_user, l)
         r = supplier_client.get("/api/v1/partner/dashboard/")
         assert r.status_code == 200
         assert r.data["role"] == "SUPPLIER"
-        assert "today_revenue" in r.data and "open_orders" in r.data
+        assert r.data["open_orders"] == 1
+        assert r.data["low_stock_count"] == 1
 
 
 # ---------------- Smart tips ----------------
@@ -178,10 +221,22 @@ class TestQuickPrice:
         l.refresh_from_db()
         assert l.price_per_kg == Decimal("55000.00")
 
-    def test_foreign_listing_404(self, supplier_client, supplier_user, _ctx, db):
+    def test_catalog_operator_updates_legacy_owned_listing(self, supplier_client, _ctx, db):
         other = User.objects.create_user(email="other-s@test.local", password="X",
                                           full_name="O", role=User.Role.SUPPLIER)
         l = _listing(other, _ctx, slug="qp-foreign")
         r = supplier_client.post(f"/api/v1/partner/listings/{l.id}/quick-price/",
                                    {"price_per_kg": "55000.00"}, format="json")
-        assert r.status_code == 404
+        assert r.status_code == 200
+        l.refresh_from_db()
+        assert l.price_per_kg == Decimal("55000.00")
+
+    def test_qassob_cannot_change_catalog_price(
+            self, qassob_client, supplier_user, _ctx):
+        listing = _listing(supplier_user, _ctx, slug="qp-qassob-blocked")
+
+        response = qassob_client.post(
+            f"/api/v1/partner/listings/{listing.id}/quick-price/",
+            {"price_per_kg": "1.00"}, format="json")
+
+        assert response.status_code == 403

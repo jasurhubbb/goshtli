@@ -1,8 +1,6 @@
-// ListingDetailScreen — Apple-style product detail. v3.1 catalog schema: bilingual name + description, nested
-// market + category embeds, price in brand colour. Tap "Savatga qo'shish" adds the listing to the cart and
-// returns to the previous screen.
-//
-// This screen is intentionally simple in v3.1 — full reviews / supplier-bio / photo carousel come later.
+// ListingDetailScreen — buyer-facing product detail. Products are sold by the platform, so this screen only
+// presents listing information; internal supplier/market ownership from the API is deliberately not exposed.
+// Tap "Savatga qo'shish" to add the listing to the cart and return to the previous screen.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +11,6 @@ import '../../../shared/utils/format.dart';
 import '../../cart/presentation/cart_actions.dart';
 import '../providers/listings_providers.dart';
 
-
 class ListingDetailScreen extends ConsumerWidget {
   final int listingId;
   const ListingDetailScreen({super.key, required this.listingId});
@@ -22,14 +19,23 @@ class ListingDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(listingByIdProvider(listingId));
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            onPressed: () => context.canPop() ? context.pop() : context.go('/'))),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+        ),
+      ),
       body: async.when(
         data: (l) => _body(context, ref, l),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Padding(padding: const EdgeInsets.all(24),
-            child: Text(e.toString(), textAlign: TextAlign.center))),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(e.toString(), textAlign: TextAlign.center),
+          ),
+        ),
       ),
     );
   }
@@ -39,68 +45,105 @@ class ListingDetailScreen extends ConsumerWidget {
     final tt = Theme.of(context).textTheme;
     final lang = Localizations.localeOf(context).languageCode;
 
-    return Column(children: [
-      Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Photo (or category icon if none) — coloured surface, rounded corners
-          AspectRatio(aspectRatio: 1.2,
-            child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
-                color: cs.surfaceContainerHighest),
-              clipBehavior: Clip.antiAlias,
-              child: l.primaryPhotoUrl != null
-                  ? Image.network(l.primaryPhotoUrl!, fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(Icons.image_outlined, size: 80, color: cs.onSurfaceVariant))
-                  : Icon(Icons.restaurant_outlined, size: 80, color: cs.onSurfaceVariant))),
-          const SizedBox(height: 18),
-          Text(l.displayName(lang), style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text('${l.market.displayName(lang)} · ${l.market.region}',
-            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-          const SizedBox(height: 14),
-          Text('${formatSoum(l.pricePerKg.toInt())} so\'m/kg',
-            style: tt.titleLarge?.copyWith(color: cs.primary, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 18),
-          if ((lang == 'ru' ? l.descriptionRu : l.descriptionUz).isNotEmpty)
-            Text(lang == 'ru' ? l.descriptionRu : l.descriptionUz,
-                style: tt.bodyLarge?.copyWith(color: cs.onSurface.withValues(alpha: 0.85), height: 1.4)),
-          const SizedBox(height: 24),
-          // v3.9.14 — "Sotuvchi haqida" tappable row. Pushes /suppliers/<supplier_id> so the buyer
-          // can see who's selling this before committing to add-to-cart.
-          InkWell(onTap: () => context.push('/suppliers/${l.supplierId}'),
-            borderRadius: BorderRadius.circular(14),
-            child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(14),
-                  color: cs.surfaceContainerLowest,
-                  border: Border.all(color: cs.outlineVariant)),
-              child: Row(children: [
-                CircleAvatar(radius: 20,
-                  backgroundColor: cs.primary.withValues(alpha: 0.12),
-                  child: Icon(Icons.storefront_rounded, color: cs.primary)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text("Sotuvchi haqida",
-                      style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  Text("Profilni ko'ring — hudud, aloqa, boshqa tovarlar",
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-                ])),
-                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-              ]))),
-        ]))),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Photo (or category icon if none) — coloured surface, rounded corners
+                AspectRatio(
+                  aspectRatio: 1.2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: cs.surfaceContainerHighest,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: l.primaryPhotoUrl != null
+                        ? Image.network(
+                            l.primaryPhotoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(
+                              Icons.image_outlined,
+                              size: 80,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          )
+                        : Icon(
+                            Icons.restaurant_outlined,
+                            size: 80,
+                            color: cs.onSurfaceVariant,
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  l.displayName(lang),
+                  style: tt.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  '${formatSoum(l.pricePerKg.toInt())} so\'m/kg',
+                  style: tt.titleLarge?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                if ((lang == 'ru' ? l.descriptionRu : l.descriptionUz)
+                    .isNotEmpty)
+                  Text(
+                    lang == 'ru' ? l.descriptionRu : l.descriptionUz,
+                    style: tt.bodyLarge?.copyWith(
+                      color: cs.onSurface.withValues(alpha: 0.85),
+                      height: 1.4,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
 
-      // Sticky bottom CTA — full-width add-to-cart
-      SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-        child: SizedBox(width: double.infinity, height: 52, child: FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-          onPressed: () async {
-            HapticFeedback.lightImpact();
-            // v3.9.16 — single-product cart: prompts to replace if a different product is already in it.
-            final added = await addToCartOrPrompt(context, ref, l);
-            if (added && context.mounted && context.canPop()) context.pop();
-          },
-          child: Text("Savatga qo'shish",
-            style: tt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w700))))))
-    ]);
+        // Sticky bottom CTA — full-width add-to-cart
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () async {
+                  HapticFeedback.lightImpact();
+                  // v3.9.16 — single-product cart: prompts to replace if a different product is already in it.
+                  final added = await addToCartOrPrompt(context, ref, l);
+                  if (added && context.mounted && context.canPop())
+                    context.pop();
+                },
+                child: Text(
+                  "Savatga qo'shish",
+                  style: tt.titleMedium?.copyWith(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

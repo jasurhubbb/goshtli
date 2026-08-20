@@ -23,7 +23,6 @@ import '../network/api_client.dart';
 import '../../features/chats/providers/chats_providers.dart';
 import '../../features/orders/providers/orders_providers.dart';
 
-
 /// Background message handler — MUST be a top-level function with @pragma('vm:entry-point') so the Dart VM can
 /// reach it after the app has been killed. Currently a no-op (system tray handles display); reserved here for
 /// future custom-payload work like local-notification grouping.
@@ -31,7 +30,6 @@ import '../../features/orders/providers/orders_providers.dart';
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   // No-op for v2 — visual is handled by Android's notification system from the FCM payload.
 }
-
 
 class FcmService {
   final ApiClient _api;
@@ -128,44 +126,73 @@ class FcmService {
     if (messenger == null) return;
     final link = message.data['link']?.toString() ?? '';
     if (link.isNotEmpty && _router?.state.matchedLocation == link) return;
-    messenger.showSnackBar(SnackBar(
-      duration: const Duration(seconds: 4),
-      behavior: SnackBarBehavior.floating,
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title.isNotEmpty) Text(title,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-          if (body.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(body, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13)),
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title.isNotEmpty)
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+            if (body.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                body,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
           ],
-        ]),
-      action: link.isEmpty ? null : SnackBarAction(label: "OCH",
-          onPressed: () { try { _router?.push(link); } catch (_) {} }),
-    ));
+        ),
+        action: link.isEmpty
+            ? null
+            : SnackBarAction(
+                label: "OCH",
+                onPressed: () {
+                  try {
+                    _router?.push(link);
+                  } catch (_) {}
+                },
+              ),
+      ),
+    );
   }
 
   void _handleTap(RemoteMessage message) {
     // Same live-refresh we do on foreground — user may have missed several pushes while away.
     _invalidateProviders(message);
-    // Backend sends a path string in data['link'] (e.g. "/orders/5", "/listings/new", "/chats/3").
+    // Backend sends a buyer-facing path string in data['link'] (e.g. "/orders/5" or "/chats/3").
     // Feed it directly to go_router. Empty/missing → ignore (notification was informational only).
     final link = (message.data['link'] as String?)?.trim() ?? '';
     if (link.isEmpty || _router == null) return;
-    try { _router!.push(link); }
-    catch (e) { debugPrint('Deep-link push failed for "$link": $e'); }
+    try {
+      _router!.push(link);
+    } catch (e) {
+      debugPrint('Deep-link push failed for "$link": $e');
+    }
   }
 
   /// Ask the OS for permission (Android 13+, iOS). Returns true if granted. Safe to call repeatedly.
   Future<bool> requestPermission() async {
     try {
       final settings = await FirebaseMessaging.instance.requestPermission(
-        alert: true, badge: true, sound: true);
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       return settings.authorizationStatus == AuthorizationStatus.authorized ||
-             settings.authorizationStatus == AuthorizationStatus.provisional;
+          settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
       debugPrint('Permission request failed: $e');
       return false;
@@ -178,8 +205,10 @@ class FcmService {
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null) return;
-      await _api.dio.post('/notifications/register-device/',
-          data: {'token': token, 'platform': 'ANDROID'});
+      await _api.dio.post(
+        '/notifications/register-device/',
+        data: {'token': token, 'platform': 'ANDROID'},
+      );
     } catch (e) {
       debugPrint('Token registration failed: $e');
     }

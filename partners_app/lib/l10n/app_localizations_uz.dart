@@ -9,7 +9,7 @@ class AppLocalizationsUz extends AppLocalizations {
   AppLocalizationsUz([String locale = 'uz']) : super(locale);
 
   @override
-  String get appTitle => 'Go\'sht Bozori Partners';
+  String get appTitle => 'Go\'sht Bozori Ishchi';
 
   @override
   String get languagePickerTitle => 'Til tanlang';
@@ -66,12 +66,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get roleQassobBody => 'Tirik chorvani so\'yish va bo\'laklash';
 
   @override
-  String get roleSupplierTitle => 'Go\'sht sotaman';
-
-  @override
-  String get roleSupplierBody => 'Tayyor go\'sht yoki tirik chorva sotuvi';
-
-  @override
   String get phoneEntryTitle => 'Telefon raqamingiz';
 
   @override
@@ -104,9 +98,6 @@ class AppLocalizationsUz extends AppLocalizations {
       'Tabriklaymiz! Tezda ro\'yxatdan o\'tasiz';
 
   @override
-  String get onboardingWelcomeSupplier => 'Tabriklaymiz!';
-
-  @override
   String get onboardingExperience => 'Tajribangiz necha yil?';
 
   @override
@@ -123,9 +114,6 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get onboardingAnimalsTitleQassob => 'Qaysi hayvonlarni so\'ya olasiz?';
-
-  @override
-  String get onboardingAnimalsTitleSupplier => 'Qaysi hayvonlarni sotasiz?';
 
   @override
   String get onboardingAnimalsHint => 'Bir nechtasini tanlashingiz mumkin';
@@ -163,9 +151,6 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get onboardingPhoto => 'Ish joyi rasmi (ixtiyoriy)';
-
-  @override
-  String get onboardingPhotoSupplier => 'Biznes rasmi (ixtiyoriy)';
 
   @override
   String get onboardingTakePhoto => 'Rasm olish';
@@ -306,10 +291,39 @@ class AppLocalizationsUz extends AppLocalizations {
   String get jobsEmpty => 'Yangi takliflar yo\'q';
 
   @override
-  String get catalogTitle => 'Mening tovarlarim';
+  String get loginTitle => 'Ishchi panelga kirish';
 
   @override
-  String get catalogAddNew => 'Yangi tovar qo\'shish';
+  String get loginSubtitle => 'Platforma jamoasi, qassoblar va kuryerlar uchun';
+
+  @override
+  String get loginPassword => 'Parol';
+
+  @override
+  String get loginAction => 'Kirish';
+
+  @override
+  String get loginHelp =>
+      'Kirish ma\'lumotlarini platforma administratori beradi.';
+
+  @override
+  String get internalCatalogTitle => 'Platforma e\'lonlari';
+
+  @override
+  String get internalAccountTitle => 'Hisob';
+
+  @override
+  String get internalTeamBadge => 'Ichki jamoa';
+
+  @override
+  String get logoutConfirmation =>
+      'Ushbu qurilmadagi ishchi hisobdan chiqasizmi?';
+
+  @override
+  String get catalogTitle => 'Platforma e\'lonlari';
+
+  @override
+  String get catalogAddNew => 'Yangi e\'lon';
 
   @override
   String get catalogQuickPriceTitle => 'Narxni o\'zgartirish';
@@ -320,7 +334,38 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
-  String get catalogEmpty => 'Hali tovar qo\'shilmagan';
+  String catalogHeadCount(String count) {
+    return 'Mavjud: $count bosh';
+  }
+
+  @override
+  String get catalogEmpty => 'Katalogda hali e\'lon yo\'q';
+
+  @override
+  String get catalogNoMatches => 'Qidiruv yoki filtrga mos e\'lon topilmadi';
+
+  @override
+  String get catalogSearchHint => 'Nomi, kategoriya yoki ID bo\'yicha qidirish';
+
+  @override
+  String get catalogFilterAll => 'Barchasi';
+
+  @override
+  String get catalogFilterActive => 'Faol';
+
+  @override
+  String get catalogFilterOutOfStock => 'Zaxira tugagan';
+
+  @override
+  String get catalogFilterArchived => 'Arxiv';
+
+  @override
+  String get catalogPriceUpdated => 'Narx yangilandi';
+
+  @override
+  String catalogTotal(int count) {
+    return '$count ta';
+  }
 
   @override
   String get scheduleTitle => 'Sig\'im jadvali';
